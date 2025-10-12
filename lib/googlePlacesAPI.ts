@@ -84,49 +84,45 @@ export async function fetchNearbyPlacesFromGoogle(
   const seenPlaceIds = new Set<string>(); // Tekrar eden yerleri engellemek için
   let idCounter = 1000;
 
-  // Her kategori için ayrı ayrı yer çek
+  // PARALEL API ÇAĞRILARI - Tüm kategorileri aynı anda çek
+  console.log('🚀 Paralel API çağrıları başlatılıyor...');
+  
+  const fetchPromises: Promise<void>[] = [];
+  
   for (const [ourCategory, googleTypes] of Object.entries(CATEGORY_MAP)) {
-    for (const type of googleTypes) {
+    // Her kategoriden sadece ilk type'ı kullan (hızlı sonuç için)
+    const mainType = googleTypes[0];
+    
+    const promise = (async () => {
       try {
-        // Kendi API route'umuzu kullan (CORS hatası olmaması için)
-        const url = `/api/places?lat=${userLat}&lng=${userLng}&radius=${radius}&type=${type}`;
+        const url = `/api/places?lat=${userLat}&lng=${userLng}&radius=${radius}&type=${mainType}`;
         
-        console.log(`🔍 ${ourCategory} (${type}) aranıyor...`);
-        console.log(`   URL: ${url}`);
+        console.log(`🔍 ${ourCategory} (${mainType}) aranıyor...`);
         
         const response = await fetch(url);
         
         if (!response.ok) {
-          console.error(`❌ HTTP Hatası: ${response.status} ${response.statusText}`);
-          const errorText = await response.text();
-          console.error(`   Hata detayı: ${errorText}`);
-          continue;
+          console.error(`❌ HTTP Hatası (${mainType}): ${response.status}`);
+          return;
         }
         
         const data = await response.json();
-        
-        console.log(`   Google Status: ${data.status}`);
-        if (data.error_message) {
-          console.error(`   Google Hata Mesajı: ${data.error_message}`);
-        }
 
         if (data.status === 'OK' && data.results) {
-          console.log(`✅ ${data.results.length} ${type} bulundu`);
+          console.log(`✅ ${data.results.length} ${mainType} bulundu`);
           
-          // Sonuçları al
           const places = data.results as GooglePlace[];
           
           for (const place of places) {
             // Aynı yeri tekrar ekleme
             if (seenPlaceIds.has(place.place_id)) {
-              console.log(`⏭️ Tekrar: ${place.name} (atlandı)`);
               continue;
             }
             
             seenPlaceIds.add(place.place_id);
             
             const location: Location = {
-              id: place.place_id, // Google place_id kullan (benzersiz)
+              id: place.place_id,
               name: place.name,
               category: ourCategory,
               coordinates: [place.geometry.location.lat, place.geometry.location.lng],
@@ -136,30 +132,35 @@ export async function fetchNearbyPlacesFromGoogle(
               lastUpdated: new Date(),
               description: place.types.join(', '),
               workingHours: getDefaultWorkingHours(ourCategory),
-              phone: '', // Google Places Details API ile alınabilir
+              phone: '',
               rating: place.rating,
               reviewCount: place.user_ratings_total,
             };
             
             allLocations.push(location);
             
-            // Her kategoriden maksimum 20 yer al (daha fazla sonuç)
+            // Her kategoriden maksimum 20 yer al
             const categoryCount = allLocations.filter(l => l.category === ourCategory).length;
             if (categoryCount >= 20) {
-              console.log(`   ✓ ${ourCategory} kategorisi tamamlandı (20 yer)`);
               break;
             }
           }
         } else if (data.status === 'ZERO_RESULTS') {
-          console.log(`ℹ️ ${type} için sonuç bulunamadı`);
+          console.log(`ℹ️ ${mainType} için sonuç bulunamadı`);
         } else {
-          console.error(`❌ Google API Hatası (${type}):`, data.status, data.error_message);
+          console.error(`❌ Google API Hatası (${mainType}):`, data.status);
         }
       } catch (error) {
-        console.error(`❌ ${type} çekerken hata:`, error);
+        console.error(`❌ ${mainType} çekerken hata:`, error);
       }
-    }
+    })();
+    
+    fetchPromises.push(promise);
   }
+  
+  // Tüm API çağrılarını paralel olarak bekle
+  await Promise.all(fetchPromises);
+  console.log('✅ Tüm paralel çağrılar tamamlandı!');
 
   console.log('========================================');
   console.log(`🎉 TOPLAM ${allLocations.length} YER BULUNDU`);
