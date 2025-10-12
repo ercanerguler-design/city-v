@@ -37,6 +37,9 @@ export default function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
     if (isOpen && isPremium) {
       updatePremiumStats();
     }
+    if (isOpen) {
+      console.log('🎯 Premium Modal Acildi:', { isPremium, user });
+    }
   }, [isOpen, isPremium, updatePremiumStats]);
 
   const plans = [
@@ -71,6 +74,8 @@ export default function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
       gradient: 'from-purple-500 to-pink-500',
     },
   ];
+
+  console.log('💰 Plans:', plans.map(p => ({ id: p.id, price: p.price, period: p.period })));
 
   const handleSubscribe = () => {
     subscribe(selectedPlan);
@@ -316,15 +321,15 @@ export default function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
                         </h4>
 
                         <div className="flex items-baseline gap-1 mb-1">
-                          <span className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                          <span className="text-4xl font-extrabold text-gray-900 dark:text-white">
                             {plan.price}
                           </span>
-                          <span className="text-gray-500 dark:text-gray-400">{plan.period}</span>
+                          <span className="text-base text-gray-600 dark:text-gray-300 font-medium">{plan.period}</span>
                         </div>
 
                         {plan.savings && (
-                          <div className="text-sm text-green-600 dark:text-green-400 font-semibold mb-4">
-                            {plan.savings}
+                          <div className="text-base text-green-700 dark:text-green-300 font-bold mb-4 bg-green-50 dark:bg-green-900/30 px-3 py-1 rounded-full inline-block">
+                            ✨ {plan.savings}
                           </div>
                         )}
 
