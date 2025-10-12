@@ -37,9 +37,6 @@ export default function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
     if (isOpen && isPremium) {
       updatePremiumStats();
     }
-    if (isOpen) {
-      console.log('🎯 Premium Modal Acildi:', { isPremium, user });
-    }
   }, [isOpen, isPremium, updatePremiumStats]);
 
   const plans = [
@@ -74,8 +71,6 @@ export default function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
       gradient: 'from-purple-500 to-pink-500',
     },
   ];
-
-  console.log('💰 Plans:', plans.map(p => ({ id: p.id, price: p.price, period: p.period })));
 
   const handleSubscribe = () => {
     subscribe(selectedPlan);
