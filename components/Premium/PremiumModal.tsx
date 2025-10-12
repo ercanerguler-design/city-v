@@ -279,12 +279,11 @@ export default function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
               )}
 
               {/* Pricing Plans */}
-              {!isPremium && (
-                <>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-purple-500" />
-                    Planları Seçin
-                  </h3>
+              <>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-purple-500" />
+                  {isPremium ? 'Mevcut Planınız ve Diğer Seçenekler' : 'Planları Seçin'}
+                </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     {plans.map((plan) => (
                       <motion.div
@@ -345,25 +344,28 @@ export default function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
                     ))}
                   </div>
 
-                  {/* Subscribe Button */}
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleSubscribe}
-                    className="w-full py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 hover:from-purple-600 hover:via-pink-600 hover:to-red-600 
-                               text-white font-bold text-lg rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
-                  >
-                    <Zap className="w-5 h-5" />
-                    Premium'a Başla - {plans.find(p => p.id === selectedPlan)?.price}
-                  </motion.button>
+                  {/* Subscribe Button - Only for non-premium users */}
+                  {!isPremium && (
+                    <>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleSubscribe}
+                        className="w-full py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 hover:from-purple-600 hover:via-pink-600 hover:to-red-600 
+                                   text-white font-bold text-lg rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
+                      >
+                        <Zap className="w-5 h-5" />
+                        Premium'a Başla - {plans.find(p => p.id === selectedPlan)?.price}
+                      </motion.button>
 
-                  {/* Security Note */}
-                  <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                    <Shield className="w-4 h-4" />
-                    <span>Güvenli ödeme • İstediğiniz zaman iptal</span>
-                  </div>
-                </>
-              )}
+                      {/* Security Note */}
+                      <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                        <Shield className="w-4 h-4" />
+                        <span>Güvenli ödeme • İstediğiniz zaman iptal</span>
+                      </div>
+                    </>
+                  )}
+              </>
 
               {/* Feature Icons */}
               <div className="mt-8 grid grid-cols-4 gap-4 text-center">
