@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, Polyline, useMa
 import { LatLngExpression } from 'leaflet';
 import { Location, CrowdLevel } from '@/types';
 import { useEffect, useState, useRef } from 'react';
-import MarkerClusterGroup from 'react-leaflet-cluster';
+import MarkerClusterGroup from 'react-leaflet-markercluster';
 import { useMapStore } from '@/lib/stores/mapStore';
 import { 
   createCustomMarker, 
