@@ -36,6 +36,14 @@ export default function AdvancedAnalytics({ isOpen, onClose }: AdvancedAnalytics
   const hourlyStats = getHourlyStats();
   const trendingLocations = getTrendingLocations(24);
 
+  console.log('📊 Analytics Debug:', {
+    totalVisits,
+    topLocations,
+    categoryStats,
+    hourlyStats,
+    trendingLocations
+  });
+
   // Kategori verileri pie chart için
   const categoryChartData = categoryStats.map((stat, index) => ({
     name: getCategoryById(stat.categoryId)?.name || stat.categoryId,
