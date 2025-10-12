@@ -332,7 +332,10 @@ export default function ProfessionalHome() {
 
   // Handlers
   const handleLocationClick = (location: Location) => {
+    console.log('🎯 handleLocationClick çağrıldı:', location.name);
+    
     // Analytics'e kaydet
+    console.log('📊 trackVisit çağrılıyor...');
     trackVisit(location.id, location.name, location.category, location.currentCrowdLevel);
     
     // Gamification: Check-in

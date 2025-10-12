@@ -94,7 +94,10 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
         <div className="flex items-start justify-between mb-4">
           <div
             className="flex-1 cursor-pointer"
-            onClick={() => onLocationClick?.(location)}
+            onClick={() => {
+              console.log('🔵 LocationCard tıklandı:', location.name);
+              onLocationClick?.(location);
+            }}
           >
             <div className="flex items-center gap-2 mb-2">
               <span className="text-2xl">{getCategoryIcon(location.category)}</span>
