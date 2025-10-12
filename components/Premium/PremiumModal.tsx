@@ -316,7 +316,7 @@ export default function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
                         </h4>
 
                         <div className="flex items-baseline gap-1 mb-1">
-                          <span className={`text-3xl font-bold bg-gradient-to-r ${plan.gradient} bg-clip-text text-transparent`}>
+                          <span className="text-3xl font-bold text-purple-600 dark:text-purple-400">
                             {plan.price}
                           </span>
                           <span className="text-gray-500 dark:text-gray-400">{plan.period}</span>
