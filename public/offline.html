@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - CityView</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 500px;
+      background: white;
+      border-radius: 24px;
+      padding: 48px 32px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 64px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.05);
+      }
+    }
+
+    h1 {
+      font-size: 32px;
+      color: #1a202c;
+      margin-bottom: 16px;
+    }
+
+    p {
+      font-size: 18px;
+      color: #4a5568;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .retry-button {
+      display: inline-block;
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .retry-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(102, 126, 234, 0.4);
+    }
+
+    .retry-button:active {
+      transform: translateY(0);
+    }
+
+    .status {
+      margin-top: 24px;
+      padding: 16px;
+      background: #f7fafc;
+      border-radius: 12px;
+      font-size: 14px;
+      color: #718096;
+    }
+
+    .tips {
+      margin-top: 32px;
+      text-align: left;
+    }
+
+    .tips h2 {
+      font-size: 18px;
+      color: #2d3748;
+      margin-bottom: 12px;
+    }
+
+    .tips ul {
+      list-style: none;
+    }
+
+    .tips li {
+      padding: 8px 0;
+      color: #4a5568;
+      font-size: 14px;
+    }
+
+    .tips li:before {
+      content: "✓";
+      color: #667eea;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1>Çevrimdışı</h1>
+    <p>İnternet bağlantınız kesilmiş görünüyor. Lütfen bağlantınızı kontrol edin ve tekrar deneyin.</p>
+    
+    <button class="retry-button" onclick="location.reload()">
+      Tekrar Dene
+    </button>
+
+    <div class="status" id="status">
+      Bağlantı kontrol ediliyor...
+    </div>
+
+    <div class="tips">
+      <h2>💡 İpuçları</h2>
+      <ul>
+        <li>Wi-Fi veya mobil veri bağlantınızı kontrol edin</li>
+        <li>Uçak modunun kapalı olduğundan emin olun</li>
+        <li>Ağ ayarlarınızı kontrol edin</li>
+        <li>Önbelleğe alınmış sayfalar çevrimdışı çalışır</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Check connection status
+    function updateStatus() {
+      const statusEl = document.getElementById('status');
+      if (navigator.onLine) {
+        statusEl.textContent = '✅ İnternet bağlantısı var. Sayfayı yenileyin.';
+        statusEl.style.background = '#c6f6d5';
+        statusEl.style.color = '#22543d';
+      } else {
+        statusEl.textContent = '❌ İnternet bağlantısı yok.';
+        statusEl.style.background = '#fed7d7';
+        statusEl.style.color = '#742a2a';
+      }
+    }
+
+    // Listen for online/offline events
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+
+    // Initial check
+    updateStatus();
+
+    // Auto-retry every 5 seconds if online
+    setInterval(() => {
+      if (navigator.onLine) {
+        fetch('/', { method: 'HEAD', cache: 'no-cache' })
+          .then(() => {
+            location.reload();
+          })
+          .catch(() => {
+            // Still offline
+          });
+      }
+    }, 5000);
+  </script>
+</body>
+</html>
