@@ -35,6 +35,8 @@ import NotificationsPanel from '@/components/Notifications/NotificationsPanel';
 import BusinessNotificationsPanel from '@/components/Notifications/BusinessNotificationsPanel';
 import AIChatBot from '@/components/AI/AIChatBot';
 import LiveCrowdSidebar from '@/components/RealTime/LiveCrowdSidebar';
+import QRScanner from '@/components/Camera/QRScanner';
+import PhotoGallery from '@/components/Camera/PhotoGallery';
 
 // Hooks
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
@@ -44,6 +46,7 @@ import { useGamificationStore } from '@/lib/stores/gamificationStore';
 import { useRecommendationStore } from '@/lib/stores/recommendationStore';
 import { usePremiumStore } from '@/lib/stores/premiumStore';
 import { useTrackedStore } from '@/lib/stores/trackedStore';
+import { useCameraStore } from '@/store/cameraStore';
 
 // Data & Types
 import { Location, CrowdLevel } from '@/types';
@@ -97,6 +100,7 @@ export default function ProfessionalHome() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showLiveCrowd, setShowLiveCrowd] = useState(true); // 🔥 Canlı kalabalık otomatik açık
+  const [showPhotoGallery, setShowPhotoGallery] = useState(false);
   const [viewMode, setViewMode] = useState<'map' | 'grid'>('map');
   const [mapCenter, setMapCenter] = useState<[number, number]>(cityConfig.ankara.center);
   const [mapZoom, setMapZoom] = useState(cityConfig.ankara.zoom);
@@ -112,6 +116,7 @@ export default function ProfessionalHome() {
   const { checkIn, reportSubmitted, routeCreated, favoriteAdded } = useGamificationStore();
   const { addVisitToHistory } = useRecommendationStore();
   const { checkSubscriptionStatus } = usePremiumStore();
+  const { isQRScannerActive } = useCameraStore();
 
   // Keyboard shortcuts
   useKeyboardShortcuts([
@@ -560,6 +565,7 @@ export default function ProfessionalHome() {
         onNotificationsClick={() => setShowNotifications(true)}
         onAIClick={() => setShowAIChat(true)}
         onLiveCrowdClick={() => setShowLiveCrowd(!showLiveCrowd)}
+        onPhotoGalleryClick={() => setShowPhotoGallery(true)}
       />
 
       {/* Analytics Dashboard */}
@@ -977,6 +983,29 @@ export default function ProfessionalHome() {
         onToggle={() => setShowLiveCrowd(!showLiveCrowd)}
         locations={filteredLocations}
       />
+
+      {/* QR Scanner Overlay */}
+      <QRScanner />
+
+      {/* Photo Gallery Modal */}
+      {showPhotoGallery && (
+        <div className="fixed inset-0 bg-white dark:bg-gray-900 z-50 overflow-y-auto">
+          <div className="p-4 md:p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">
+                📸 Fotoğraf Galerim
+              </h2>
+              <button 
+                onClick={() => setShowPhotoGallery(false)}
+                className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <PhotoGallery />
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-gradient-to-r from-gray-800 via-gray-900 to-black text-white py-6">

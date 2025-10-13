@@ -287,7 +287,7 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
       {/* Sidebar/Bottom Sheet */}
       <div className={`fixed z-40 transition-all duration-300 ${
         isMobile 
-          ? `bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl transform ${
+          ? `bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl transform max-h-[70vh] ${
               isOpen ? 'translate-y-0' : 'translate-y-full'
             }`
           : `top-1/2 -translate-y-1/2 right-0 bg-white dark:bg-gray-800 shadow-2xl h-96 w-80 rounded-l-xl transform ${
@@ -296,21 +296,35 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
       } border-gray-200 dark:border-gray-700`}>
         {/* Mobile Header */}
         {isMobile && (
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold">Canlı Kalabalık</h3>
-            <button
-              onClick={handleToggle}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
-            >
-              ✕
-            </button>
+          <div className="flex flex-col">
+            {/* Pull Indicator */}
+            <div className="flex justify-center pt-2 pb-1">
+              <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+            </div>
+            
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">📊 Canlı Kalabalık</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {activeCrowdCount} konum aktif takipte
+                </p>
+              </div>
+              <button
+                onClick={handleToggle}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
         )}
 
         {/* Content Container */}
-        <div className={`${isMobile ? 'max-h-80 overflow-y-auto' : 'h-full'} flex flex-col`}>
+        <div className={`${isMobile ? 'flex-1 overflow-y-auto pb-safe' : 'h-full'} flex flex-col`}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className={`${isMobile ? 'px-4 py-3' : 'p-4'} border-b border-gray-200 dark:border-gray-700`}>
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-blue-500" />
             <h3 className="font-semibold text-gray-900 dark:text-white">Canlı Kalabalık</h3>
@@ -322,7 +336,7 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-3' : 'p-2'}`}>
           {crowdData.size === 0 ? (
             <div className="text-center text-gray-500 py-8">
               <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -330,35 +344,47 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
               <p className="text-xs">Veriler yükleniyor...</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className={`${isMobile ? 'space-y-3' : 'space-y-2'}`}>
               {Array.from(crowdData.values()).map((data) => (
                 <div
                   key={data.locationId}
-                  className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className={`${isMobile ? 'p-4' : 'p-3'} bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600`}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium text-sm text-gray-900 dark:text-white truncate pr-2">
+                  <div className={`flex justify-between items-start ${isMobile ? 'mb-3' : 'mb-2'}`}>
+                    <h4 className={`font-medium ${isMobile ? 'text-base' : 'text-sm'} text-gray-900 dark:text-white truncate pr-2`}>
                       {data.name}
                     </h4>
-                    {getTrendIcon(data.trend)}
+                    <div className={`${isMobile ? 'ml-2' : ''}`}>
+                      {getTrendIcon(data.trend)}
+                    </div>
                   </div>
                   
-                  <div className="flex justify-between items-center mb-1">
-                    <div className="flex items-center gap-1">
-                      <Users className={`w-3 h-3 ${getCrowdColor(data.crowdLevel)}`} />
-                      <span className={`text-xs font-medium ${getCrowdColor(data.crowdLevel)}`}>
+                  <div className={`flex justify-between items-center ${isMobile ? 'mb-2' : 'mb-1'}`}>
+                    <div className={`flex items-center ${isMobile ? 'gap-2' : 'gap-1'}`}>
+                      <Users className={`${isMobile ? 'w-4 h-4' : 'w-3 h-3'} ${getCrowdColor(data.crowdLevel)}`} />
+                      <span className={`${isMobile ? 'text-sm' : 'text-xs'} font-medium ${getCrowdColor(data.crowdLevel)}`}>
                         {data.crowdCount}
                       </span>
+                      {isMobile && (
+                        <span className={`${isMobile ? 'text-sm' : 'text-xs'} text-gray-600 dark:text-gray-400`}>
+                          kişi
+                        </span>
+                      )}
                     </div>
                     
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Clock className="w-3 h-3" />
-                      {data.estimatedWaitTime}dk
+                    <div className={`flex items-center ${isMobile ? 'gap-2' : 'gap-1'} ${isMobile ? 'text-sm' : 'text-xs'} text-gray-500`}>
+                      <Clock className={`${isMobile ? 'w-4 h-4' : 'w-3 h-3'}`} />
+                      <span>{data.estimatedWaitTime}dk</span>
                     </div>
                   </div>
                   
-                  <div className="text-xs text-gray-400">
-                    {formatLastUpdated(data.lastUpdated)}
+                  <div className={`${isMobile ? 'text-sm' : 'text-xs'} text-gray-400 flex items-center justify-between`}>
+                    <span>{formatLastUpdated(data.lastUpdated)}</span>
+                    {isMobile && (
+                      <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full">
+                        Canlı
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -367,10 +393,16 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-gray-200 dark:border-gray-600">
-          <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-            Otomatik güncelleme
+        <div className={`${isMobile ? 'p-4' : 'p-3'} border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800`}>
+          <div className={`flex items-center justify-center gap-2 ${isMobile ? 'text-sm' : 'text-xs'} text-gray-500`}>
+            <div className={`${isMobile ? 'w-2 h-2' : 'w-1.5 h-1.5'} bg-green-500 rounded-full animate-pulse`}></div>
+            <span>Otomatik güncelleme aktif</span>
+            {isMobile && (
+              <div className="ml-2 flex items-center gap-1">
+                <span className="text-xs">•</span>
+                <span className="text-xs">{activeCrowdCount} konum</span>
+              </div>
+            )}
           </div>
         </div>
         </div>

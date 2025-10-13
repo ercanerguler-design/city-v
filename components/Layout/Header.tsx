@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { MapPin, BarChart3, User, LogOut, Crown, Bell, Settings, Trophy, Brain, Map as MapIcon, HelpCircle, Star, Wifi, WifiOff, Activity } from 'lucide-react';
 import { CrowdStats } from '@/types';
+import CameraButton from '../Camera/CameraButton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getTimeOfDay } from '@/lib/utils';
 import ThemeToggle from '@/components/ui/ThemeToggle';
@@ -27,9 +28,10 @@ interface HeaderProps {
   onNotificationsClick?: () => void;
   onAIClick?: () => void;
   onLiveCrowdClick?: () => void;
+  onPhotoGalleryClick?: () => void;
 }
 
-export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremiumClick, onGamificationClick, onRecommendationsClick, onPWASettingsClick, onMapControlsClick, onTrackedLocationsClick, onProfileClick, onSettingsClick, onNotificationsClick, onAIClick, onLiveCrowdClick }: HeaderProps) {
+export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremiumClick, onGamificationClick, onRecommendationsClick, onPWASettingsClick, onMapControlsClick, onTrackedLocationsClick, onProfileClick, onSettingsClick, onNotificationsClick, onAIClick, onLiveCrowdClick, onPhotoGalleryClick }: HeaderProps) {
   const { user, isAuthenticated, logout } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -101,6 +103,11 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
             {/* Theme Toggle */}
             <div data-tour="theme">
               <ThemeToggle />
+            </div>
+
+            {/* Camera Features */}
+            <div data-tour="camera">
+              <CameraButton onPhotoGallery={onPhotoGalleryClick} />
             </div>
 
             {/* AI Assistant Button - Premium only */}
@@ -494,6 +501,18 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
                   <span className="text-xs font-medium">İşletme</span>
                 </button>
 
+                {/* Camera Features */}
+                <div className="flex flex-col items-center gap-2 p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
+                  <CameraButton 
+                    onPhotoGallery={() => {
+                      setIsMobileMenuOpen(false);
+                      onPhotoGalleryClick?.();
+                    }} 
+                    className="w-8 h-8"
+                  />
+                  <span className="text-xs font-medium">Kamera</span>
+                </div>
+
                 {/* AI Assistant */}
                 {isAuthenticated && user?.premium && onAIClick && (
                   <button
@@ -501,7 +520,7 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
                       setIsMobileMenuOpen(false);
                       onAIClick();
                     }}
-                    className="flex flex-col items-center gap-2 p-3 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl"
+                    className="flex flex-col items-center gap-2 p-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl"
                   >
                     <Brain className="w-5 h-5" />
                     <span className="text-xs font-medium">AI Asistan</span>

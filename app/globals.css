@@ -425,3 +425,101 @@ html {
     background-position: -200% 0;
   }
 }
+
+/* 📷 Camera & QR Scanner Animations */
+
+/* QR Scanner scanning line */
+@keyframes scan {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(250px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* Camera flash effect */
+@keyframes flash {
+  0% { background-color: rgba(255, 255, 255, 0); }
+  25% { background-color: rgba(255, 255, 255, 0.8); }
+  50% { background-color: rgba(255, 255, 255, 1); }
+  75% { background-color: rgba(255, 255, 255, 0.8); }
+  100% { background-color: rgba(255, 255, 255, 0); }
+}
+
+.camera-flash {
+  animation: flash 0.3s ease-out;
+}
+
+/* Photo gallery animations */
+@keyframes photoAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.photo-appear {
+  animation: photoAppear 0.5s ease-out;
+}
+
+/* QR Success animation */
+@keyframes qrSuccess {
+  0% {
+    transform: scale(1);
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+  50% {
+    transform: scale(1.05);
+    background-color: rgba(34, 197, 94, 0.3);
+  }
+  100% {
+    transform: scale(1);
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+}
+
+.qr-success {
+  animation: qrSuccess 0.6s ease-out;
+}
+
+/* Camera button pulse effect */
+@keyframes cameraPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(168, 85, 247, 0);
+  }
+}
+
+.camera-pulse {
+  animation: cameraPulse 2s infinite;
+}
+
+/* IoT detection animation */
+@keyframes iotDetection {
+  0% {
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    border-color: rgba(59, 130, 246, 1);
+    box-shadow: 0 0 0 5px rgba(59, 130, 246, 0);
+  }
+  100% {
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+}
+
+.iot-detection {
+  animation: iotDetection 1.5s infinite;
+}
