@@ -587,18 +587,18 @@ export default function ProfessionalHome() {
           </div>
         )}
         {/* Toolbar */}
-        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-4 py-3 shadow-sm transition-colors duration-300">
-          <div className="flex items-center gap-3">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-3 md:px-4 py-3 shadow-sm transition-colors duration-300">
+          <div className="flex items-center gap-2 md:gap-3">
             {/* Search */}
             <div className="flex-1 relative max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400 dark:text-gray-500" />
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Mekan, kategori ara... (Ctrl+K)"
+                placeholder="Ara..."
                 value={searchQuery}
                 onChange={(e) => useFilterStore.getState().setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl focus:border-indigo-500 focus:ring-0 transition-colors"
+                className="w-full pl-9 md:pl-10 pr-3 md:pr-4 py-2 md:py-2.5 border-2 border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl focus:border-indigo-500 focus:ring-0 transition-colors text-sm md:text-base"
               />
             </div>
 
@@ -608,22 +608,22 @@ export default function ProfessionalHome() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowFilterPanel(true)}
-              className="relative px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center gap-2 shadow-md"
+              className="relative px-3 md:px-4 py-2 md:py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center gap-1 md:gap-2 shadow-md"
             >
-              <Filter className="w-5 h-5" />
-              <span className="hidden sm:inline">Filtrele</span>
+              <Filter className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="hidden sm:inline text-sm md:text-base">Filtrele</span>
               {activeFiltersCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                   {activeFiltersCount}
                 </span>
               )}
             </motion.button>
 
-            {/* View Mode Toggle */}
-            <div className="hidden md:flex bg-gray-100 dark:bg-slate-700 rounded-xl p-1 transition-colors">
+            {/* View Mode Toggle - Mobile Responsive */}
+            <div className="flex bg-gray-100 dark:bg-slate-700 rounded-xl p-1 transition-colors">
               <button
                 onClick={() => setViewMode('map')}
-                className={`p-2 rounded-lg transition-all ${
+                className={`p-2 md:p-2 rounded-lg transition-all ${
                   viewMode === 'map' ? 'bg-white dark:bg-slate-600 shadow-md' : 'hover:bg-gray-200 dark:hover:bg-slate-600'
                 }`}
                 title="Harita Görünümü"
@@ -632,7 +632,7 @@ export default function ProfessionalHome() {
               </button>
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg transition-all ${
+                className={`p-2 md:p-2 rounded-lg transition-all ${
                   viewMode === 'grid' ? 'bg-white dark:bg-slate-600 shadow-md' : 'hover:bg-gray-200 dark:hover:bg-slate-600'
                 }`}
                 title="Grid Görünümü"

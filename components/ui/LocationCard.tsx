@@ -73,7 +73,7 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
     <motion.div
       whileHover={{ y: -4 }}
       className={cn(
-        "group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-slate-700",
+        "group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-slate-700 w-full",
         !isOpen && "opacity-60 grayscale hover:grayscale-0 hover:opacity-100"
       )}
     >
@@ -85,8 +85,8 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
       
       {/* Mesafe Badge (üstte) - HASSAS */}
       {distance !== undefined && distance !== null && (
-        <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 text-center">
-          <p className="text-xs font-semibold">
+        <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-3 md:py-2 text-center">
+          <p className="text-sm md:text-xs font-semibold">
             📍 {distance < 0.1 
               ? `${Math.round(distance * 1000)} m uzakta`
               : distance < 1 
@@ -278,24 +278,26 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
         )}
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 md:gap-3">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onLocationClick?.(location)}
-            className="bg-gradient-to-r from-green-500 to-emerald-500 text-white py-2.5 px-3 rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all flex items-center justify-center gap-1.5 font-bold text-xs shadow-lg hover:shadow-xl"
+            className="bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 md:py-2.5 px-3 md:px-3 rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all flex items-center justify-center gap-1.5 font-bold text-sm md:text-xs shadow-lg hover:shadow-xl touch-manipulation"
           >
-            <Navigation className="w-4 h-4" />
-            Git
+            <Navigation className="w-4 h-4 md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Rota</span>
+            <span className="sm:hidden">🗺️</span>
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onReportClick(location)}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2.5 px-3 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-1.5 font-bold text-xs shadow-lg hover:shadow-xl"
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 md:py-2.5 px-3 md:px-3 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-1.5 font-bold text-sm md:text-xs shadow-lg hover:shadow-xl touch-manipulation"
           >
-            <Bell className="w-4 h-4" />
-            Bildir
+            <Bell className="w-4 h-4 md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Bildir</span>
+            <span className="sm:hidden">📢</span>
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.02 }}
