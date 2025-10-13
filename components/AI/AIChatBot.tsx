@@ -115,30 +115,46 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/50 flex items-end justify-end z-50 p-4">
+      {/* 📱 Mobile: Full Screen | 🖥️ Desktop: Bottom Right */}
+      <div className="fixed inset-0 bg-black/50 flex md:items-end md:justify-end md:p-4 z-50">
         <motion.div
-          initial={{ opacity: 0, x: 400, y: 100 }}
+          initial={{ 
+            opacity: 0, 
+            x: typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : 400, 
+            y: typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 100 
+          }}
           animate={{ opacity: 1, x: 0, y: 0 }}
-          exit={{ opacity: 0, x: 400, y: 100 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-96 h-[600px] flex flex-col overflow-hidden"
+          exit={{ 
+            opacity: 0, 
+            x: typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : 400, 
+            y: typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 100 
+          }}
+          className="bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-2xl shadow-2xl 
+                     w-full h-full md:w-96 md:h-[600px] 
+                     flex flex-col overflow-hidden"
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4">
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 md:p-4 safe-area-top">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Brain className="w-6 h-6" />
                 <div>
-                  <h3 className="font-bold">AI Asistan</h3>
+                  <h3 className="font-bold text-lg md:text-base">AI Asistan</h3>
                   <p className="text-xs opacity-90">Krediler: {user?.aiCredits || 0}</p>
                 </div>
               </div>
-              <button onClick={onClose} className="text-white/70 hover:text-white">
-                ✕
+              <button 
+                onClick={onClose} 
+                className="text-white/70 hover:text-white p-2 md:p-1 -m-2 md:-m-1 touch-manipulation"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
             
             {/* Feature Tabs */}
-            <div className="flex gap-2 mt-4 overflow-x-auto">
+            <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
               {[
                 { id: 'chat', icon: MessageCircle, label: 'Sohbet' },
                 { id: 'image', icon: Camera, label: 'Görüntü' },
@@ -149,7 +165,7 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
                 <button
                   key={feature.id}
                   onClick={() => setActiveFeature(feature.id as any)}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center gap-1 px-3 py-2 md:py-1.5 rounded-lg text-xs font-medium transition-all touch-manipulation ${
                     activeFeature === feature.id 
                       ? 'bg-white/20 text-white' 
                       : 'text-white/70 hover:bg-white/10'
@@ -226,13 +242,13 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
 
           {/* Action Buttons for Features */}
           {activeFeature !== 'chat' && (
-            <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="p-3 md:p-3 border-t border-gray-200 dark:border-gray-700">
               <div className="flex gap-2">
                 {activeFeature === 'image' && (
                   <>
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 md:py-2 bg-blue-500 text-white rounded-xl text-sm font-medium touch-manipulation"
                     >
                       <Image className="w-4 h-4" />
                       Görüntü Yükle
@@ -250,7 +266,7 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
                 {activeFeature === 'voice' && (
                   <button
                     onClick={handleVoiceCommand}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 md:py-2 rounded-xl text-sm font-medium transition-all touch-manipulation ${
                       isListening 
                         ? 'bg-red-500 text-white animate-pulse' 
                         : 'bg-green-500 text-white'
@@ -264,7 +280,7 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
                 {activeFeature === 'predict' && (
                   <button
                     onClick={handlePredictCrowd}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 md:py-2 bg-orange-500 text-white rounded-xl text-sm font-medium touch-manipulation"
                   >
                     <TrendingUp className="w-4 h-4" />
                     Kalabalık Tahmin Et
@@ -274,7 +290,7 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
                 {activeFeature === 'recommend' && (
                   <button
                     onClick={handleGetRecommendations}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl text-sm font-medium"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 md:py-2 bg-purple-500 text-white rounded-xl text-sm font-medium touch-manipulation"
                   >
                     <Brain className="w-4 h-4" />
                     Öneri Al
@@ -285,7 +301,7 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
           )}
 
           {/* Input Area */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 safe-area-bottom">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -293,14 +309,14 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                 placeholder="AI'ya sorunuzu yazın..."
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="flex-1 px-4 py-3 md:py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 text-base md:text-sm"
               />
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!inputMessage.trim() || isTyping}
-                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-3 md:py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-5 h-5 md:w-4 md:h-4" />
               </button>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">

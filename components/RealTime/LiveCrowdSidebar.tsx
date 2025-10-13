@@ -27,10 +27,23 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisCount, setAnalysisCount] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const analysisInterval = useRef<NodeJS.Timeout>();
   
   // isOpen değişkenini state'lerden sonra tanımla
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+  
+  // 📱 Mobil detection
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // 🔥 DEMO: Canlı kalabalık sistemi demonstrasyonu
   useEffect(() => {
@@ -177,26 +190,54 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
   // Premium kontrolü
   if (!isAuthenticated || !user?.premium) {
     return (
-      <div className={`fixed top-1/2 -translate-y-1/2 right-0 z-40 transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-80'}`}>
-        {/* Toggle Button */}
+      <>
+        {/* 📱 Mobile Toggle Button */}
         <button
           onClick={handleToggle}
-          className="absolute -left-12 top-1/2 -translate-y-1/2 bg-gradient-to-r from-yellow-400 to-orange-500 shadow-lg rounded-l-lg p-3 hover:from-yellow-500 hover:to-orange-600 transition-all"
+          className={`fixed z-50 transition-all duration-300 ${
+            isMobile 
+              ? 'bottom-20 right-4 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white p-4 rounded-full shadow-xl' 
+              : 'top-1/2 -translate-y-1/2 right-0 bg-gradient-to-r from-yellow-400 to-orange-500 shadow-lg rounded-l-lg p-3 hover:from-yellow-500 hover:to-orange-600'
+          }`}
         >
-          {isOpen ? (
+          {isMobile ? (
+            <Crown className="w-6 h-6" />
+          ) : isOpen ? (
             <ChevronRight className="w-5 h-5 text-white" />
           ) : (
             <Lock className="w-5 h-5 text-white animate-pulse" />
           )}
         </button>
 
-        {/* Premium Required Content */}
-        <div className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 shadow-2xl h-96 w-80 rounded-l-xl border-l border-t border-b border-yellow-200 dark:border-yellow-700 flex flex-col">
-          <div className="p-6 text-center flex-1 flex flex-col items-center justify-center">
+        {/* Premium Required Panel */}
+        <div className={`fixed z-40 transition-all duration-300 ${
+          isMobile 
+            ? `bottom-0 left-0 right-0 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-t-2xl shadow-2xl transform ${
+                isOpen ? 'translate-y-0' : 'translate-y-full'
+              }`
+            : `top-1/2 -translate-y-1/2 right-0 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 shadow-2xl h-96 w-80 rounded-l-xl transform ${
+                isOpen ? 'translate-x-0' : 'translate-x-80'
+              }`
+        } border-yellow-200 dark:border-yellow-700`}>
+          {/* Mobile Header */}
+          {isMobile && (
+            <div className="flex items-center justify-between p-4 border-b border-yellow-200 dark:border-yellow-700">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Premium Özellik</h3>
+              <button
+                onClick={handleToggle}
+                className="p-2 hover:bg-yellow-100 dark:hover:bg-yellow-800 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Content */}
+          <div className={`${isMobile ? 'p-6' : 'p-6'} text-center flex-1 flex flex-col items-center justify-center`}>
             <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mb-4">
               <Crown className="w-8 h-8 text-white" />
             </div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">Premium Özellik</h3>
+            <h3 className={`${isMobile ? 'text-xl' : 'text-lg'} font-bold text-gray-800 dark:text-gray-200 mb-2`}>Premium Özellik</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-4">
               Canlı kalabalık takibi premium üyelerimize özeldir.
             </p>
@@ -211,26 +252,63 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
             )}
           </div>
         </div>
-      </div>
+
+        {/* Mobile Overlay */}
+        {isMobile && isOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-30"
+            onClick={handleToggle}
+          />
+        )}
+      </>
     );
   }
 
   return (
-    <div className={`fixed top-1/2 -translate-y-1/2 right-0 z-40 transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-80'}`}>
-      {/* Toggle Button */}
+    <>
+      {/* 📱 Mobile Toggle Button */}
       <button
         onClick={handleToggle}
-        className="absolute -left-12 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-lg rounded-l-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        className={`fixed z-50 transition-all duration-300 ${
+          isMobile 
+            ? 'bottom-20 right-4 bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-full shadow-xl' 
+            : 'top-1/2 -translate-y-1/2 right-0 bg-white dark:bg-gray-800 shadow-lg rounded-l-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-700'
+        }`}
       >
-        {isOpen ? (
+        {isMobile ? (
+          <span className="text-xl">📊</span>
+        ) : isOpen ? (
           <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         ) : (
           <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         )}
       </button>
 
-      {/* Sidebar Content */}
-      <div className="bg-white dark:bg-gray-800 shadow-2xl h-96 w-80 rounded-l-xl border-l border-t border-b border-gray-200 dark:border-gray-700 flex flex-col">
+      {/* Sidebar/Bottom Sheet */}
+      <div className={`fixed z-40 transition-all duration-300 ${
+        isMobile 
+          ? `bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl transform ${
+              isOpen ? 'translate-y-0' : 'translate-y-full'
+            }`
+          : `top-1/2 -translate-y-1/2 right-0 bg-white dark:bg-gray-800 shadow-2xl h-96 w-80 rounded-l-xl transform ${
+              isOpen ? 'translate-x-0' : 'translate-x-80'
+            }`
+      } border-gray-200 dark:border-gray-700`}>
+        {/* Mobile Header */}
+        {isMobile && (
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold">Canlı Kalabalık</h3>
+            <button
+              onClick={handleToggle}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Content Container */}
+        <div className={`${isMobile ? 'max-h-80 overflow-y-auto' : 'h-full'} flex flex-col`}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
@@ -295,7 +373,16 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
             Otomatik güncelleme
           </div>
         </div>
+        </div>
       </div>
-    </div>
+
+      {/* Mobile Overlay */}
+      {isMobile && isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30"
+          onClick={handleToggle}
+        />
+      )}
+    </>
   );
 }

@@ -32,6 +32,7 @@ interface HeaderProps {
 export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremiumClick, onGamificationClick, onRecommendationsClick, onPWASettingsClick, onMapControlsClick, onTrackedLocationsClick, onProfileClick, onSettingsClick, onNotificationsClick, onAIClick, onLiveCrowdClick }: HeaderProps) {
   const { user, isAuthenticated, logout } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { startOnboarding } = useOnboardingStore();
   const { trackedLocationIds } = useTrackedStore();
   const { isConnected, connectionStatus } = useSocketStore();
@@ -51,24 +52,24 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3"
+            className="flex items-center gap-2 sm:gap-3"
           >
-            <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-lg">
-              <MapPin className="w-6 h-6" />
+            <div className="p-2 sm:p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-lg">
+              <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
+              <h1 className="text-lg sm:text-2xl font-bold flex items-center gap-2">
                 CityView
-                <span className="text-xs bg-yellow-400 text-purple-900 px-2 py-1 rounded-full font-bold">
+                <span className="text-xs bg-yellow-400 text-purple-900 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-bold">
                   PRO
                 </span>
               </h1>
-              <p className="text-sm text-white/80">Akıllı Şehir Yoğunluk Haritası</p>
+              <p className="text-xs sm:text-sm text-white/80 hidden sm:block">Akıllı Şehir Yoğunluk Haritası</p>
             </div>
           </motion.div>
 
-          {/* Right Section */}
-          <div className="flex items-center gap-3">
+          {/* Right Section - Desktop */}
+          <div className="hidden lg:flex items-center gap-3">
             {/* Tour Button - Only when logged in */}
             {isAuthenticated && (
               <motion.button
@@ -384,25 +385,230 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
               </motion.button>
             )}
           </div>
+
+          {/* Mobile Section - Right */}
+          <div className="lg:hidden flex items-center gap-2">
+            {/* Real-Time Status - Mobile */}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="flex items-center gap-2 px-2 py-1 bg-white/20 rounded-lg backdrop-blur-sm"
+            >
+              {isConnected ? (
+                <Activity className="w-4 h-4 text-green-400" />
+              ) : (
+                <Activity className="w-4 h-4 text-red-400" />
+              )}
+            </motion.div>
+
+            {/* Theme Toggle - Mobile */}
+            <ThemeToggle />
+
+            {/* Mobile Menu Button */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} 
+                />
+              </svg>
+            </motion.button>
+          </div>
         </div>
+
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="lg:hidden mt-4 pt-4 border-t border-white/20 space-y-3"
+            >
+              {/* User Section */}
+              {user ? (
+                <div className="flex items-center gap-3 p-3 bg-white/10 rounded-xl backdrop-blur-sm">
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      className="w-10 h-10 rounded-full border-2 border-white/50"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center">
+                      <User className="w-5 h-5" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-semibold text-sm">{user.name}</p>
+                    <p className="text-xs text-white/70">
+                      {user.premium ? '👑 Premium' : 'Ücretsiz'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onAuthClick();
+                  }}
+                  className="w-full p-3 bg-white text-indigo-600 rounded-xl font-bold hover:bg-white/90 transition-all"
+                >
+                  Giriş Yap
+                </button>
+              )}
+
+              {/* Menu Items Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Tour Button */}
+                {isAuthenticated && (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      startOnboarding();
+                    }}
+                    className="flex flex-col items-center gap-2 p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl"
+                  >
+                    <HelpCircle className="w-5 h-5" />
+                    <span className="text-xs font-medium">Tur</span>
+                  </button>
+                )}
+
+                {/* Business Dashboard */}
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    window.open('/business', '_blank');
+                  }}
+                  className="flex flex-col items-center gap-2 p-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <span className="text-xs font-medium">İşletme</span>
+                </button>
+
+                {/* AI Assistant */}
+                {isAuthenticated && user?.premium && onAIClick && (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onAIClick();
+                    }}
+                    className="flex flex-col items-center gap-2 p-3 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl"
+                  >
+                    <Brain className="w-5 h-5" />
+                    <span className="text-xs font-medium">AI Asistan</span>
+                  </button>
+                )}
+
+                {/* Analytics */}
+                {isAuthenticated && (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onAnalyticsClick();
+                    }}
+                    className="flex flex-col items-center gap-2 p-3 bg-white/20 hover:bg-white/30 rounded-xl"
+                  >
+                    <BarChart3 className="w-5 h-5" />
+                    <span className="text-xs font-medium">Analitik</span>
+                  </button>
+                )}
+
+                {/* Live Crowd */}
+                {onLiveCrowdClick && (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onLiveCrowdClick();
+                    }}
+                    className="flex flex-col items-center gap-2 p-3 bg-gradient-to-r from-red-500 to-pink-600 rounded-xl"
+                  >
+                    <Activity className="w-5 h-5" />
+                    <span className="text-xs font-medium">Canlı Takip</span>
+                  </button>
+                )}
+
+                {/* Map Controls */}
+                {onMapControlsClick && (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onMapControlsClick();
+                    }}
+                    className="flex flex-col items-center gap-2 p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl"
+                  >
+                    <MapIcon className="w-5 h-5" />
+                    <span className="text-xs font-medium">Harita</span>
+                  </button>
+                )}
+              </div>
+
+              {/* User Actions - Only when logged in */}
+              {user && (
+                <div className="space-y-2 pt-3 border-t border-white/20">
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onProfileClick?.();
+                    }}
+                    className="w-full flex items-center gap-3 p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all"
+                  >
+                    <User className="w-5 h-5" />
+                    <span className="font-medium">Profilim</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onSettingsClick?.();
+                    }}
+                    className="w-full flex items-center gap-3 p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all"
+                  >
+                    <Settings className="w-5 h-5" />
+                    <span className="font-medium">Ayarlar</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      logout();
+                    }}
+                    className="w-full flex items-center gap-3 p-3 bg-red-500/20 hover:bg-red-500/30 rounded-xl transition-all text-red-300"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    <span className="font-medium">Çıkış Yap</span>
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Stats Bar */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 pt-4 border-t border-white/20 grid grid-cols-3 gap-4"
+          className="mt-4 pt-4 border-t border-white/20 grid grid-cols-3 gap-2 sm:gap-4"
         >
           <div className="text-center">
-            <p className="text-xs text-white/70">Aktif Kullanıcı</p>
-            <p className="text-xl font-bold">{stats.activeUsers.toLocaleString('tr-TR')}</p>
+            <p className="text-xs sm:text-xs text-white/70">Aktif Kullanıcı</p>
+            <p className="text-lg sm:text-xl font-bold">{stats.activeUsers.toLocaleString('tr-TR')}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-white/70">Toplam Bildirim</p>
-            <p className="text-xl font-bold">{stats.totalReports.toLocaleString('tr-TR')}</p>
+            <p className="text-xs sm:text-xs text-white/70">Toplam Bildirim</p>
+            <p className="text-lg sm:text-xl font-bold">{stats.totalReports.toLocaleString('tr-TR')}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-white/70">Takip Edilen Mekan</p>
-            <p className="text-xl font-bold">{stats.trackedLocations.toLocaleString('tr-TR')}</p>
+            <p className="text-xs sm:text-xs text-white/70">Takip Edilen</p>
+            <p className="text-lg sm:text-xl font-bold">{stats.trackedLocations.toLocaleString('tr-TR')}</p>
           </div>
         </motion.div>
       </div>

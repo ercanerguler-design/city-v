@@ -24,6 +24,9 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: "CityView",
+    startupImage: [
+      "/icon-192x192.png"
+    ]
   },
   formatDetection: {
     telephone: false,
@@ -39,6 +42,15 @@ export const metadata: Metadata = {
     title: "CityView - Akıllı Şehir Yoğunluk Haritası",
     description: "Gerçek zamanlı şehir yoğunluk takibi ve akıllı rota önerileri",
   },
+};
+
+// 📱 Mobil optimizasyon için viewport export
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1.0,
+  maximumScale: 1.0,
+  userScalable: false,
+  viewportFit: 'cover'
 };
 
 export default function RootLayout({

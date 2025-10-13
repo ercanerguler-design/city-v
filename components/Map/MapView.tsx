@@ -145,12 +145,39 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
   };
   
   return (
-    <MapContainer
-      center={center}
-      zoom={zoom}
-      style={{ height: '100%', width: '100%', zIndex: 0 }}
-      className="rounded-lg"
-    >
+    <div className="relative w-full h-full">
+      {/* 📱 Mobile Touch Controls */}
+      <div className="absolute top-4 right-4 z-[1000] md:hidden flex flex-col space-y-2">
+        <button 
+          onClick={() => {
+            // Zoom in functionality will be handled by map instance
+            console.log('Zoom in clicked');
+          }}
+          className="w-10 h-10 bg-white dark:bg-gray-800 rounded-lg shadow-lg flex items-center justify-center text-lg font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors touch-manipulation"
+        >
+          +
+        </button>
+        <button 
+          onClick={() => {
+            // Zoom out functionality will be handled by map instance
+            console.log('Zoom out clicked');
+          }}
+          className="w-10 h-10 bg-white dark:bg-gray-800 rounded-lg shadow-lg flex items-center justify-center text-lg font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors touch-manipulation"
+        >
+          −
+        </button>
+      </div>
+
+      <MapContainer
+        center={center}
+        zoom={zoom}
+        style={{ height: '100%', width: '100%', zIndex: 0 }}
+        className="rounded-lg touch-manipulation"
+        touchZoom={true}
+        doubleClickZoom={true}
+        scrollWheelZoom={true}
+        dragging={true}
+      >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -265,6 +292,7 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
         );
       })}
     </MapContainer>
+    </div>
   );
 }
 
