@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { MapPin, BarChart3, User, LogOut, Crown, Bell, Settings, Trophy, Brain, Map as MapIcon, HelpCircle, Star } from 'lucide-react';
+import { MapPin, BarChart3, User, LogOut, Crown, Bell, Settings, Trophy, Brain, Map as MapIcon, HelpCircle, Star, Wifi, WifiOff, Activity } from 'lucide-react';
 import { CrowdStats } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getTimeOfDay } from '@/lib/utils';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { useOnboardingStore } from '@/lib/stores/onboardingStore';
 import { useTrackedStore } from '@/lib/stores/trackedStore';
+import useSocketStore from '@/store/socketStore';
+import useCrowdStore from '@/store/crowdStore';
 
 interface HeaderProps {
   stats: CrowdStats;
@@ -23,13 +25,17 @@ interface HeaderProps {
   onProfileClick?: () => void;
   onSettingsClick?: () => void;
   onNotificationsClick?: () => void;
+  onAIClick?: () => void;
+  onLiveCrowdClick?: () => void;
 }
 
-export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremiumClick, onGamificationClick, onRecommendationsClick, onPWASettingsClick, onMapControlsClick, onTrackedLocationsClick, onProfileClick, onSettingsClick, onNotificationsClick }: HeaderProps) {
+export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremiumClick, onGamificationClick, onRecommendationsClick, onPWASettingsClick, onMapControlsClick, onTrackedLocationsClick, onProfileClick, onSettingsClick, onNotificationsClick, onAIClick, onLiveCrowdClick }: HeaderProps) {
   const { user, isAuthenticated, logout } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { startOnboarding } = useOnboardingStore();
   const { trackedLocationIds } = useTrackedStore();
+  const { isConnected, connectionStatus } = useSocketStore();
+  const { crowdData } = useCrowdStore();
 
   return (
     <header className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-2xl relative overflow-visible">
@@ -77,9 +83,62 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
               </motion.button>
             )}
 
+            {/* Business Dashboard */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => window.open('/business', '_blank')}
+              className="hidden md:flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 rounded-xl backdrop-blur-sm transition-all shadow-lg"
+              title="İşletme Paneli"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              <span className="hidden lg:inline font-semibold text-sm">İşletme</span>
+            </motion.button>
+
             {/* Theme Toggle */}
             <div data-tour="theme">
               <ThemeToggle />
+            </div>
+
+            {/* AI Assistant Button - Premium only */}
+            {isAuthenticated && user?.premium && onAIClick && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onAIClick}
+                className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 rounded-xl backdrop-blur-sm transition-all shadow-lg"
+                title="AI Asistan"
+              >
+                <Brain className="w-5 h-5" />
+                <span className="hidden md:inline font-semibold text-sm">AI</span>
+              </motion.button>
+            )}
+
+            {/* Real-Time Status Icon */}
+            <div className="relative">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onLiveCrowdClick}
+                className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg backdrop-blur-sm transition-all border border-white/20"
+                title={`Canlı İzleme: ${isConnected ? 'Aktif' : 'Kapalı'} - ${crowdData.size} lokasyon`}
+              >
+                {isConnected ? (
+                  <Wifi className="w-4 h-4 text-green-400" />
+                ) : (
+                  <WifiOff className="w-4 h-4 text-red-400" />
+                )}
+                
+                <Activity className={`w-3 h-3 ${isConnected ? 'text-green-400 animate-pulse' : 'text-red-400'}`} />
+                
+                {crowdData.size > 0 && (
+                  <span className="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium">
+                    {crowdData.size}
+                  </span>
+                )}
+              </motion.button>
             </div>
 
             {/* Map Controls Button */}

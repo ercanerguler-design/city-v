@@ -1,6 +1,7 @@
 'use client';
 
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, Polyline, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { LatLngExpression } from 'leaflet';
 import { Location, CrowdLevel } from '@/types';
 import { useEffect, useState, useRef } from 'react';
@@ -13,7 +14,6 @@ import {
   crowdLevelColors 
 } from './CustomMarkers';
 import toast from 'react-hot-toast';
-import 'leaflet/dist/leaflet.css';
 import WorkingHoursBadge from '../ui/WorkingHoursBadge';
 
 interface MapViewProps {
@@ -234,7 +234,7 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
               spiderfyOnMaxZoom
               showCoverageOnHover
               zoomToBoundsOnClick
-              iconCreateFunction={(cluster) => {
+              iconCreateFunction={(cluster: any) => {
                 const count = cluster.getChildCount();
                 return createCustomMarker('default', 'empty', 40 + Math.min(count / 5, 20));
               }}

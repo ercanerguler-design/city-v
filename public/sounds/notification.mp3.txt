@@ -1,0 +1,2 @@
+# Notification sound placeholder
+# In production, replace with actual .mp3 file

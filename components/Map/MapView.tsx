@@ -4,8 +4,11 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-le
 import { Icon, LatLngExpression } from 'leaflet';
 import { Location, CrowdLevel } from '@/types';
 import { useEffect } from 'react';
-import 'leaflet/dist/leaflet.css';
 import WorkingHoursBadge from '../ui/WorkingHoursBadge';
+import useCrowdStore from '@/store/crowdStore';
+import RealTimeCrowdTracker from '../RealTime/RealTimeCrowdTracker';
+import { getCrowdIdForLocation } from '@/lib/locationMapping';
+import { Users, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface MapViewProps {
   locations: Location[];
@@ -80,6 +83,8 @@ const createUserLocationIcon = () => {
 };
 
 export default function MapView({ locations, center, zoom, onLocationClick, userLocation }: MapViewProps) {
+  const { getCrowdDataForLocation } = useCrowdStore();
+
   // Log MapView rendering with useEffect
   useEffect(() => {
     console.log('\n🗺️ ============================================');
@@ -100,6 +105,44 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
     }
     console.log('🗺️ ============================================\n');
   }, [locations]);
+
+  // Real-time crowd data ile location'ları zenginleştir
+  const enrichedLocations = locations.map(location => {
+    // Get crowd ID for this location
+    const crowdId = getCrowdIdForLocation(location.name);
+    const crowdData = crowdId ? getCrowdDataForLocation(crowdId) : null;
+    
+    if (crowdData) {
+      console.log(`📊 Crowd data found for ${location.name}:`, {
+        crowdLevel: crowdData.crowdLevel,
+        crowdCount: crowdData.crowdCount,
+        trend: crowdData.trend
+      });
+      
+      return {
+        ...location,
+        currentCrowdLevel: crowdData.crowdLevel as CrowdLevel,
+        estimatedWaitTime: crowdData.estimatedWaitTime,
+        lastUpdated: new Date(crowdData.lastUpdated)
+      };
+    }
+    return location;
+  });
+
+  // Real-time trend ikonu
+  const getTrendIcon = (locationId: string) => {
+    const crowdData = getCrowdDataForLocation(locationId);
+    if (!crowdData) return null;
+    
+    switch (crowdData.trend) {
+      case 'increasing':
+        return <TrendingUp className="w-3 h-3 text-red-500" />;
+      case 'decreasing':
+        return <TrendingDown className="w-3 h-3 text-green-500" />;
+      default:
+        return <Minus className="w-3 h-3 text-gray-400" />;
+    }
+  };
   
   return (
     <MapContainer
@@ -144,7 +187,7 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
       )}
       
       {/* Mekan Marker'ları */}
-      {locations.map((location) => {
+      {enrichedLocations.map((location) => {
         const distance = userLocation 
           ? calculateDistance(userLocation[0], userLocation[1], location.coordinates[0], location.coordinates[1])
           : null;
@@ -189,7 +232,15 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
                   <span className="text-sm font-semibold">
                     {getCrowdLevelText(location.currentCrowdLevel)}
                   </span>
+                  {getTrendIcon(location.id)}
                 </div>
+                
+                {/* Real-time Crowd Info */}
+                <RealTimeCrowdTracker 
+                  locationId={location.id} 
+                  compact={true} 
+                  className="mb-2"
+                />
 
                 {/* Mesafe */}
                 {distance !== null && (

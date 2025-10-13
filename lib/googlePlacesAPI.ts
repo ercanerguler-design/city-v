@@ -1,7 +1,47 @@
 import { Location } from '@/types';
-import { getDefaultWorkingHours } from './workingHours';
+import { getDefaultWorkingHours, isLocationOpen } from './workingHours';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+// Google Places API çalışma saatleri interface'leri
+interface GooglePlaceDetails {
+  place_id: string;
+  name: string;
+  formatted_address?: string;
+  geometry?: {
+    location: {
+      lat: number;
+      lng: number;
+    };
+  };
+  opening_hours?: {
+    periods: Array<{
+      close?: {
+        day: number;
+        time: string;
+      };
+      open: {
+        day: number;
+        time: string;
+      };
+    }>;
+    weekday_text: string[];
+    open_now: boolean;
+  };
+  business_status?: string;
+  permanently_closed?: boolean;
+}
+
+// Google API günlerini bizim sisteme çevir
+const GOOGLE_DAY_MAP = {
+  0: 'sunday',
+  1: 'monday', 
+  2: 'tuesday',
+  3: 'wednesday',
+  4: 'thursday',
+  5: 'friday',
+  6: 'saturday'
+} as const;
 
 // Google Places API kategorileri -> bizim kategori dönüşümü (GENİŞLETİLMİŞ)
 const CATEGORY_MAP: Record<string, string[]> = {
@@ -41,6 +81,45 @@ const CATEGORY_MAP: Record<string, string[]> = {
   plumber: ['plumber'],
   roofing: ['roofing_contractor'],
   storage: ['storage'],
+  // Yeni eklenen kategoriler
+  government: ['local_government_office', 'city_hall', 'courthouse', 'embassy'],
+  doctor: ['doctor', 'health'],
+  dentist: ['dentist'],
+  veterinary_care: ['veterinary_care'],
+  university: ['university'],
+  primary_school: ['primary_school'],
+  secondary_school: ['secondary_school'],
+  courthouse: ['courthouse'],
+  embassy: ['embassy'],
+  fire_station: ['fire_station'],
+  lawyer: ['lawyer'],
+  accounting: ['accounting'],
+  insurance_agency: ['insurance_agency'],
+  electrician: ['electrician'],
+  carpenter: ['general_contractor'],
+  car_dealer: ['car_dealer'],
+  car_rental: ['car_rental'],
+  car_repair: ['car_repair'],
+  car_wash: ['car_wash'],
+  tourist_attraction: ['tourist_attraction'],
+  amusement_park: ['amusement_park'],
+  zoo: ['zoo'],
+  museum: ['museum'],
+  art_gallery: ['art_gallery'],
+  campground: ['campground'],
+  rv_park: ['rv_park'],
+  stadium: ['stadium'],
+  bowling_alley: ['bowling_alley'],
+  bus_station: ['bus_station', 'transit_station'],
+  subway_station: ['subway_station'],
+  taxi_stand: ['taxi_stand'],
+  airport: ['airport'],
+  garden_center: ['store'], // Genel store kategorisinde
+  warehouse: ['storage'],
+  moving_company: ['moving_company'],
+  funeral_home: ['funeral_home'],
+  cemetery: ['cemetery'],
+  spa: ['spa'],
 };
 
 interface GooglePlace {
@@ -127,7 +206,7 @@ export async function fetchNearbyPlacesFromGoogle(
               category: ourCategory,
               coordinates: [place.geometry.location.lat, place.geometry.location.lng],
               address: place.vicinity || place.formatted_address || 'Adres bilgisi yok',
-              currentCrowdLevel: estimateCrowdLevel(place),
+              currentCrowdLevel: estimateCrowdLevel(place, ourCategory),
               averageWaitTime: estimateWaitTime(ourCategory, place),
               lastUpdated: new Date(),
               description: place.types.join(', '),
@@ -184,9 +263,13 @@ export async function fetchNearbyPlacesFromGoogle(
 /**
  * Google Place verilerinden kalabalık seviyesini tahmin et
  */
-function estimateCrowdLevel(place: GooglePlace): 'empty' | 'low' | 'moderate' | 'high' | 'very_high' {
+function estimateCrowdLevel(place: GooglePlace, category: string): 'empty' | 'low' | 'moderate' | 'high' | 'very_high' {
   const currentHour = new Date().getHours();
-  const isOpen = place.opening_hours?.open_now ?? true;
+  
+  // Bizim working hours sistemimizi kullan
+  const workingHours = getDefaultWorkingHours(category);
+  const tempLocation = { category, workingHours };
+  const { isOpen } = isLocationOpen(tempLocation);
   
   if (!isOpen) return 'empty';
   
@@ -209,7 +292,7 @@ function estimateCrowdLevel(place: GooglePlace): 'empty' | 'low' | 'moderate' | 
  * Kategoriye göre ortalama bekleme süresi tahmini
  */
 function estimateWaitTime(category: string, place: GooglePlace): number {
-  const crowdLevel = estimateCrowdLevel(place);
+  const crowdLevel = estimateCrowdLevel(place, category);
   
   const baseWaitTimes: Record<string, [number, number]> = {
     cafe: [2, 10],
@@ -232,4 +315,119 @@ function estimateWaitTime(category: string, place: GooglePlace): number {
   
   const avgWait = Math.floor(((min + max) / 2) * multiplier);
   return Math.max(0, avgWait);
+}
+
+/**
+ * Google Places Detail API'den bir yer hakkında detaylı bilgi çeker
+ * ÖZELLİKLE ÇALIŞMA SAATLERİ için kullanılır
+ */
+export async function fetchPlaceDetails(placeId: string): Promise<GooglePlaceDetails | null> {
+  if (!GOOGLE_MAPS_API_KEY) {
+    console.error('❌ Google Maps API Key tanımlanmamış!');
+    return null;
+  }
+
+  try {
+    const fields = 'place_id,name,formatted_address,geometry,opening_hours,business_status';
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${GOOGLE_MAPS_API_KEY}&language=tr`;
+    
+    console.log(`🔍 Google Place Details çekiliyor: ${placeId}`);
+    
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.status === 'OK' && data.result) {
+      return data.result;
+    } else {
+      console.error('❌ Google Places Detail API hatası:', data.status);
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Google Places Detail API fetch hatası:', error);
+    return null;
+  }
+}
+
+/**
+ * Google Places API'den gelen çalışma saatlerini bizim formata çevirir
+ */
+export function convertGoogleWorkingHours(openingHours?: GooglePlaceDetails['opening_hours']) {
+  if (!openingHours || !openingHours.periods) {
+    return {};
+  }
+
+  const workingHours: any = {};
+
+  // Google'ın periods formatını bizim formatımıza çevir
+  openingHours.periods.forEach(period => {
+    const dayName = GOOGLE_DAY_MAP[period.open.day as keyof typeof GOOGLE_DAY_MAP];
+    
+    if (period.close) {
+      // Normal açılış-kapanış saati
+      const openTime = `${period.open.time.slice(0, 2)}:${period.open.time.slice(2)}`;
+      const closeTime = `${period.close.time.slice(0, 2)}:${period.close.time.slice(2)}`;
+      workingHours[dayName] = `${openTime}-${closeTime}`;
+    } else {
+      // 24 saat açık
+      workingHours[dayName] = '00:00-23:59';
+    }
+  });
+
+  return workingHours;
+}
+
+/**
+ * Bir lokasyonun gerçek çalışma saatlerini Google API'den çeker ve günceller
+ */
+export async function updateLocationWorkingHours(location: Location): Promise<Location> {
+  // Eğer lokasyonun Google place_id'si varsa, gerçek saatleri çek
+  if (location.googlePlaceId) {
+    try {
+      const placeDetails = await fetchPlaceDetails(location.googlePlaceId);
+      
+      if (placeDetails && placeDetails.opening_hours) {
+        const realWorkingHours = convertGoogleWorkingHours(placeDetails.opening_hours);
+        
+        console.log(`✅ ${location.name} için gerçek çalışma saatleri güncellendi:`, realWorkingHours);
+        
+        return {
+          ...location,
+          workingHours: realWorkingHours,
+          isCurrentlyOpen: placeDetails.opening_hours.open_now || false,
+          lastWorkingHoursUpdate: Date.now()
+        };
+      }
+    } catch (error) {
+      console.error(`❌ ${location.name} çalışma saatleri güncellenirken hata:`, error);
+    }
+  }
+
+  // Google API'den veri alınamazsa varsayılan saatleri kullan
+  return {
+    ...location,
+    workingHours: getDefaultWorkingHours(location.category)
+  };
+}
+
+/**
+ * Tüm lokasyonların çalışma saatlerini toplu günceller
+ */
+export async function updateAllLocationsWorkingHours(locations: Location[]): Promise<Location[]> {
+  console.log(`🕒 ${locations.length} lokasyon için çalışma saatleri güncelleniyor...`);
+  
+  const updatedLocations = await Promise.all(
+    locations.map(async (location) => {
+      try {
+        return await updateLocationWorkingHours(location);
+      } catch (error) {
+        console.error(`❌ ${location.name} güncellenirken hata:`, error);
+        return location;
+      }
+    })
+  );
+
+  const successCount = updatedLocations.filter(loc => loc.lastWorkingHoursUpdate).length;
+  console.log(`✅ ${successCount}/${locations.length} lokasyon çalışma saatleri güncellendi`);
+  
+  return updatedLocations;
 }

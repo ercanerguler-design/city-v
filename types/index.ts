@@ -14,6 +14,11 @@ export interface Location {
   isOpen?: boolean;
   rating?: number; // Google rating (1-5)
   reviewCount?: number; // Google review count
+  estimatedWaitTime?: number; // Real-time estimated wait time in minutes
+  // Google API entegrasyonu için yeni alanlar
+  googlePlaceId?: string; // Google Place ID
+  isCurrentlyOpen?: boolean; // Google API'den gelen gerçek zamanlı durum
+  lastWorkingHoursUpdate?: number; // Son güncelleme timestamp'i
 }
 
 export interface WorkingHours {

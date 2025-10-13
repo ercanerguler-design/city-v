@@ -12,7 +12,7 @@ interface ProfileModalProps {
 }
 
 export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
-  const { user, updateProfile } = useAuthStore();
+  const { user, updateProfile, upgradeToPremium, logout, createTestUser } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -93,10 +93,52 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   </button>
                 </div>
                 
-                {user.premium && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full shadow-lg">
-                    <Crown className="w-5 h-5" />
-                    <span className="font-bold">Premium Üye</span>
+                {user.premium ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full shadow-lg">
+                      <Crown className="w-5 h-5" />
+                      <span className="font-bold">Premium Üye ({user.premiumPlan})</span>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      AI Krediler: {user.aiCredits || 0}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="text-center">
+                      <p className="text-gray-600 dark:text-gray-400 mb-2">
+                        Premium özelliklerden yararlanmak için yükseltin!
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            upgradeToPremium('basic');
+                            toast.success('Basic Premium\'a yükseltildi!');
+                          }}
+                          className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+                        >
+                          Basic (100 kredi)
+                        </button>
+                        <button
+                          onClick={() => {
+                            upgradeToPremium('pro');
+                            toast.success('Pro Premium\'a yükseltildi!');
+                          }}
+                          className="px-3 py-1 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600 transition-colors"
+                        >
+                          Pro (500 kredi)
+                        </button>
+                        <button
+                          onClick={() => {
+                            upgradeToPremium('enterprise');
+                            toast.success('Enterprise Premium\'a yükseltildi!');
+                          }}
+                          className="px-3 py-1 bg-gold-500 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg text-sm hover:from-yellow-600 hover:to-orange-600 transition-colors"
+                        >
+                          Enterprise (1000 kredi)
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -165,6 +207,48 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   <p className="px-4 py-3 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-900 dark:text-white font-medium">
                     {formatDate(user.createdAt)}
                   </p>
+                </div>
+              </div>
+
+              {/* Test Buttons - Development Only */}
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  🧪 Test Kullanıcıları (Geliştirme)
+                </h4>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      logout();
+                      setTimeout(() => {
+                        createTestUser(false);
+                        toast.success('Normal kullanıcı olarak giriş yapıldı!');
+                      }, 100);
+                    }}
+                    className="px-3 py-2 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600 transition-colors"
+                  >
+                    Normal Kullanıcı
+                  </button>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setTimeout(() => {
+                        createTestUser(true);
+                        toast.success('Premium kullanıcı olarak giriş yapıldı!');
+                      }, 100);
+                    }}
+                    className="px-3 py-2 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600 transition-colors"
+                  >
+                    Premium Kullanıcı
+                  </button>
+                  <button
+                    onClick={() => {
+                      logout();
+                      toast.success('Çıkış yapıldı!');
+                    }}
+                    className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition-colors"
+                  >
+                    Çıkış
+                  </button>
                 </div>
               </div>
 

@@ -12,6 +12,7 @@ import { useTrackedStore } from '@/lib/stores/trackedStore';
 import { motion } from 'framer-motion';
 import { cn, formatTime } from '@/lib/utils';
 import WorkingHoursBadge from './WorkingHoursBadge';
+import { isLocationOpen } from '@/lib/workingHours';
 import toast from 'react-hot-toast';
 
 interface LocationCardProps {
@@ -54,6 +55,10 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
   const category = getCategoryById(location.category);
   const [mounted, setMounted] = useState(false);
   
+  // Çalışma saati kontrolü
+  const workingStatus = isLocationOpen(location);
+  const isOpen = workingStatus.isOpen;
+  
   // Sosyal veriler
   const comments = getLocationComments(location.id);
   const photos = getLocationPhotos(location.id);
@@ -67,7 +72,10 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
   return (
     <motion.div
       whileHover={{ y: -4 }}
-      className="group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-slate-700"
+      className={cn(
+        "group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-slate-700",
+        !isOpen && "opacity-60 grayscale hover:grayscale-0 hover:opacity-100"
+      )}
     >
       {/* Header with gradient */}
       <div
@@ -142,8 +150,26 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
 
         {/* Crowd Level & Working Hours */}
         <div className="mb-4 space-y-2">
-          {/* Kapalıysa kalabalık gösterme */}
-          {location.currentCrowdLevel !== 'empty' || location.averageWaitTime > 0 ? (
+          {/* Çalışma Durumu Badge */}
+          <div className="flex items-center justify-between">
+            <div className={cn(
+              'inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold',
+              isOpen 
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+            )}>
+              <Clock className="w-3 h-3" />
+              {isOpen ? 'AÇIK' : 'KAPALI'}
+            </div>
+            {!isOpen && workingStatus.reason && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {workingStatus.reason}
+              </span>
+            )}
+          </div>
+          
+          {/* Kalabalık durumu - sadece açık mekanlar için, kapalıysa boş göster */}
+          {(isOpen && location.currentCrowdLevel !== 'empty') || location.averageWaitTime > 0 ? (
             <div className={cn(
               'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white font-bold text-sm bg-gradient-to-r shadow-md',
               getCrowdColor(location.currentCrowdLevel)

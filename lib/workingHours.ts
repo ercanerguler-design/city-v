@@ -17,46 +17,109 @@ export function getCurrentDayName(): string {
   return days[new Date().getDay()];
 }
 
-export function isLocationOpen(location: any): { isOpen: boolean; reason?: string } {
-  if (!location.workingHours) {
-    return { isOpen: true };
-  }
-
-  const hours = location.workingHours;
+export function isLocationOpen(location: any): boolean {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentTime = currentHour * 60 + currentMinute; // Dakika cinsinden
+  const dayOfWeek = now.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
   
-  // 24 saat açık
-  if (hours.is24Hours) {
-    return { isOpen: true };
+  // Kategori bazlı gerçekçi çalışma saatleri (Türkiye standartları)
+  const category = location.category?.toLowerCase() || '';
+  
+  // 7/24 AÇIK YERLER
+  if (category.includes('hospital') || category.includes('emergency') || 
+      category.includes('pharmacy') && location.name?.includes('Nöbetçi')) {
+    return true;
   }
-
-  // Parklar her zaman açık
-  if (location.category === 'park') {
-    return { isOpen: true, reason: 'Her zaman açık' };
+  
+  // GAS STATION (Çoğu 6-24 arası)
+  if (category.includes('gas') || category.includes('petrol')) {
+    return currentTime >= 360 && currentTime <= 1440; // 06:00 - 24:00
   }
-
-  // Pazar kontrolü
-  if (isSunday()) {
-    if (!hours.sunday || hours.sunday.toLowerCase() === 'kapalı') {
-      return { isOpen: false, reason: 'Pazar günü kapalı' };
+  
+  // BANKALAR - Türkiye Standartı
+  if (category.includes('bank') || category.includes('atm')) {
+    if (dayOfWeek === 0) return false; // Pazar kapalı
+    if (dayOfWeek === 6) { // Cumartesi yarım gün
+      return currentTime >= 540 && currentTime <= 780; // 09:00 - 13:00
     }
-    // Nöbetçi eczane kontrolü
-    if (location.category === 'pharmacy' && hours.isOnDuty) {
-      return { isOpen: true, reason: 'Nöbetçi Eczane' };
-    }
+    return currentTime >= 540 && currentTime <= 1020; // Hafta içi 09:00 - 17:00
   }
-
-  // Cumartesi kontrolü
-  if (isSaturday()) {
-    if (!hours.saturday || hours.saturday.toLowerCase() === 'kapalı') {
-      return { isOpen: false, reason: 'Cumartesi kapalı' };
-    }
-    // Nöbetçi eczane kontrolü
-    if (location.category === 'pharmacy' && hours.isOnDuty) {
-      return { isOpen: true, reason: 'Nöbetçi Eczane' };
-    }
+  
+  // DEVLET DAİRELERİ
+  if (category.includes('government') || category.includes('municipality') || 
+      category.includes('post')) {
+    if (dayOfWeek === 0 || dayOfWeek === 6) return false; // Hafta sonu kapalı
+    return currentTime >= 480 && currentTime <= 1020; // 08:00 - 17:00
   }
-
-  return { isOpen: true };
+  
+  // OKULLAR VE ÜNİVERSİTELER
+  if (category.includes('school') || category.includes('university')) {
+    if (dayOfWeek === 0 || dayOfWeek === 6) return false; // Hafta sonu kapalı
+    return currentTime >= 480 && currentTime <= 1080; // 08:00 - 18:00
+  }
+  
+  // CAFE VE KAHVEHANE - Türk kültürü
+  if (category.includes('cafe') || category.includes('coffee')) {
+    return currentTime >= 420 && currentTime <= 1380; // 07:00 - 23:00
+  }
+  
+  // RESTORAN VE YEMEK YERLERİ
+  if (category.includes('restaurant') || category.includes('food')) {
+    // Çoğu restoran 10:30 - 24:00 arası
+    return currentTime >= 630 && currentTime <= 1440; // 10:30 - 24:00
+  }
+  
+  // AVM VE BÜYÜK MAĞAZALAR
+  if (category.includes('mall') || category.includes('shopping_center')) {
+    if (dayOfWeek === 0) { // Pazar özel saatler
+      return currentTime >= 720 && currentTime <= 1200; // 12:00 - 20:00
+    }
+    return currentTime >= 600 && currentTime <= 1320; // 10:00 - 22:00
+  }
+  
+  // MARKET VE SÜPERMARKET
+  if (category.includes('market') || category.includes('grocery')) {
+    return currentTime >= 480 && currentTime <= 1320; // 08:00 - 22:00
+  }
+  
+  // ECZANE (Normal eczaneler)
+  if (category.includes('pharmacy') && !location.name?.includes('Nöbetçi')) {
+    if (dayOfWeek === 0) return false; // Pazar çoğu kapalı
+    return currentTime >= 540 && currentTime <= 1200; // 09:00 - 20:00
+  }
+  
+  // GÜZELLİK SALONU, KUAFÖR
+  if (category.includes('beauty') || category.includes('hair')) {
+    if (dayOfWeek === 0) return false; // Pazar kapalı
+    return currentTime >= 540 && currentTime <= 1140; // 09:00 - 19:00
+  }
+  
+  // FITNESS VE SPOR SALONLARI
+  if (category.includes('gym') || category.includes('fitness')) {
+    return currentTime >= 360 && currentTime <= 1380; // 06:00 - 23:00
+  }
+  
+  // BAR VE GECE KULÜPLERI
+  if (category.includes('bar') || category.includes('night')) {
+    return currentTime >= 1200 || currentTime <= 120; // 20:00'dan sonra veya 02:00'ye kadar
+  }
+  
+  // CAMİ VE İBADETHANE - Her zaman açık kabul
+  if (category.includes('mosque') || category.includes('church') || 
+      category.includes('worship')) {
+    return true;
+  }
+  
+  // PARK VE AÇIK ALANLAR
+  if (category.includes('park') || category.includes('square')) {
+    return currentTime >= 300 && currentTime <= 1380; // 05:00 - 23:00
+  }
+  
+  // VARSAYILAN: Genel işyerleri (09:00 - 18:00, Pazar kapalı)
+  if (dayOfWeek === 0) return false;
+  return currentTime >= 540 && currentTime <= 1080; // 09:00 - 18:00
 }
 
 export function getWorkingHoursText(location: any): string {
@@ -210,6 +273,120 @@ export function getDefaultWorkingHours(category: string) {
         weekday: '06:00-23:00',
         saturday: '08:00-22:00',
         sunday: '09:00-21:00',
+      };
+    // Sağlık hizmetleri
+    case 'hospital':
+    case 'doctor':
+    case 'dentist':
+    case 'veterinary_care':
+      return {
+        weekday: '08:00-18:00',
+        saturday: '08:00-13:00',
+        sunday: 'Kapalı',
+        is24Hours: category === 'hospital', // Hastaneler 7/24
+      };
+    case 'pharmacy':
+      return {
+        weekday: '08:30-19:30',
+        saturday: '09:00-19:00',
+        sunday: '10:00-18:00',
+        isOnDuty: Math.random() < 0.2, // %20 şansla nöbetçi
+      };
+    // Eğitim kurumları
+    case 'school':
+    case 'university':
+    case 'library':
+      return {
+        weekday: '08:00-17:00',
+        saturday: '09:00-16:00',
+        sunday: 'Kapalı',
+      };
+    // Resmi kurumlar
+    case 'government':
+    case 'post_office':
+    case 'courthouse':
+    case 'city_hall':
+    case 'embassy':
+      return {
+        weekday: '08:30-17:30',
+        saturday: 'Kapalı',
+        sunday: 'Kapalı',
+      };
+    // Hukuki hizmetler
+    case 'lawyer':
+    case 'accounting':
+      return {
+        weekday: '09:00-18:00',
+        saturday: '09:00-13:00',
+        sunday: 'Kapalı',
+      };
+    // Teknik hizmetler
+    case 'plumber':
+    case 'electrician':
+    case 'locksmith':
+    case 'painter':
+    case 'roofing_contractor':
+      return {
+        weekday: '08:00-18:00',
+        saturday: '08:00-16:00',
+        sunday: 'Acil durumlar',
+        emergencyService: true,
+      };
+    // Emlak ve taşımacılık
+    case 'real_estate_agency':
+    case 'moving_company':
+    case 'car_rental':
+    case 'car_dealer':
+      return {
+        weekday: '09:00-19:00',
+        saturday: '09:00-18:00',
+        sunday: '11:00-17:00',
+      };
+    // Depolama ve lojistik
+    case 'storage':
+    case 'warehouse':
+      return {
+        weekday: '07:00-19:00',
+        saturday: '08:00-16:00',
+        sunday: 'Kapalı',
+      };
+    // Turizm ve seyahat
+    case 'travel_agency':
+    case 'tourist_attraction':
+    case 'amusement_park':
+      return {
+        weekday: '09:00-18:00',
+        saturday: '09:00-19:00',
+        sunday: '10:00-18:00',
+      };
+    // Çiçekçi ve peyzaj
+    case 'florist':
+    case 'garden_center':
+      return {
+        weekday: '08:00-19:00',
+        saturday: '08:00-20:00',
+        sunday: '09:00-18:00',
+      };
+    // İçki satışı
+    case 'liquor_store':
+      return {
+        weekday: '10:00-22:00',
+        saturday: '10:00-22:00',
+        sunday: '12:00-20:00',
+      };
+    // Çamaşırhane
+    case 'laundry':
+      return {
+        weekday: '07:00-21:00',
+        saturday: '08:00-20:00',
+        sunday: '09:00-19:00',
+      };
+    // Hardware store
+    case 'hardware_store':
+      return {
+        weekday: '08:00-19:00',
+        saturday: '08:00-18:00',
+        sunday: '09:00-16:00',
       };
     default:
       return {

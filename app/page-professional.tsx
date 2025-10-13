@@ -32,6 +32,9 @@ import OnboardingTour from '@/components/Onboarding/OnboardingTour';
 import ProfileModal from '@/components/Profile/ProfileModal';
 import SettingsModal from '@/components/Settings/SettingsModal';
 import NotificationsPanel from '@/components/Notifications/NotificationsPanel';
+import BusinessNotificationsPanel from '@/components/Notifications/BusinessNotificationsPanel';
+import AIChatBot from '@/components/AI/AIChatBot';
+import LiveCrowdSidebar from '@/components/RealTime/LiveCrowdSidebar';
 
 // Hooks
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
@@ -92,6 +95,8 @@ export default function ProfessionalHome() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [showLiveCrowd, setShowLiveCrowd] = useState(true); // 🔥 Canlı kalabalık otomatik açık
   const [viewMode, setViewMode] = useState<'map' | 'grid'>('map');
   const [mapCenter, setMapCenter] = useState<[number, number]>(cityConfig.ankara.center);
   const [mapZoom, setMapZoom] = useState(cityConfig.ankara.zoom);
@@ -308,7 +313,7 @@ export default function ProfessionalHome() {
     if (filtered.length > 0) {
       console.log('📋 İlk 3 yer:');
       filtered.slice(0, 3).forEach((loc, i) => {
-        console.log(`   ${i+1}. ${loc.name} (${loc.category}) - ${(loc.distance || 0).toFixed(2)} km`);
+        console.log(`   ${i+1}. ${loc.name} (${loc.category}) - ${((loc as any).distance || 0).toFixed(2)} km`);
       });
     } else if (locations.length > 0) {
       console.warn('\n⚠️ FİLTRELEME SONUCU BOŞ!');
@@ -553,6 +558,8 @@ export default function ProfessionalHome() {
         onProfileClick={() => setShowProfileModal(true)}
         onSettingsClick={() => setShowSettingsModal(true)}
         onNotificationsClick={() => setShowNotifications(true)}
+        onAIClick={() => setShowAIChat(true)}
+        onLiveCrowdClick={() => setShowLiveCrowd(!showLiveCrowd)}
       />
 
       {/* Analytics Dashboard */}
@@ -695,6 +702,9 @@ export default function ProfessionalHome() {
                     </div>
                   </motion.div>
                 )}
+
+                {/* Business Notifications Panel */}
+                <BusinessNotificationsPanel />
 
                 {/* Hava Durumu Widget */}
                 {userLocation && (
@@ -954,6 +964,31 @@ export default function ProfessionalHome() {
         isOpen={showNotifications}
         onClose={() => setShowNotifications(false)}
       />
+
+      {/* AI Chat Bot */}
+      <AIChatBot
+        isOpen={showAIChat}
+        onClose={() => setShowAIChat(false)}
+      />
+
+      {/* Live Crowd Sidebar */}
+      <LiveCrowdSidebar
+        isOpen={showLiveCrowd}
+        onToggle={() => setShowLiveCrowd(!showLiveCrowd)}
+        locations={filteredLocations}
+      />
+
+      {/* Footer */}
+      <footer className="bg-gradient-to-r from-gray-800 via-gray-900 to-black text-white py-6">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-sm">
+            <span className="font-bold">City-V</span> <span className="text-gray-300">2025</span>{' '}
+            <span className="text-gray-400">|</span>{' '}
+            <span className="font-semibold text-blue-400">SCE INNOVATION</span>{' '}
+            <span className="text-gray-300">Her hakkı saklıdır.</span>
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

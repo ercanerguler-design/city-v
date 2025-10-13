@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from 'react-hot-toast';
 import PWAProvider from '@/components/PWA/PWAProvider';
+import RealTimeProvider from '@/components/RealTime/RealTimeProvider';
 import "./globals.css";
-import "leaflet/dist/leaflet.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -76,31 +76,37 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <PWAProvider>
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 3000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-                borderRadius: '12px',
-                padding: '16px',
-              },
-              success: {
-                iconTheme: {
-                  primary: '#10b981',
-                  secondary: '#fff',
+          <RealTimeProvider
+            currentUserId="demo-user-123"
+            currentUserName="Demo User"
+            userLocation={[39.9334, 32.8597]} // Ankara coordinates
+          >
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 3000,
+                style: {
+                  background: '#363636',
+                  color: '#fff',
+                  borderRadius: '12px',
+                  padding: '16px',
                 },
-              },
-              error: {
-                iconTheme: {
-                  primary: '#ef4444',
-                  secondary: '#fff',
+                success: {
+                  iconTheme: {
+                    primary: '#10b981',
+                    secondary: '#fff',
+                  },
                 },
-              },
-            }}
-          />
-          {children}
+                error: {
+                  iconTheme: {
+                    primary: '#ef4444',
+                    secondary: '#fff',
+                  },
+                },
+              }}
+            />
+            {children}
+          </RealTimeProvider>
         </PWAProvider>
       </body>
     </html>

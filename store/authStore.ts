@@ -9,6 +9,8 @@ interface User {
   email: string;
   avatar?: string;
   premium: boolean;
+  premiumPlan?: 'basic' | 'pro' | 'enterprise';
+  aiCredits?: number;
   createdAt: Date;
 }
 
@@ -20,6 +22,7 @@ interface AuthState {
   logout: () => void;
   updateProfile: (data: Partial<User>) => void;
   upgradeToPremium: (plan: string) => void;
+  createTestUser: (premium: boolean) => void; // Test amaçlı
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -37,7 +40,9 @@ export const useAuthStore = create<AuthState>()(
           name: 'Ercan Kullanıcı',
           email: email,
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent('Ercan Kullanıcı')}&background=6366f1&color=fff`,
-          premium: true,
+          premium: true, // Test için premium yapalım
+          premiumPlan: 'pro',
+          aiCredits: 100, // Bol bol AI kredisi
           createdAt: new Date(),
         };
 
@@ -52,7 +57,9 @@ export const useAuthStore = create<AuthState>()(
           name,
           email,
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff`,
-          premium: false,
+          premium: true, // Test için premium
+          premiumPlan: 'basic',
+          aiCredits: 50, // Yeni premium kullanıcılara 50 AI credit
           createdAt: new Date(),
         };
 
@@ -95,7 +102,19 @@ export const useAuthStore = create<AuthState>()(
         set((state) => {
           if (!state.user) return state;
           
-          const updatedUser = { ...state.user, premium: true };
+          // Plan'a göre farklı krediler ver
+          const creditsByPlan = {
+            'basic': 100,
+            'pro': 500,
+            'enterprise': 1000
+          };
+          
+          const updatedUser = { 
+            ...state.user, 
+            premium: true,
+            premiumPlan: plan as 'basic' | 'pro' | 'enterprise',
+            aiCredits: (state.user.aiCredits || 0) + (creditsByPlan[plan as keyof typeof creditsByPlan] || 100)
+          };
           
           // Admin paneline bildir
           try {
@@ -107,6 +126,21 @@ export const useAuthStore = create<AuthState>()(
           
           return { user: updatedUser };
         });
+      },
+
+      createTestUser: (premium: boolean) => {
+        const testUser: User = {
+          id: Date.now().toString(),
+          name: premium ? 'Premium Test Kullanıcısı' : 'Normal Test Kullanıcısı',
+          email: premium ? 'premium@test.com' : 'normal@test.com',
+          avatar: `https://ui-avatars.com/api/?name=${premium ? 'Premium' : 'Normal'}&background=${premium ? 'fbbf24' : '6b7280'}&color=fff`,
+          premium,
+          premiumPlan: premium ? 'pro' : undefined,
+          aiCredits: premium ? 100 : 0,
+          createdAt: new Date(),
+        };
+
+        set({ user: testUser, isAuthenticated: true });
       },
     }),
     {
