@@ -110,6 +110,18 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
               <CameraButton onPhotoGallery={onPhotoGalleryClick} />
             </div>
 
+            {/* ESP32-CAM Dashboard */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => window.open('/esp32', '_blank')}
+              className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl backdrop-blur-sm transition-all shadow-lg"
+              title="ESP32-CAM IoT Dashboard"
+            >
+              <Activity className="w-5 h-5" />
+              <span className="hidden lg:inline font-semibold text-sm">IoT</span>
+            </motion.button>
+
             {/* AI Assistant Button - Premium only */}
             {isAuthenticated && user?.premium && onAIClick && (
               <motion.button
