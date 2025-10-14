@@ -43,6 +43,83 @@ const GOOGLE_DAY_MAP = {
   6: 'saturday'
 } as const;
 
+/**
+ * Google Places API'den gelen çalışma saatlerini bizim formata çevir
+ */
+function parseGoogleWorkingHours(place: any): any {
+  if (!place.opening_hours || !place.opening_hours.periods) {
+    console.log(`⚠️ ${place.name} için çalışma saati bilgisi yok`);
+    return null;
+  }
+
+  console.log(`🕒 ${place.name} çalışma saatleri işleniyor...`, {
+    open_now: place.opening_hours.open_now,
+    periods: place.opening_hours.periods.length
+  });
+
+  const workingHours: any = {
+    monday: { isOpen: false, openTime: '09:00', closeTime: '18:00' },
+    tuesday: { isOpen: false, openTime: '09:00', closeTime: '18:00' },
+    wednesday: { isOpen: false, openTime: '09:00', closeTime: '18:00' },
+    thursday: { isOpen: false, openTime: '09:00', closeTime: '18:00' },
+    friday: { isOpen: false, openTime: '09:00', closeTime: '18:00' },
+    saturday: { isOpen: false, openTime: '09:00', closeTime: '18:00' },
+    sunday: { isOpen: false, openTime: '09:00', closeTime: '18:00' },
+    holidays: [],
+    timezone: 'Europe/Istanbul',
+    isOpen24Hours: false
+  };
+
+  // Google'dan gelen periods'ları işle
+  for (const period of place.opening_hours.periods) {
+    if (!period.open || period.open.day === undefined) continue;
+    
+    const dayName = GOOGLE_DAY_MAP[period.open.day as keyof typeof GOOGLE_DAY_MAP];
+    if (!dayName) continue;
+
+    // Açılış saati
+    const openTime = formatGoogleTime(period.open.time);
+    
+    // Kapanış saati - eğer yoksa 24 saat açık demektir
+    let closeTime = '23:59';
+    let isOpen24Hours = false;
+    
+    if (period.close && period.close.time) {
+      closeTime = formatGoogleTime(period.close.time);
+    } else {
+      isOpen24Hours = true;
+      closeTime = '23:59';
+    }
+
+    workingHours[dayName] = {
+      isOpen: true,
+      openTime,
+      closeTime
+    };
+
+    if (isOpen24Hours) {
+      workingHours.isOpen24Hours = true;
+    }
+
+    console.log(`   ${dayName}: ${openTime} - ${closeTime}${isOpen24Hours ? ' (24 saat)' : ''}`);
+  }
+
+  console.log(`✅ ${place.name} çalışma saatleri güncellendi`);
+  return workingHours;
+}
+
+/**
+ * Google time formatını (HHMM) bizim formatımıza (HH:MM) çevir
+ */
+function formatGoogleTime(time: string): string {
+  if (!time || time.length !== 4) return '09:00';
+  
+  const hours = time.substring(0, 2);
+  const minutes = time.substring(2, 4);
+  
+  return `${hours}:${minutes}`;
+}
+
 // Google Places API kategorileri -> bizim kategori dönüşümü (GENİŞLETİLMİŞ)
 const CATEGORY_MAP: Record<string, string[]> = {
   cafe: ['cafe', 'coffee_shop', 'bakery'],
@@ -138,7 +215,20 @@ interface GooglePlace {
   user_ratings_total?: number;
   opening_hours?: {
     open_now?: boolean;
+    periods?: Array<{
+      close?: {
+        day: number;
+        time: string;
+      };
+      open: {
+        day: number;
+        time: string;
+      };
+    }>;
+    weekday_text?: string[];
   };
+  current_opening_hours?: any;
+  utc_offset_minutes?: number;
 }
 
 /**
@@ -210,7 +300,7 @@ export async function fetchNearbyPlacesFromGoogle(
               averageWaitTime: estimateWaitTime(ourCategory, place),
               lastUpdated: new Date(),
               description: place.types.join(', '),
-              workingHours: getDefaultWorkingHours(ourCategory),
+              workingHours: parseGoogleWorkingHours(place) || getDefaultWorkingHours(ourCategory),
               phone: '',
               rating: place.rating,
               reviewCount: place.user_ratings_total,

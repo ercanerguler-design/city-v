@@ -17,12 +17,82 @@ export function getCurrentDayName(): string {
   return days[new Date().getDay()];
 }
 
-export function isLocationOpen(location: any): boolean {
+/**
+ * Google API'den gelen gerçek çalışma saatlerini kontrol et
+ */
+function checkRealWorkingHours(workingHours: any, now: Date): { isOpen: boolean, reason?: string } {
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const currentDayName = dayNames[now.getDay()];
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentTime = currentHour * 60 + currentMinute;
+
+  // 24 saat açık mı kontrol et
+  if (workingHours.isOpen24Hours) {
+    return { isOpen: true, reason: '24 saat açık' };
+  }
+
+  // Bugünkü çalışma saatleri
+  const todayHours = workingHours[currentDayName];
+  
+  if (!todayHours || !todayHours.isOpen) {
+    const dayNamesTurkish = {
+      sunday: 'Pazar',
+      monday: 'Pazartesi', 
+      tuesday: 'Salı',
+      wednesday: 'Çarşamba',
+      thursday: 'Perşembe',
+      friday: 'Cuma',
+      saturday: 'Cumartesi'
+    };
+    
+    return { 
+      isOpen: false, 
+      reason: `${dayNamesTurkish[currentDayName as keyof typeof dayNamesTurkish]} günü kapalı` 
+    };
+  }
+
+  // Saat aralığını kontrol et
+  const [openHour, openMinute] = todayHours.openTime.split(':').map(Number);
+  const [closeHour, closeMinute] = todayHours.closeTime.split(':').map(Number);
+  
+  const openTime = openHour * 60 + openMinute;
+  const closeTime = closeHour * 60 + closeMinute;
+
+  // Gece yarısı geçen işletmeler için (örn: 22:00 - 02:00)
+  if (closeTime < openTime) {
+    const isOpenNow = currentTime >= openTime || currentTime <= closeTime;
+    if (!isOpenNow) {
+      return { 
+        isOpen: false, 
+        reason: `${todayHours.openTime} - ${todayHours.closeTime} saatleri arasında açık` 
+      };
+    }
+  } else {
+    // Normal saat aralığı (örn: 09:00 - 18:00)
+    const isOpenNow = currentTime >= openTime && currentTime <= closeTime;
+    if (!isOpenNow) {
+      return { 
+        isOpen: false, 
+        reason: `${todayHours.openTime} - ${todayHours.closeTime} saatleri arasında açık` 
+      };
+    }
+  }
+
+  return { isOpen: true };
+}
+
+export function isLocationOpen(location: any): { isOpen: boolean, reason?: string } {
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
   const currentTime = currentHour * 60 + currentMinute; // Dakika cinsinden
   const dayOfWeek = now.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+
+  // Önce Google'dan gelen gerçek çalışma saatlerini kontrol et
+  if (location.workingHours && location.workingHours.monday !== undefined) {
+    return checkRealWorkingHours(location.workingHours, now);
+  }
   
   // Kategori bazlı gerçekçi çalışma saatleri (Türkiye standartları)
   const category = location.category?.toLowerCase() || '';
@@ -30,96 +100,116 @@ export function isLocationOpen(location: any): boolean {
   // 7/24 AÇIK YERLER
   if (category.includes('hospital') || category.includes('emergency') || 
       category.includes('pharmacy') && location.name?.includes('Nöbetçi')) {
-    return true;
+    return { isOpen: true, reason: '24 saat hizmet' };
   }
   
   // GAS STATION (Çoğu 6-24 arası)
   if (category.includes('gas') || category.includes('petrol')) {
-    return currentTime >= 360 && currentTime <= 1440; // 06:00 - 24:00
+    const isOpen = currentTime >= 360 && currentTime <= 1440; // 06:00 - 24:00
+    return { isOpen, reason: isOpen ? undefined : '06:00 - 24:00 saatleri arasında açık' };
   }
   
   // BANKALAR - Türkiye Standartı
   if (category.includes('bank') || category.includes('atm')) {
-    if (dayOfWeek === 0) return false; // Pazar kapalı
+    if (dayOfWeek === 0) return { isOpen: false, reason: 'Pazar günü kapalı' };
     if (dayOfWeek === 6) { // Cumartesi yarım gün
-      return currentTime >= 540 && currentTime <= 780; // 09:00 - 13:00
+      const isOpen = currentTime >= 540 && currentTime <= 780; // 09:00 - 13:00
+      return { isOpen, reason: isOpen ? undefined : 'Cumartesi 09:00 - 13:00 arası açık' };
     }
-    return currentTime >= 540 && currentTime <= 1020; // Hafta içi 09:00 - 17:00
+    const isOpen = currentTime >= 540 && currentTime <= 1020; // Hafta içi 09:00 - 17:00
+    return { isOpen, reason: isOpen ? undefined : 'Hafta içi 09:00 - 17:00 arası açık' };
   }
   
+  // Kategori bazlı fallback kontrol (Google API'den veri gelmediyse)
+  console.log(`⚠️ ${location.name || 'Bilinmeyen yer'} için Google çalışma saati yok, kategori bazlı tahmin kullanılıyor: ${category}`);
+  
   // DEVLET DAİRELERİ
-  if (category.includes('government') || category.includes('municipality') || 
-      category.includes('post')) {
-    if (dayOfWeek === 0 || dayOfWeek === 6) return false; // Hafta sonu kapalı
-    return currentTime >= 480 && currentTime <= 1020; // 08:00 - 17:00
+  if (category.includes('government') || category.includes('municipality') || category.includes('post')) {
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return { isOpen: false, reason: 'Hafta sonu kapalı' };
+    }
+    const isOpen = currentTime >= 480 && currentTime <= 1020; // 08:00 - 17:00
+    return { isOpen, reason: isOpen ? undefined : '08:00 - 17:00 arası açık' };
   }
   
   // OKULLAR VE ÜNİVERSİTELER
   if (category.includes('school') || category.includes('university')) {
-    if (dayOfWeek === 0 || dayOfWeek === 6) return false; // Hafta sonu kapalı
-    return currentTime >= 480 && currentTime <= 1080; // 08:00 - 18:00
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return { isOpen: false, reason: 'Hafta sonu kapalı' };
+    }
+    const isOpen = currentTime >= 480 && currentTime <= 1080; // 08:00 - 18:00
+    return { isOpen, reason: isOpen ? undefined : '08:00 - 18:00 arası açık' };
   }
   
-  // CAFE VE KAHVEHANE - Türk kültürü
+  // CAFE VE KAHVEHANE
   if (category.includes('cafe') || category.includes('coffee')) {
-    return currentTime >= 420 && currentTime <= 1380; // 07:00 - 23:00
+    const isOpen = currentTime >= 420 && currentTime <= 1380; // 07:00 - 23:00
+    return { isOpen, reason: isOpen ? undefined : '07:00 - 23:00 arası açık' };
   }
   
   // RESTORAN VE YEMEK YERLERİ
   if (category.includes('restaurant') || category.includes('food')) {
-    // Çoğu restoran 10:30 - 24:00 arası
-    return currentTime >= 630 && currentTime <= 1440; // 10:30 - 24:00
+    const isOpen = currentTime >= 630 && currentTime <= 1440; // 10:30 - 24:00
+    return { isOpen, reason: isOpen ? undefined : '10:30 - 24:00 arası açık' };
   }
   
-  // AVM VE BÜYÜK MAĞAZALAR
-  if (category.includes('mall') || category.includes('shopping_center')) {
+  // AVM VE MAĞAZALAR
+  if (category.includes('mall') || category.includes('shopping')) {
     if (dayOfWeek === 0) { // Pazar özel saatler
-      return currentTime >= 720 && currentTime <= 1200; // 12:00 - 20:00
+      const isOpen = currentTime >= 720 && currentTime <= 1200; // 12:00 - 20:00
+      return { isOpen, reason: isOpen ? undefined : 'Pazar 12:00 - 20:00 arası açık' };
     }
-    return currentTime >= 600 && currentTime <= 1320; // 10:00 - 22:00
+    const isOpen = currentTime >= 600 && currentTime <= 1320; // 10:00 - 22:00
+    return { isOpen, reason: isOpen ? undefined : '10:00 - 22:00 arası açık' };
   }
   
   // MARKET VE SÜPERMARKET
   if (category.includes('market') || category.includes('grocery')) {
-    return currentTime >= 480 && currentTime <= 1320; // 08:00 - 22:00
+    const isOpen = currentTime >= 480 && currentTime <= 1320; // 08:00 - 22:00
+    return { isOpen, reason: isOpen ? undefined : '08:00 - 22:00 arası açık' };
   }
   
   // ECZANE (Normal eczaneler)
   if (category.includes('pharmacy') && !location.name?.includes('Nöbetçi')) {
-    if (dayOfWeek === 0) return false; // Pazar çoğu kapalı
-    return currentTime >= 540 && currentTime <= 1200; // 09:00 - 20:00
+    if (dayOfWeek === 0) {
+      return { isOpen: false, reason: 'Pazar günü çoğu eczane kapalı' };
+    }
+    const isOpen = currentTime >= 540 && currentTime <= 1200; // 09:00 - 20:00
+    return { isOpen, reason: isOpen ? undefined : '09:00 - 20:00 arası açık' };
   }
   
   // GÜZELLİK SALONU, KUAFÖR
   if (category.includes('beauty') || category.includes('hair')) {
-    if (dayOfWeek === 0) return false; // Pazar kapalı
-    return currentTime >= 540 && currentTime <= 1140; // 09:00 - 19:00
+    if (dayOfWeek === 0) {
+      return { isOpen: false, reason: 'Pazar günü kapalı' };
+    }
+    const isOpen = currentTime >= 540 && currentTime <= 1140; // 09:00 - 19:00
+    return { isOpen, reason: isOpen ? undefined : '09:00 - 19:00 arası açık' };
   }
   
   // FITNESS VE SPOR SALONLARI
   if (category.includes('gym') || category.includes('fitness')) {
-    return currentTime >= 360 && currentTime <= 1380; // 06:00 - 23:00
+    const isOpen = currentTime >= 360 && currentTime <= 1380; // 06:00 - 23:00
+    return { isOpen, reason: isOpen ? undefined : '06:00 - 23:00 arası açık' };
   }
   
-  // BAR VE GECE KULÜPLERI
-  if (category.includes('bar') || category.includes('night')) {
-    return currentTime >= 1200 || currentTime <= 120; // 20:00'dan sonra veya 02:00'ye kadar
-  }
-  
-  // CAMİ VE İBADETHANE - Her zaman açık kabul
-  if (category.includes('mosque') || category.includes('church') || 
-      category.includes('worship')) {
-    return true;
+  // CAMİ VE İBADETHANE - Her zaman açık
+  if (category.includes('mosque') || category.includes('church') || category.includes('worship')) {
+    return { isOpen: true, reason: 'İbadethane - her zaman açık' };
   }
   
   // PARK VE AÇIK ALANLAR
   if (category.includes('park') || category.includes('square')) {
-    return currentTime >= 300 && currentTime <= 1380; // 05:00 - 23:00
+    const isOpen = currentTime >= 300 && currentTime <= 1380; // 05:00 - 23:00
+    return { isOpen, reason: isOpen ? undefined : '05:00 - 23:00 arası açık' };
   }
   
   // VARSAYILAN: Genel işyerleri (09:00 - 18:00, Pazar kapalı)
-  if (dayOfWeek === 0) return false;
-  return currentTime >= 540 && currentTime <= 1080; // 09:00 - 18:00
+  if (dayOfWeek === 0) {
+    return { isOpen: false, reason: 'Pazar günü kapalı' };
+  }
+  const isOpen = currentTime >= 540 && currentTime <= 1080; // 09:00 - 18:00
+  return { isOpen, reason: isOpen ? undefined : '09:00 - 18:00 arası açık' };
 }
 
 export function getWorkingHoursText(location: any): string {
