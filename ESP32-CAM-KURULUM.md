@@ -24,8 +24,10 @@
 
 ### 3. Gerekli Kütüphaneleri Yükleyin
 **Tools > Manage Libraries** menüsünden şu kütüphaneleri yükleyin:
-- **ArduinoJson** by Benoit Blanchon
+- **ArduinoJson** by Benoit Blanchon (v6.21.3 veya üzeri)
 - **ESP32 Camera** (genellikle ESP32 board package ile birlikte gelir)
+
+> ⚠️ **Önemli:** ArduinoJson v6 kullanın. v7 ile syntax farklılıkları olabilir.
 
 ## 🔌 Donanım Bağlantıları
 
@@ -255,7 +257,48 @@ bool detectMotion() {
    - Push notifications
    - Offline mode
 
-## 📞 Destek
+## � Sorun Giderme
+
+### Yaygın Derleme Hataları
+
+#### 1. Stray '\' in program hatası
+```cpp
+// ❌ Yanlış: Double backslash
+String json = "{\\"key\\":\\"value\\"}";
+
+// ✅ Doğru: Single backslash
+String json = "{\"key\":\"value\"}";
+```
+
+#### 2. JSON Object oluşturma hatası
+```cpp
+// ❌ Yanlış: Brace-enclosed initializer
+doc["coordinates"] = {{"lat", 39.9334}, {"lng", 32.8597}};
+
+// ✅ Doğru: createNestedObject kullanın
+JsonObject coordinates = doc.createNestedObject("coordinates");
+coordinates["lat"] = 39.9334;
+coordinates["lng"] = 32.8597;
+```
+
+#### 3. ArduinoJson versiyon hatası
+- ArduinoJson v6.21.3 kullanın
+- Library Manager'dan eski versiyonları kaldırın
+- IDE'yi yeniden başlatın
+
+### Bağlantı Sorunları
+
+#### WiFi Bağlanamıyor
+1. SSID ve şifrenizi kontrol edin
+2. 2.4GHz ağ kullandığınızdan emin olun
+3. Seri monitöründe WiFi durumunu izleyin
+
+#### City-V API'ye erişilemiyor
+1. İnternet bağlantısını kontrol edin
+2. API endpoint'ini doğrulayın
+3. Firewall ayarlarını kontrol edin
+
+## �📞 Destek
 
 Herhangi bir sorunla karşılaştığınızda:
 1. Seri monitor çıktısını kontrol edin

@@ -3,6 +3,7 @@
  * Bu kod ESP32-CAM'inizi City-V platformuna bağlar
  * 
  * Özellikler:
+ * - Brownout detector fix dahil
  * - Canlı kamera stream
  * - Otomatik kalabalık analizi
  * - WiFi bağlantısı
@@ -22,6 +23,11 @@
 #include "esp_http_server.h"
 #include "img_converters.h"
 #include "fb_gfx.h"
+
+// ⚡ BROWNOUT DETECTOR FIX İÇİN GEREKLİ INCLUDES
+#include "esp32/rom/rtc.h"
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 
 // =========================
 // ESP32-CAM Pin Konfigürasyonu (AI-Thinker Model)
@@ -46,8 +52,8 @@
 // =========================
 // WiFi ve API Konfigürasyonu
 // =========================
-const char* ssid = "WiFi_Adi";              // WiFi ağ adınızı buraya yazın
-const char* password = "WiFi_Sifresi";      // WiFi şifrenizi buraya yazın
+const char* ssid = "ErcanSce";              // WiFi ağ adınızı buraya yazın
+const char* password = "Ka250806Ka";      // WiFi şifrenizi buraya yazın
 
 // City-V API ayarları
 const char* cityv_host = "cityv.vercel.app";  // Veya kendi domain'iniz
@@ -60,11 +66,24 @@ httpd_handle_t camera_httpd = NULL;
 httpd_handle_t stream_httpd = NULL;
 unsigned long lastReport = 0;
 const unsigned long reportInterval = 30000; // 30 saniye
+bool cameraInitialized = false;
+
+// =========================
+// LED Status Functions
+// =========================
+void blinkLED(int times = 1, int delayMs = 200) {
+  for(int i = 0; i < times; i++) {
+    digitalWrite(33, HIGH);
+    delay(delayMs);
+    digitalWrite(33, LOW);
+    delay(delayMs);
+  }
+}
 
 // =========================
 // Kamera Stream Handler
 // =========================
-static esp_err_t stream_handler(httpd_req_t *req) {
+  static esp_err_t stream_handler(httpd_req_t *req) {
   camera_fb_t * fb = NULL;
   esp_err_t res = ESP_OK;
   size_t _jpg_buf_len = 0;
@@ -84,19 +103,17 @@ static esp_err_t stream_handler(httpd_req_t *req) {
       Serial.println("❌ Kamera yakalama hatası");
       res = ESP_FAIL;
     } else {
-      if(fb->width > 400){
-        if(fb->format != PIXFORMAT_JPEG){
-          bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
-          esp_camera_fb_return(fb);
-          fb = NULL;
-          if(!jpeg_converted){
-            Serial.println("❌ JPEG dönüştürme hatası");
-            res = ESP_FAIL;
-          }
-        } else {
-          _jpg_buf_len = fb->len;
-          _jpg_buf = fb->buf;
+      if(fb->format != PIXFORMAT_JPEG){
+        bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
+        esp_camera_fb_return(fb);
+        fb = NULL;
+        if(!jpeg_converted){
+          Serial.println("❌ JPEG dönüştürme hatası");
+          res = ESP_FAIL;
         }
+      } else {
+        _jpg_buf_len = fb->len;
+        _jpg_buf = fb->buf;
       }
     }
 
@@ -110,7 +127,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
       res = httpd_resp_send_chunk(req, (const char *)_jpg_buf, _jpg_buf_len);
     }
     if(res == ESP_OK) {
-      res = httpd_resp_send_chunk(req, "\r\n--frame\r\n", 8);
+      res = httpd_resp_send_chunk(req, "\r\n--frame\r\n", 12);
     }
 
     if(fb) {
@@ -125,6 +142,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
     if(res != ESP_OK) {
       break;
     }
+    delay(30);
   }
   return res;
 }
@@ -136,13 +154,25 @@ static esp_err_t status_handler(httpd_req_t *req) {
   httpd_resp_set_type(req, "application/json");
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
   
-  String response = "{\\"status\\":\\"online\\",";
-  response += "\\"device_id\\":\\"" + String(device_id) + "\\",";
-  response += "\\"location\\":\\"" + String(location_name) + "\\",";
-  response += "\\"ip\\":\\"" + WiFi.localIP().toString() + "\\",";
-  response += "\\"uptime\\":" + String(millis()) + ",";
-  response += "\\"free_heap\\":" + String(ESP.getFreeHeap()) + "";
-  response += "}";
+  DynamicJsonDocument doc(1024);
+  doc["status"] = "online";
+  doc["device_id"] = device_id;
+  doc["location"] = location_name;
+  doc["ip"] = WiFi.localIP().toString();
+  doc["mac"] = WiFi.macAddress();
+  doc["uptime"] = millis();
+  doc["free_heap"] = ESP.getFreeHeap();
+  doc["wifi_rssi"] = WiFi.RSSI();
+  doc["camera_init"] = cameraInitialized;
+  doc["psram"] = psramFound();
+  
+  // Koordinatlar (kendi lokasyonunuzu girin)
+  JsonObject coordinates = doc.createNestedObject("coordinates");
+  coordinates["lat"] = 39.9334; // Ankara - değiştirin
+  coordinates["lng"] = 32.8597; // Ankara - değiştirin
+  
+  String response;
+  serializeJson(doc, response);
   
   return httpd_resp_send(req, response.c_str(), HTTPD_RESP_USE_STRLEN);
 }
@@ -171,11 +201,12 @@ void startCameraServer() {
   };
 
   // Ana server başlat
-  Serial.printf("🌐 HTTP server başlatılıyor port %d\\n", config.server_port);
+  Serial.printf("🌐 HTTP server başlatılıyor port %d\n", config.server_port);
   if (httpd_start(&camera_httpd, &config) == ESP_OK) {
     httpd_register_uri_handler(camera_httpd, &stream_uri);
     httpd_register_uri_handler(camera_httpd, &status_uri);
     Serial.println("✅ Camera server başladı");
+    blinkLED(3, 100); // Başarı göstergesi
   }
 
   // Stream server (farklı port)
@@ -188,35 +219,47 @@ void startCameraServer() {
 }
 
 // =========================
-// Kalabalık Seviyesi Analizi
+// Gelişmiş Kalabalık Seviyesi Analizi
 // =========================
 String analyzeCrowdLevel() {
+  if(!cameraInitialized) {
+    return "camera_error";
+  }
+
   camera_fb_t * fb = esp_camera_fb_get();
   if (!fb) {
     Serial.println("❌ Analiz için kamera yakalama hatası");
     return "error";
   }
 
-  // Basit kalabalık analizi algoritması
-  // Gerçek projede daha gelişmiş görüntü işleme kullanılabilir
-  
+  Serial.printf("📸 Frame alındı: %dx%d, boyut: %d bytes\n", 
+                fb->width, fb->height, fb->len);
+
+  // Gelişmiş kalabalık analizi algoritması
   int totalPixels = fb->len;
   int darkPixelCount = 0;
   int motionPixels = 0;
+  int brightPixels = 0;
   
-  // JPEG verisini basit analiz et
-  for(int i = 0; i < totalPixels && i < 10000; i += 50) {
+  // Daha detaylı piksel analizi
+  int sampleRate = (totalPixels > 50000) ? 100 : 50;
+  
+  for(int i = 0; i < totalPixels && i < 15000; i += sampleRate) {
     uint8_t pixelValue = fb->buf[i];
     
-    // Koyu piksel sayısı (insanları temsil eder)
-    if(pixelValue < 80) {
+    // Koyu piksel sayısı (insanları/nesneleri temsil eder)
+    if(pixelValue < 70) {
       darkPixelCount++;
     }
+    // Açık piksel sayısı
+    else if(pixelValue > 200) {
+      brightPixels++;
+    }
     
-    // Hareket tespiti için komşu pikselleri karşılaştır
-    if(i + 50 < totalPixels) {
-      uint8_t nextPixel = fb->buf[i + 50];
-      if(abs(pixelValue - nextPixel) > 30) {
+    // Hareket/kenar tespiti için komşu pikselleri karşılaştır
+    if(i + sampleRate < totalPixels && i + sampleRate < 15000) {
+      uint8_t nextPixel = fb->buf[i + sampleRate];
+      if(abs(pixelValue - nextPixel) > 35) {
         motionPixels++;
       }
     }
@@ -224,20 +267,26 @@ String analyzeCrowdLevel() {
   
   esp_camera_fb_return(fb);
   
-  // Kalabalık oranını hesapla (0-1 arası)
-  float crowdRatio = (float)(darkPixelCount + motionPixels) / 200.0; // Normalize et
+  // Normalize etme
+  int sampleCount = 15000 / sampleRate;
+  float darkRatio = (float)darkPixelCount / sampleCount;
+  float motionRatio = (float)motionPixels / sampleCount;
+  float brightRatio = (float)brightPixels / sampleCount;
   
-  Serial.printf("📊 Analiz: koyu=%d, hareket=%d, oran=%.2f\\n", 
-                darkPixelCount, motionPixels, crowdRatio);
+  // Weighted kalabalık skoru
+  float crowdScore = (darkRatio * 0.5) + (motionRatio * 0.3) + (brightRatio * 0.2);
   
-  // Kalabalık seviyesini belirle
-  if(crowdRatio > 0.8) {
+  Serial.printf("📊 Analiz detayı: koyu=%.2f%%, hareket=%.2f%%, açık=%.2f%%, skor=%.3f\n", 
+                darkRatio * 100, motionRatio * 100, brightRatio * 100, crowdScore);
+  
+  // Kalabalık seviyesini belirle (daha hassas)
+  if(crowdScore > 0.75) {
     return "very_high";
-  } else if(crowdRatio > 0.6) {
+  } else if(crowdScore > 0.55) {
     return "high"; 
-  } else if(crowdRatio > 0.4) {
+  } else if(crowdScore > 0.35) {
     return "moderate";
-  } else if(crowdRatio > 0.2) {
+  } else if(crowdScore > 0.15) {
     return "low";
   } else {
     return "empty";
@@ -245,94 +294,142 @@ String analyzeCrowdLevel() {
 }
 
 // =========================
-// City-V API'ye Rapor Gönderme
+// City-V API'ye Gelişmiş Rapor Gönderme
 // =========================
 void sendCrowdReport(String crowdLevel) {
   if(WiFi.status() != WL_CONNECTED) {
     Serial.println("❌ WiFi bağlantısı yok");
+    blinkLED(1, 500); // Hata göstergesi
     return;
   }
+
+  Serial.println("📡 City-V'ye rapor gönderiliyor...");
 
   HTTPClient http;
   http.begin("https://" + String(cityv_host) + api_endpoint);
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000); // 10 saniye timeout
+  http.addHeader("User-Agent", "ESP32-CAM/1.0");
+  http.setTimeout(15000); // 15 saniye timeout
 
-  // JSON payload oluştur
-  DynamicJsonDocument doc(512);
+  // Detaylı JSON payload oluştur
+  DynamicJsonDocument doc(1024);
   doc["locationId"] = location_name;
   doc["crowdLevel"] = crowdLevel;
   doc["timestamp"] = millis();
   doc["deviceId"] = device_id;
-  doc["coordinates"] = {
-    {"lat", 39.9334}, // Ankara koordinatları (değiştirin)
-    {"lng", 32.8597}
-  };
-  doc["metadata"] = {
-    {"ip", WiFi.localIP().toString()},
-    {"rssi", WiFi.RSSI()},
-    {"uptime", millis()},
-    {"freeHeap", ESP.getFreeHeap()}
-  };
+  doc["source"] = "esp32cam";
+  doc["version"] = "2.0";
+  
+  // Koordinatlar
+  JsonObject coordinates = doc.createNestedObject("coordinates");
+  coordinates["lat"] = 39.9334; // Ankara koordinatları (değiştirin)
+  coordinates["lng"] = 32.8597;
+  
+  // Gelişmiş metadata
+  JsonObject metadata = doc.createNestedObject("metadata");
+  metadata["ip"] = WiFi.localIP().toString();
+  metadata["mac"] = WiFi.macAddress();
+  metadata["rssi"] = WiFi.RSSI();
+  metadata["uptime"] = millis();
+  metadata["freeHeap"] = ESP.getFreeHeap();
+  metadata["totalHeap"] = ESP.getHeapSize();
+  metadata["cpuFreq"] = ESP.getCpuFreqMHz();
+  metadata["flashSize"] = ESP.getFlashChipSize();
+  metadata["psram"] = psramFound();
+  
+  // Kamera bilgileri
+  if(cameraInitialized) {
+    JsonObject camera = doc.createNestedObject("camera");
+    camera["initialized"] = true;
+    camera["psram"] = psramFound();
+    
+    sensor_t * s = esp_camera_sensor_get();
+    if(s) {
+      camera["framesize"] = s->status.framesize;
+      camera["quality"] = s->status.quality;
+    }
+  }
 
   String jsonString;
   serializeJson(doc, jsonString);
 
-  Serial.println("📡 City-V'ye rapor gönderiliyor...");
-  Serial.println("📄 Payload: " + jsonString);
+  Serial.println("📄 JSON Payload (" + String(jsonString.length()) + " bytes):");
+  Serial.println(jsonString);
 
   int httpResponseCode = http.POST(jsonString);
 
   if(httpResponseCode > 0) {
     String response = http.getString();
-    Serial.printf("✅ Rapor gönderildi! HTTP: %d\\n", httpResponseCode);
-    Serial.println("📨 Yanıt: " + response);
+    Serial.printf("✅ HTTP Yanıt: %d\n", httpResponseCode);
     
-    // LED'i yanıp söndür (başarı)
     if(httpResponseCode == 200) {
-      digitalWrite(33, HIGH); // Built-in LED (eğer varsa)
-      delay(100);
-      digitalWrite(33, LOW);
+      Serial.println("🎉 Rapor başarıyla gönderildi!");
+      Serial.println("📨 Sunucu yanıtı: " + response);
+      blinkLED(2, 100); // Başarı göstergesi
+    } else {
+      Serial.println("⚠️ Sunucu yanıtı: " + response);
+      blinkLED(1, 300); // Uyarı göstergesi
     }
   } else {
-    Serial.printf("❌ HTTP hatası: %d\\n", httpResponseCode);
+    Serial.printf("❌ HTTP hatası: %d (%s)\n", httpResponseCode, http.errorToString(httpResponseCode).c_str());
+    blinkLED(1, 500); // Hata göstergesi
   }
 
   http.end();
+  Serial.println("📡 HTTP bağlantısı kapatıldı\n");
 }
 
 // =========================
-// WiFi Bağlantısı
+// Gelişmiş WiFi Bağlantısı
 // =========================
 void connectWiFi() {
   Serial.println("🌐 WiFi'ya bağlanılıyor...");
-  Serial.println("📶 Ağ: " + String(ssid));
+  Serial.println("📶 Hedef ağ: " + String(ssid));
   
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 30) {
-    delay(1000);
+    delay(500);
     Serial.print(".");
+    
+    // LED ile bekleme göstergesi
+    digitalWrite(33, !digitalRead(33));
+    
     attempts++;
+    
+    // Her 10 denemede WiFi'yi reset et
+    if(attempts % 10 == 0) {
+      Serial.println("\n🔄 WiFi reset yapılıyor...");
+      WiFi.disconnect();
+      delay(1000);
+      WiFi.begin(ssid, password);
+    }
   }
   
+  digitalWrite(33, LOW); // LED'i söndür
+  
   if(WiFi.status() == WL_CONNECTED) {
-    Serial.println("");
-    Serial.println("✅ WiFi bağlandı!");
+    Serial.println("\n✅ WiFi bağlandı!");
     Serial.println("📍 IP Adresi: " + WiFi.localIP().toString());
-    Serial.println("📊 Sinyal Gücü: " + String(WiFi.RSSI()) + " dBm");
+    Serial.println("🌐 Gateway: " + WiFi.gatewayIP().toString());
+    Serial.println("📶 Sinyal gücü: " + String(WiFi.RSSI()) + " dBm");
+    Serial.println("📡 MAC Adresi: " + WiFi.macAddress());
+    blinkLED(3, 100); // Başarı göstergesi
   } else {
-    Serial.println("");
-    Serial.println("❌ WiFi bağlantısı başarısız!");
-    Serial.println("🔄 5 saniye sonra tekrar denenecek...");
+    Serial.println("\n❌ WiFi bağlantısı başarısız!");
+    Serial.println("🔄 10 saniye sonra tekrar denenecek...");
+    blinkLED(1, 1000); // Hata göstergesi
   }
 }
 
 // =========================
-// Kamera Konfigürasyonu  
+// Güç Optimize Kamera Konfigürasyonu  
 // =========================
 bool initCamera() {
+  Serial.println("📹 Kamera başlatılıyor...");
+  
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -355,74 +452,107 @@ bool initCamera() {
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
 
-  // Kalite ayarları (PSRAM varsa daha yüksek çözünürlük)
+  // PSRAM kontrolü ve güç optimize ayarlar
   if(psramFound()) {
-    config.frame_size = FRAMESIZE_UXGA;  // 1600x1200
-    config.jpeg_quality = 10;
+    config.frame_size = FRAMESIZE_VGA;  // 640x480
+    config.jpeg_quality = 15;
     config.fb_count = 2;
-    Serial.println("✅ PSRAM bulundu, yüksek kalite modu");
-  } else {
-    config.frame_size = FRAMESIZE_SVGA;  // 800x600  
-    config.jpeg_quality = 12;
+    Serial.println("✅ PSRAM bulundu, VGA kalite modu");
+} else {
+    config.frame_size = FRAMESIZE_QVGA; // 320x240
+    config.jpeg_quality = 20;
     config.fb_count = 1;
-    Serial.println("⚠️ PSRAM yok, standart kalite modu");
-  }
+    Serial.println("⚡ PSRAM yok, QVGA kalite modu");
+}
 
   // Kamerayı başlat
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
-    Serial.printf("❌ Kamera hatası: 0x%x\\n", err);
+    Serial.printf("❌ Kamera hatası: 0x%x\n", err);
+    cameraInitialized = false;
     return false;
   }
 
-  // Kamera sensör ayarları
+  // Güç optimize sensör ayarları
   sensor_t * s = esp_camera_sensor_get();
   if (s != NULL) {
-    s->set_brightness(s, 0);      // -2 to 2
-    s->set_contrast(s, 0);        // -2 to 2
-    s->set_saturation(s, 0);      // -2 to 2
-    s->set_special_effect(s, 0);  // 0 to 6 (0-No Effect, 1-Negative, 2-Grayscale, 3-Red Tint, 4-Green Tint, 5-Blue Tint, 6-Sepia)
-    s->set_whitebal(s, 1);        // 0 = disable , 1 = enable
-    s->set_awb_gain(s, 1);        // 0 = disable , 1 = enable
-    s->set_wb_mode(s, 0);         // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
-    s->set_exposure_ctrl(s, 1);   // 0 = disable , 1 = enable
-    s->set_aec2(s, 0);           // 0 = disable , 1 = enable
-    s->set_ae_level(s, 0);       // -2 to 2
-    s->set_aec_value(s, 300);    // 0 to 1200
-    s->set_gain_ctrl(s, 1);      // 0 = disable , 1 = enable
-    s->set_agc_gain(s, 0);       // 0 to 30
-    s->set_gainceiling(s, (gainceiling_t)0); // 0 to 6
-    s->set_bpc(s, 0);            // 0 = disable , 1 = enable
-    s->set_wpc(s, 1);            // 0 = disable , 1 = enable
-    s->set_raw_gma(s, 1);        // 0 = disable , 1 = enable
-    s->set_lenc(s, 1);           // 0 = disable , 1 = enable
-    s->set_hmirror(s, 0);        // 0 = disable , 1 = enable
-    s->set_vflip(s, 0);          // 0 = disable , 1 = enable
-    s->set_dcw(s, 1);            // 0 = disable , 1 = enable
-    s->set_colorbar(s, 0);       // 0 = disable , 1 = enable
+    s->set_brightness(s, 0);      // -2 to 2 (0=normal)
+    s->set_contrast(s, 0);        // -2 to 2 (0=normal)
+    s->set_saturation(s, -1);     // Biraz düşük saturasyon (güç tasarrufu)
+    s->set_special_effect(s, 0);  // Efekt yok
+    s->set_whitebal(s, 1);        // Auto white balance aktif
+    s->set_awb_gain(s, 1);        // AWB gain aktif
+    s->set_wb_mode(s, 0);         // Auto mode
+    s->set_exposure_ctrl(s, 1);   // Auto exposure aktif
+    s->set_aec2(s, 1);           // AEC DSP aktif
+    s->set_ae_level(s, 0);       // Normal exposure
+    s->set_aec_value(s, 300);    // Orta exposure value (güç tasarrufu)
+    s->set_gain_ctrl(s, 1);      // Auto gain aktif
+    s->set_agc_gain(s, 0);       // Auto gain seviyesi
+    s->set_gainceiling(s, (gainceiling_t)6); // Max gain ceiling
+    s->set_bpc(s, 1);            // Black pixel cancel aktif
+    s->set_wpc(s, 1);            // White pixel cancel aktif
+    s->set_raw_gma(s, 1);        // Gamma correction aktif
+    s->set_lenc(s, 1);           // Lens correction aktif
+    s->set_hmirror(s, 0);        // Yatay mirror kapalı
+    s->set_vflip(s, 0);          // Dikey flip kapalı
+    s->set_dcw(s, 1);            // DCW aktif
+    s->set_colorbar(s, 0);       // Color bar kapalı
+    
+    Serial.println("🎛️ Kamera sensör ayarları optimize edildi");
   }
 
+  cameraInitialized = true;
   Serial.println("✅ Kamera başarıyla başlatıldı");
+  
+  // Test frame çek
+  camera_fb_t * fb = esp_camera_fb_get();
+  if (fb) {
+    Serial.printf("📸 Test frame: %dx%d, %d bytes\n", fb->width, fb->height, fb->len);
+    esp_camera_fb_return(fb);
+  }
+  
   return true;
 }
 
 // =========================
-// SETUP - Başlangıç
+// SETUP - Gelişmiş Başlangıç
 // =========================
 void setup() {
   Serial.begin(115200);
-  Serial.println("🚀 ESP32-CAM City-V Entegrasyonu Başlıyor...");
+  
+  Serial.println("\n🚀🚀🚀 ESP32-CAM City-V Entegrasyonu v2.0 🚀🚀🚀");
+  Serial.println("====================================================");
+  
+  // ⚡ ÖNEMLİ: Brownout detector'ı devre dışı bırak (GÜÇ SORUNU ÇÖZÜMÜ)
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+  Serial.println("⚡ Brownout detector devre dışı bırakıldı (güç koruması)");
+  
   Serial.println("📍 Cihaz ID: " + String(device_id));
   Serial.println("🏢 Lokasyon: " + String(location_name));
 
   // GPIO ayarları
   pinMode(33, OUTPUT); // Built-in LED (varsa)
   digitalWrite(33, LOW);
+  
+  // Başlangıç LED animasyonu
+  blinkLED(3, 200);
 
   // Kamerayı başlat
   if(!initCamera()) {
-    Serial.println("💥 Kamera başlatılamadı, yeniden başlatılıyor...");
-    delay(5000);
+    Serial.println("💥 KRİTİK HATA: Kamera başlatılamadı!");
+    Serial.println("🔧 Kontrol listesi:");
+    Serial.println("   - Kamera kablolarını kontrol edin");
+    Serial.println("   - 5V/2A güç kaynağı kullanın");
+    Serial.println("   - GPIO0 bağlantısını çıkardığınızdan emin olun");
+    Serial.println("🔄 10 saniye sonra yeniden başlatılacak...");
+    
+    // Hata LED animasyonu
+    for(int i = 0; i < 10; i++) {
+      blinkLED(1, 1000);
+      delay(500);
+    }
+    
     ESP.restart();
   }
 
@@ -433,77 +563,136 @@ void setup() {
     // HTTP server'ları başlat  
     startCameraServer();
     
-    Serial.println("\\n🎯 ESP32-CAM hazır!");
+    // İlk test raporu
+    Serial.println("🧪 İlk test raporu gönderiliyor...");
+    sendCrowdReport("startup_test");
+    
+    Serial.println("\n🎉🎉🎉 ESP32-CAM BAŞARIYLA HAZIR! 🎉🎉🎉");
+    Serial.println("===============================================");
     Serial.println("📹 Kamera Stream: http://" + WiFi.localIP().toString() + "/stream");
     Serial.println("📊 Durum Bilgisi: http://" + WiFi.localIP().toString() + "/status");
     Serial.println("🌐 City-V Dashboard: https://" + String(cityv_host) + "/esp32");
-    Serial.println("\\n⏱️ Kalabalık analizi " + String(reportInterval/1000) + " saniyede bir yapılacak...");
+    Serial.println("===============================================");
+    Serial.printf("⏱️ Kalabalık analizi %d saniyede bir yapılacak\n", reportInterval/1000);
+    Serial.println("💡 Komutlar: status, test, analyze, restart, help");
+    Serial.println("===============================================\n");
+    
+    // Başarı LED kutlaması
+    blinkLED(5, 100);
   }
 }
 
 // =========================
-// LOOP - Ana Döngü
+// LOOP - Gelişmiş Ana Döngü
 // =========================
 void loop() {
-  // WiFi bağlantısını kontrol et
-  if(WiFi.status() != WL_CONNECTED) {
-    Serial.println("❌ WiFi bağlantısı kesildi, yeniden bağlanıyor...");
-    connectWiFi();
-    delay(5000);
-    return;
+  static unsigned long lastWiFiCheck = 0;
+  unsigned long currentTime = millis();
+
+  // Periyodik WiFi kontrolü (30 saniyede bir)
+  if(currentTime - lastWiFiCheck >= 30000) {
+    if(WiFi.status() != WL_CONNECTED) {
+      Serial.println("🔄 WiFi bağlantısı kesildi, yeniden bağlanılıyor...");
+      connectWiFi();
+    }
+    lastWiFiCheck = currentTime;
   }
 
   // Periyodik kalabalık analizi ve rapor
-  unsigned long currentTime = millis();
-  if(currentTime - lastReport >= reportInterval) {
-    Serial.println("\\n🔍 Kalabalık analizi yapılıyor...");
+  if(WiFi.status() == WL_CONNECTED && (currentTime - lastReport >= reportInterval)) {
+    Serial.println("\n🔍 Kalabalık analizi yapılıyor...");
     
     String crowdLevel = analyzeCrowdLevel();
     
-    if(crowdLevel != "error") {
+    if(crowdLevel != "error" && crowdLevel != "camera_error") {
       Serial.println("📊 Tespit edilen kalabalık seviyesi: " + crowdLevel);
       sendCrowdReport(crowdLevel);
     } else {
-      Serial.println("❌ Analiz hatası");
+      Serial.println("❌ Analiz hatası, sonraki döngüde tekrar denenecek");
     }
     
     lastReport = currentTime;
   }
 
-  // Seri port komutlarını dinle
+  // Gelişmiş seri port komut sistemi
   if(Serial.available()) {
-    String command = Serial.readString();
+    String command = Serial.readStringUntil('\n');
     command.trim();
+    command.toLowerCase();
     
-    if(command == "status") {
-      Serial.println("\\n📊 Cihaz Durumu:");
-      Serial.println("🆔 Device ID: " + String(device_id));
-      Serial.println("📍 Lokasyon: " + String(location_name));
-      Serial.println("🌐 IP: " + WiFi.localIP().toString());
-      Serial.println("📶 WiFi RSSI: " + String(WiFi.RSSI()) + " dBm");
-      Serial.println("⏰ Uptime: " + String(millis()/1000) + " saniye");
-      Serial.println("💾 Free Heap: " + String(ESP.getFreeHeap()) + " bytes");
+    Serial.println("💬 Komut alındı: " + command);
+    
+    if(command == "status" || command == "s") {
+      Serial.println("\n📊 DETAYLI CİHAZ DURUMU:");
+      Serial.println("=======================");
+      Serial.printf("🆔 Device ID: %s\n", device_id);
+      Serial.printf("📍 Lokasyon: %s\n", location_name);
+      Serial.printf("🌐 IP: %s\n", WiFi.localIP().toString().c_str());
+      Serial.printf("📡 MAC: %s\n", WiFi.macAddress().c_str());
+      Serial.printf("📶 WiFi RSSI: %d dBm\n", WiFi.RSSI());
+      Serial.printf("⏰ Uptime: %lu saniye (%lu dakika)\n", currentTime/1000, currentTime/60000);
+      Serial.printf("💾 Free Heap: %d / %d bytes\n", ESP.getFreeHeap(), ESP.getHeapSize());
+      Serial.printf("⚡ CPU Freq: %d MHz\n", ESP.getCpuFreqMHz());
+      Serial.printf("📹 Kamera: %s\n", cameraInitialized ? "Aktif" : "Hata");
+      Serial.printf("💽 PSRAM: %s\n", psramFound() ? "Aktif" : "Yok");
+      if(psramFound()) {
+        Serial.printf("💽 Free PSRAM: %d bytes\n", ESP.getFreePsram());
+      }
+      Serial.println("=======================\n");
     }
-    else if(command == "test") {
+    else if(command == "test" || command == "t") {
       Serial.println("🧪 Test raporu gönderiliyor...");
-      sendCrowdReport("moderate");
+      sendCrowdReport("test_command");
     }
-    else if(command == "analyze") {
-      Serial.println("🔍 Anlık analiz yapılıyor...");
+    else if(command == "analyze" || command == "a") {
+      Serial.println("🔍 Anlık kalabalık analizi yapılıyor...");
       String level = analyzeCrowdLevel();
-      Serial.println("📊 Sonuç: " + level);
+      Serial.println("📊 Analiz sonucu: " + level);
     }
-    else if(command == "restart") {
-      Serial.println("🔄 Cihaz yeniden başlatılıyor...");
+    else if(command == "restart" || command == "r") {
+      Serial.println("🔄 Sistem yeniden başlatılıyor...");
+      Serial.println("👋 Görüşürüz!");
       delay(1000);
       ESP.restart();
     }
+    else if(command == "wifi" || command == "w") {
+      Serial.println("🌐 WiFi yeniden bağlanılıyor...");
+      WiFi.disconnect();
+      delay(1000);
+      connectWiFi();
+    }
+    else if(command == "camera" || command == "c") {
+      if(cameraInitialized) {
+        camera_fb_t * fb = esp_camera_fb_get();
+        if(fb) {
+          Serial.printf("📸 Kamera testi başarılı: %dx%d, %d bytes\n", 
+                       fb->width, fb->height, fb->len);
+          esp_camera_fb_return(fb);
+        } else {
+          Serial.println("❌ Kamera frame alınamadı");
+        }
+      } else {
+        Serial.println("❌ Kamera başlatılmamış");
+      }
+    }
+    else if(command == "help" || command == "h" || command == "?") {
+      Serial.println("\n💡 MEVCUT KOMUTLAR:");
+      Serial.println("==================");
+      Serial.println("📊 status (s)   - Detaylı sistem durumu");
+      Serial.println("🧪 test (t)     - Test raporu gönder");
+      Serial.println("🔍 analyze (a)   - Anlık kalabalık analizi");
+      Serial.println("🔄 restart (r)   - Sistemi yeniden başlat");
+      Serial.println("🌐 wifi (w)      - WiFi yeniden bağlan");
+      Serial.println("📹 camera (c)    - Kamera testi");
+      Serial.println("💡 help (h/?)    - Bu yardım menüsü");
+      Serial.println("==================\n");
+    }
     else {
-      Serial.println("❓ Bilinmeyen komut: " + command);
-      Serial.println("💡 Mevcut komutlar: status, test, analyze, restart");
+      Serial.println("❓ Bilinmeyen komut: '" + command + "'");
+      Serial.println("💡 Yardım için 'help' yazın");
     }
   }
 
-  // CPU'yu rahatlatmak için kısa bekleme
-  delay(100);
+  // CPU rahatlatma
+  delay(50);
 }
