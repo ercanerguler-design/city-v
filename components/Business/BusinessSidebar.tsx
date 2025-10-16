@@ -1,6 +1,7 @@
 'use client';
 
 import { type Business } from '@/store/businessStore';
+import { useRouter } from 'next/navigation';
 
 interface BusinessSidebarProps {
   business: Business;
@@ -11,7 +12,13 @@ interface BusinessSidebarProps {
   onLogout: () => void;
 }
 
-const menuItems = [
+const menuItems: Array<{
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  isExternal?: boolean;
+  href?: string;
+}> = [
   {
     id: 'dashboard',
     label: 'Ana Sayfa',
@@ -67,6 +74,17 @@ const menuItems = [
     )
   },
   {
+    id: 'iot',
+    label: 'IoT',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+      </svg>
+    ),
+    isExternal: true,
+    href: '/esp32/multi'
+  },
+  {
     id: 'settings',
     label: 'Ayarlar',
     icon: (
@@ -86,6 +104,16 @@ export default function BusinessSidebar({
   setIsOpen, 
   onLogout 
 }: BusinessSidebarProps) {
+  const router = useRouter();
+
+  const handleMenuClick = (item: typeof menuItems[0]) => {
+    if (item.isExternal && item.href) {
+      router.push(item.href);
+    } else {
+      setActiveView(item.id);
+    }
+  };
+
   return (
     <aside className={`fixed top-0 left-0 z-40 h-screen bg-white border-r border-gray-200 transition-all duration-300 ${
       isOpen ? 'w-64' : 'w-16'
@@ -117,7 +145,7 @@ export default function BusinessSidebar({
           {menuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveView(item.id)}
+              onClick={() => handleMenuClick(item)}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left transition-all duration-200 ${
                 activeView === item.id
                   ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'

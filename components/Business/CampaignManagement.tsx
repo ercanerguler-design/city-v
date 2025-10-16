@@ -8,9 +8,11 @@ interface CampaignManagementProps {
 }
 
 export default function CampaignManagement({ business }: CampaignManagementProps) {
-  const { campaigns, createCampaign, updateCampaign, toggleCampaign, deleteCampaign } = useBusinessStore();
+  const { campaigns, createCampaign, updateCampaign, toggleCampaign, deleteCampaign, sendCampaignNotification } = useBusinessStore();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [selectedCampaignForNotification, setSelectedCampaignForNotification] = useState<string>('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -93,6 +95,32 @@ export default function CampaignManagement({ business }: CampaignManagementProps
     return 'bg-green-500';
   };
 
+  const handleSendNotification = async () => {
+    if (!selectedCampaignForNotification) {
+      alert('⚠️ Lütfen bir kampanya seçin!');
+      return;
+    }
+
+    const campaign = campaigns.find(c => c.id === selectedCampaignForNotification);
+    if (!campaign) {
+      alert('❌ Kampanya bulunamadı!');
+      return;
+    }
+
+    // Send notification
+    const success = await sendCampaignNotification(selectedCampaignForNotification);
+    
+    if (success) {
+      alert(`✅ "${campaign.title}" kampanyası tüm City-V kullanıcılarına gönderildi!`);
+      setIsNotificationModalOpen(false);
+      setSelectedCampaignForNotification('');
+    } else {
+      alert('❌ Bildirim gönderilirken hata oluştu!');
+    }
+  };
+
+  const activeCampaigns = campaigns.filter(c => c.isActive && !c.notificationSent);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -102,15 +130,27 @@ export default function CampaignManagement({ business }: CampaignManagementProps
           <p className="text-gray-600">Promosyonları ve kampanyaları yönetin</p>
         </div>
         
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          <span>Yeni Kampanya</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsNotificationModalOpen(true)}
+            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl flex items-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <span>📢 Kampanya Bildirimi Gönder</span>
+          </button>
+          
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span>Yeni Kampanya</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -462,6 +502,133 @@ export default function CampaignManagement({ business }: CampaignManagementProps
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 📢 PUSH NOTIFICATION MODAL */}
+      {isNotificationModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold">📢 Kampanya Bildirimi Gönder</h2>
+                    <p className="text-white/80 text-sm mt-1">City-V kullanıcılarına push bildirim</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsNotificationModalOpen(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Info Card */}
+              <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 mb-1">📣 Bilgilendirme</h3>
+                    <p className="text-sm text-gray-600">
+                      Seçtiğiniz kampanya, City-V ana sayfasında bulunan <strong>TÜM kullanıcılara</strong> push bildirim olarak gönderilecek.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Campaign Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-3">
+                  🎯 Kampanya Seçin
+                </label>
+                {activeCampaigns.length === 0 ? (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                    <p className="text-yellow-800">⚠️ Aktif kampanya bulunamadı!</p>
+                    <p className="text-sm text-yellow-600 mt-1">Önce bir kampanya oluşturun.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                    {activeCampaigns.map((campaign) => (
+                      <label
+                        key={campaign.id}
+                        className={`block p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                          selectedCampaignForNotification === campaign.id
+                            ? 'border-purple-500 bg-purple-50 shadow-lg'
+                            : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="campaign"
+                          value={campaign.id}
+                          checked={selectedCampaignForNotification === campaign.id}
+                          onChange={(e) => setSelectedCampaignForNotification(e.target.value)}
+                          className="sr-only"
+                        />
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-semibold text-gray-900">{campaign.title}</span>
+                              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                                {getCampaignTypeLabel(campaign.type)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">{campaign.description}</p>
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span>💰 {campaign.type === 'discount' ? `%${campaign.value} İndirim` : campaign.value}</span>
+                              <span>📅 {new Date(campaign.startDate).toLocaleDateString('tr-TR')} - {new Date(campaign.endDate).toLocaleDateString('tr-TR')}</span>
+                            </div>
+                          </div>
+                          {selectedCampaignForNotification === campaign.id && (
+                            <div className="ml-3 p-1 bg-purple-500 rounded-full">
+                              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t">
+                <button
+                  onClick={() => {
+                    setIsNotificationModalOpen(false);
+                    setSelectedCampaignForNotification('');
+                  }}
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium"
+                >
+                  ❌ İptal
+                </button>
+                <button
+                  onClick={handleSendNotification}
+                  disabled={!selectedCampaignForNotification}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg hover:shadow-xl"
+                >
+                  📢 Gönder
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

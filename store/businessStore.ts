@@ -115,6 +115,22 @@ export interface Campaign {
   maxUsage?: number;
   targetAudience?: string[];
   discountCode?: string;
+  notificationSent?: boolean; // Push bildirim gönderildi mi?
+  notificationSentAt?: number; // Ne zaman gönderildi?
+}
+
+// 🎥 City-V IoT Live Crowd Data
+export interface LiveCrowdData {
+  locationId: string;
+  businessName: string;
+  currentCount: number; // Şu anki kişi sayısı
+  totalEntry: number; // Toplam giriş
+  totalExit: number; // Toplam çıkış
+  timestamp: number;
+  occupancyRate: number; // Doluluk oranı %
+  crowdLevel: 'Boş' | 'Orta' | 'Yoğun' | 'Çok Yoğun';
+  maxCapacity: number; // Maksimum kapasite
+  esp32Ip?: string; // Cihaz IP adresi
 }
 
 export interface Reservation {
@@ -157,6 +173,10 @@ interface BusinessStore {
   isAuthenticated: boolean;
   loading: boolean;
   activeView: string;
+  
+  // 🎥 Live Crowd State
+  liveCrowdData: LiveCrowdData | null;
+  esp32Connected: boolean; // IoT device connection status
 
   // Actions
   login: (email: string, password: string) => Promise<boolean>;
@@ -194,6 +214,16 @@ interface BusinessStore {
   getFeedback: (category?: string) => CustomerFeedback[];
   respondToFeedback: (feedbackId: string, response: string) => void;
   
+  // 🎥 City-V IoT Live Crowd Management
+  updateLiveCrowd: (data: LiveCrowdData) => void;
+  setESP32Connection: (connected: boolean) => void;
+  getOccupancyPercentage: () => number;
+  getCrowdTrend: () => 'increasing' | 'decreasing' | 'stable';
+  
+  // 📢 Push Notification System
+  sendCampaignNotification: (campaignId: string) => Promise<boolean>;
+  markCampaignNotified: (campaignId: string) => void;
+  
   // UI State
   setActiveView: (view: string) => void;
 }
@@ -212,6 +242,8 @@ const useBusinessStore = create<BusinessStore>()(
       isAuthenticated: false,
       loading: false,
       activeView: 'dashboard',
+      liveCrowdData: null,
+      esp32Connected: false,
 
       // Authentication
       login: async (email: string, password: string) => {
@@ -698,7 +730,134 @@ const useBusinessStore = create<BusinessStore>()(
           reservations: mockReservations,
           feedback: mockFeedback
         });
-      }
+      },
+      
+      // 🎥 City-V IoT Live Crowd Management
+      updateLiveCrowd: (data: LiveCrowdData) => {
+        console.log(`📊 [BusinessStore] Live crowd updated: ${data.currentCount} kişi (${data.crowdLevel})`);
+        set({ liveCrowdData: data, esp32Connected: true });
+        
+        // localStorage'a da kaydet (ana sayfa için public API)
+        if (typeof window !== 'undefined') {
+          const publicData = {
+            locationId: data.locationId,
+            businessName: data.businessName,
+            currentCount: data.currentCount,
+            crowdLevel: data.crowdLevel,
+            occupancyRate: data.occupancyRate,
+            timestamp: data.timestamp,
+          };
+          localStorage.setItem(`cityv_crowd_${data.locationId}`, JSON.stringify(publicData));
+          
+          // Global event dispatch (ana sayfa için)
+          window.dispatchEvent(new CustomEvent('cityv:crowd-update', { detail: publicData }));
+        }
+      },
+      
+      setESP32Connection: (connected: boolean) => {
+        set({ esp32Connected: connected });
+        console.log(`📡 [BusinessStore] IoT device connection: ${connected ? 'ONLINE' : 'OFFLINE'}`);
+      },
+      
+      getOccupancyPercentage: () => {
+        const { liveCrowdData } = get();
+        if (!liveCrowdData) return 0;
+        return Math.min(100, liveCrowdData.occupancyRate);
+      },
+      
+      getCrowdTrend: () => {
+        const { liveCrowdData } = get();
+        if (!liveCrowdData) return 'stable';
+        
+        const diff = liveCrowdData.totalEntry - liveCrowdData.totalExit;
+        if (diff > 3) return 'increasing';
+        if (diff < -3) return 'decreasing';
+        return 'stable';
+      },
+      
+      // 📢 Push Notification System
+      sendCampaignNotification: async (campaignId: string) => {
+        const state = get();
+        const campaign = state.campaigns.find(c => c.id === campaignId);
+        
+        if (!campaign) {
+          console.error('❌ [BusinessStore] Campaign not found:', campaignId);
+          return false;
+        }
+        
+        console.log('📢 [BusinessStore] Sending push notification:', campaign.title);
+        
+        try {
+          // Simüle edilmiş API çağrısı (gerçek uygulamada backend'e gönderilir)
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Browser Notification API
+          if (typeof window !== 'undefined' && 'Notification' in window) {
+            if (Notification.permission === 'granted') {
+              new Notification('🎉 Yeni Kampanya!', {
+                body: `${campaign.title} - ${campaign.description}`,
+                icon: '/icon-192x192.png',
+                tag: campaign.id,
+                badge: '/icon-72x72.png',
+              });
+            } else if (Notification.permission !== 'denied') {
+              const permission = await Notification.requestPermission();
+              if (permission === 'granted') {
+                new Notification('🎉 Yeni Kampanya!', {
+                  body: `${campaign.title} - ${campaign.description}`,
+                  icon: '/icon-192x192.png',
+                });
+              }
+            }
+          }
+          
+          // Global event dispatch (ana sayfa için)
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('cityv:campaign-notification', {
+              detail: {
+                id: campaign.id,
+                title: campaign.title,
+                description: campaign.description,
+                type: campaign.type,
+                value: campaign.value,
+                businessName: state.currentBusiness?.name || 'Bir İşletme',
+                timestamp: Date.now(),
+              },
+            }));
+          }
+          
+          // Mark campaign as notified
+          get().markCampaignNotified(campaignId);
+          
+          // Show notification store update
+          const notificationStore = useNotificationStore.getState();
+          notificationStore.addNotification(
+            `📢 "${campaign.title}" kampanyası tüm kullanıcılara bildirildi!`
+          );
+          
+          console.log('✅ [BusinessStore] Notification sent successfully!');
+          return true;
+          
+        } catch (error) {
+          console.error('❌ [BusinessStore] Notification error:', error);
+          const notificationStore = useNotificationStore.getState();
+          notificationStore.addNotification(
+            'Bildirim gönderilirken hata oluştu!'
+          );
+          return false;
+        }
+      },
+      
+      markCampaignNotified: (campaignId: string) => {
+        set((state) => ({
+          campaigns: state.campaigns.map(c =>
+            c.id === campaignId 
+              ? { ...c, notificationSent: true, notificationSentAt: Date.now() } 
+              : c
+          ),
+        }));
+        console.log('✅ [BusinessStore] Campaign marked as notified:', campaignId);
+      },
     }),
     {
       name: 'business-store',

@@ -9,9 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.2.3",
+    "@tensorflow-models/coco-ssd": "^2.2.3",
+    "@tensorflow/tfjs": "^4.22.0",
     "@turf/distance": "^7.2.0",
     "@turf/helpers": "^7.2.0",
     "@types/leaflet": "^1.9.21",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.24",
     "leaflet": "^1.9.4",

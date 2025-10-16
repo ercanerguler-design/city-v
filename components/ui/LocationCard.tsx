@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Location, CrowdLevel } from '@/types';
-import { MapPin, Clock, Bell, Heart, Navigation, TrendingUp, MessageCircle, Star, Camera } from 'lucide-react';
+import { MapPin, Clock, Bell, Heart, Navigation, TrendingUp, MessageCircle, Star, Camera, Users } from 'lucide-react';
 import { getCategoryIcon, getCategoryColor, getCategoryById } from '@/lib/categories';
 import { useFilterStore } from '@/store/filterStore';
 import { useFavoritesStore } from '@/lib/stores/favoritesStore';
@@ -64,10 +64,44 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
   const photos = getLocationPhotos(location.id);
   const rating = getLocationRating(location.id);
 
+  // 🎥 Live Crowd Data
+  const [liveCrowdData, setLiveCrowdData] = useState<any>(null);
+
   // Hydration hatası önlemek için mount sonrası render
   useEffect(() => {
     setMounted(true);
-  }, []);
+    
+    // Load live crowd data from localStorage
+    const loadLiveCrowdData = () => {
+      const data = localStorage.getItem(`cityv_crowd_${location.id}`);
+      if (data) {
+        try {
+          setLiveCrowdData(JSON.parse(data));
+        } catch (error) {
+          console.error('Failed to parse crowd data:', error);
+        }
+      }
+    };
+
+    loadLiveCrowdData();
+    
+    // Listen for crowd updates
+    const handleCrowdUpdate = (event: any) => {
+      if (event.detail.locationId === location.id) {
+        setLiveCrowdData(event.detail);
+      }
+    };
+
+    window.addEventListener('cityv:crowd-update', handleCrowdUpdate);
+    
+    // Refresh every 5 seconds
+    const interval = setInterval(loadLiveCrowdData, 5000);
+    
+    return () => {
+      window.removeEventListener('cityv:crowd-update', handleCrowdUpdate);
+      clearInterval(interval);
+    };
+  }, [location.id]);
 
   return (
     <motion.div
@@ -168,20 +202,35 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
             )}
           </div>
           
-          {/* Kalabalık durumu - sadece açık mekanlar için, kapalıysa boş göster */}
-          {(isOpen && location.currentCrowdLevel !== 'empty') || location.averageWaitTime > 0 ? (
-            <div className={cn(
-              'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white font-bold text-sm bg-gradient-to-r shadow-md',
-              getCrowdColor(location.currentCrowdLevel)
-            )}>
-              <TrendingUp className="w-4 h-4" />
-              {getCrowdLevelText(location.currentCrowdLevel)}
-            </div>
+          {/* 🎥 Live Crowd Data Badge (if available) */}
+          {liveCrowdData ? (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white font-bold text-sm bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg border-2 border-white/20"
+            >
+              <Users className="w-4 h-4 animate-pulse" />
+              <span>ŞU AN: {liveCrowdData.currentCount} KİŞİ</span>
+              <span className="text-xs opacity-80">({liveCrowdData.crowdLevel})</span>
+            </motion.div>
           ) : (
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-gray-500 font-bold text-sm bg-gray-100 border-2 border-dashed border-gray-300">
-              <Clock className="w-4 h-4" />
-              Kapalı - Veri Yok
-            </div>
+            <>
+              {/* Kalabalık durumu - sadece açık mekanlar için, kapalıysa boş göster */}
+              {(isOpen && location.currentCrowdLevel !== 'empty') || location.averageWaitTime > 0 ? (
+                <div className={cn(
+                  'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white font-bold text-sm bg-gradient-to-r shadow-md',
+                  getCrowdColor(location.currentCrowdLevel)
+                )}>
+                  <TrendingUp className="w-4 h-4" />
+                  {getCrowdLevelText(location.currentCrowdLevel)}
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-gray-500 font-bold text-sm bg-gray-100 border-2 border-dashed border-gray-300">
+                  <Clock className="w-4 h-4" />
+                  Kapalı - Veri Yok
+                </div>
+              )}
+            </>
           )}
           
           {/* Working Hours Badge - Sadece client-side render */}

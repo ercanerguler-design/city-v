@@ -3,6 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, Wifi, WifiOff, Play, Pause, Settings, MapPin, Clock } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const LocationSelector = dynamic(() => import('./LocationSelector'), {
+  ssr: false,
+});
 
 interface ESP32Device {
   id: string;
@@ -12,6 +17,10 @@ interface ESP32Device {
   location: string;
   lastSeen: string;
   crowdLevel: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 export default function ESP32Dashboard() {
@@ -30,7 +39,16 @@ export default function ESP32Dashboard() {
   const [selectedDevice, setSelectedDevice] = useState<ESP32Device | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [newDeviceIp, setNewDeviceIp] = useState('');
+  const [showLocationSelector, setShowLocationSelector] = useState(false);
+  const [deviceToSetLocation, setDeviceToSetLocation] = useState<ESP32Device | null>(null);
   const streamRef = useRef<HTMLImageElement>(null);
+
+  // Yeni cihaz eklendiğinde otomatik olarak son eklenen cihazı seç
+  useEffect(() => {
+    if (devices.length > 0) {
+      setSelectedDevice(devices[devices.length - 1]);
+    }
+  }, [devices]);
 
   // ESP32-CAM cihazlarını kontrol et
   const checkDeviceStatus = async (device: ESP32Device) => {
@@ -53,19 +71,42 @@ export default function ESP32Dashboard() {
 
   // Kamera stream başlat
   const startStream = (device: ESP32Device) => {
+    console.log(`🎥 Stream başlatılıyor: ${device.ip}`);
+    
     setSelectedDevice(device);
+    
+    // Önce streamRef var mı kontrol et
+    if (!streamRef.current) {
+      console.error('❌ streamRef.current null! Lütfen bir saniye bekleyin ve tekrar deneyin.');
+      // Bir sonraki render cycle'da tekrar dene
+      setTimeout(() => {
+        if (streamRef.current) {
+          startStream(device);
+        } else {
+          console.error('❌ streamRef hala null, DOM güncellemesini bekleyin');
+        }
+      }, 100);
+      return;
+    }
+    
+    // Stream'i başlat
     setIsStreaming(true);
     
-    if (streamRef.current) {
-      streamRef.current.src = `http://${device.ip}/stream`;
-    }
+    // Localhost proxy kullan (CORS sorunu çözümü için)
+    const streamUrl = `/api/esp32/proxy?ip=${device.ip}`;
+    streamRef.current.src = streamUrl;
+    console.log(`✅ Stream proxy URL atandı: ${streamUrl}`);
+    console.log(`📡 Hedef ESP32: http://${device.ip}/stream`);
+    console.log(`🔗 streamRef durumu:`, streamRef.current ? 'Mevcut' : 'Null');
   };
 
   // Stream durdur
   const stopStream = () => {
+    console.log('⏹️ Stream durduruluyor');
     setIsStreaming(false);
     if (streamRef.current) {
       streamRef.current.src = '';
+      console.log('✅ Stream URL temizlendi');
     }
   };
 
@@ -78,16 +119,58 @@ export default function ESP32Dashboard() {
       name: `ESP32-CAM ${devices.length + 1}`,
       ip: newDeviceIp,
       status: 'offline',
-      location: 'Yeni Lokasyon',
+      location: 'Konum seçilmedi',
       lastSeen: new Date().toISOString(),
       crowdLevel: 'unknown'
     };
-    
+
     setDevices(prev => [...prev, newDevice]);
     setNewDeviceIp('');
-    
+
     // Cihaz durumunu kontrol et
     await checkDeviceStatus(newDevice);
+    
+    // Konum seçici aç
+    setDeviceToSetLocation(newDevice);
+    setShowLocationSelector(true);
+  };
+
+  // Cihaz konumunu güncelle
+  const updateDeviceLocation = (deviceId: string, lat: number, lng: number, address?: string) => {
+    setDevices(prev => prev.map(d => 
+      d.id === deviceId 
+        ? { 
+            ...d, 
+            location: address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+            coordinates: { lat, lng }
+          }
+        : d
+    ));
+    setShowLocationSelector(false);
+    setDeviceToSetLocation(null);
+  };
+
+  // ESP32'den otomatik konum al
+  const fetchDeviceLocation = async (device: ESP32Device) => {
+    try {
+      const response = await fetch(`http://${device.ip}/status`);
+      const data = await response.json();
+      
+      if (data.coordinates && data.coordinates.lat && data.coordinates.lng) {
+        const { lat, lng } = data.coordinates;
+        const address = data.coordinates.address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        
+        updateDeviceLocation(device.id, lat, lng, address);
+        
+        console.log('✅ Konum ESP32\'den alındı:', { lat, lng, address });
+        alert(`✅ Konum başarıyla alındı!\n📍 ${address}\n🗺️ ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+      } else {
+        alert('❌ ESP32\'den konum bilgisi alınamadı. Cihazın "getlocation" komutunu çalıştırdığınızdan emin olun.');
+      }
+    } catch (error) {
+      console.error('ESP32 konum alma hatası:', error);
+      alert('❌ ESP32\'ye bağlanılamadı. Cihazın çevrimiçi olduğundan emin olun.');
+    }
   };
 
   // Kalabalık seviyesi rengi
@@ -218,6 +301,36 @@ export default function ESP32Dashboard() {
                     </div>
 
                     <div className="flex space-x-2">
+                      {/* Konum Ayarla Butonu (Manuel) */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeviceToSetLocation(device);
+                          setShowLocationSelector(true);
+                        }}
+                        className="text-purple-500 hover:text-purple-600 p-1"
+                        title="Manuel Konum Ayarla"
+                      >
+                        <MapPin className="w-4 h-4" />
+                      </button>
+
+                      {/* Otomatik Konum Al Butonu */}
+                      {device.status === 'online' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fetchDeviceLocation(device);
+                          }}
+                          className="text-green-500 hover:text-green-600 p-1"
+                          title="ESP32'den Otomatik Konum Al"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </button>
+                      )}
+                      
                       {device.status === 'online' && (
                         <>
                           <button
@@ -226,6 +339,7 @@ export default function ESP32Dashboard() {
                               startStream(device);
                             }}
                             className="text-blue-500 hover:text-blue-600 p-1"
+                            title="Stream Başlat"
                           >
                             <Play className="w-4 h-4" />
                           </button>
@@ -235,6 +349,7 @@ export default function ESP32Dashboard() {
                               checkDeviceStatus(device);
                             }}
                             className="text-gray-500 hover:text-gray-600 p-1"
+                            title="Durumu Kontrol Et"
                           >
                             <Settings className="w-4 h-4" />
                           </button>
@@ -280,13 +395,27 @@ export default function ESP32Dashboard() {
                         Durdur
                       </button>
                     ) : (
-                      <button
-                        onClick={() => selectedDevice && startStream(selectedDevice)}
-                        className="flex items-center px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                      >
-                        <Play className="w-4 h-4 mr-1" />
-                        Başlat
-                      </button>
+                      <>
+                        <button
+                          onClick={() => selectedDevice && startStream(selectedDevice)}
+                          className="flex items-center px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                        >
+                          <Play className="w-4 h-4 mr-1" />
+                          Başlat
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (selectedDevice) {
+                              const directUrl = `http://${selectedDevice.ip}/stream`;
+                              console.log('🧪 Direkt test URL:', directUrl);
+                              window.open(directUrl, '_blank');
+                            }
+                          }}
+                          className="flex items-center px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                        >
+                          Test Direct
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -294,30 +423,39 @@ export default function ESP32Dashboard() {
             </div>
 
             <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden" style={{ height: '500px' }}>
-              {isStreaming && selectedDevice ? (
-                <img
-                  ref={streamRef}
-                  alt="ESP32-CAM Stream"
-                  className="w-full h-full object-cover"
-                  onError={() => {
-                    console.error('Stream hatası');
-                    setIsStreaming(false);
-                  }}
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                  <div className="text-center">
-                    <Camera className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg mb-2">Kamera Stream'i</p>
-                    <p className="text-sm">
-                      {selectedDevice 
-                        ? 'Başlat butonuna tıklayarak stream\'i başlatın' 
-                        : 'Bir cihaz seçin ve stream\'i başlatın'
-                      }
-                    </p>
-                  </div>
+              {/* Stream görüntüsü - her zaman mevcut, sadece göster/gizle */}
+              <img
+                ref={streamRef}
+                alt="ESP32-CAM Stream"
+                className={`w-full h-full object-cover transition-opacity duration-300 ${
+                  isStreaming && selectedDevice ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}
+                onLoad={() => {
+                  console.log('✅ Stream görüntüsü yüklendi');
+                }}
+                onError={(e) => {
+                  console.error('❌ Stream hatası:', e);
+                  console.error('❌ Hatalı URL:', streamRef.current?.src);
+                  console.error('❌ Cihaz IP:', selectedDevice?.ip);
+                  setIsStreaming(false);
+                }}
+              />
+              
+              {/* Placeholder - stream aktif değilken göster */}
+              <div className={`flex items-center justify-center h-full text-gray-500 dark:text-gray-400 absolute inset-0 transition-opacity duration-300 ${
+                isStreaming && selectedDevice ? 'opacity-0 pointer-events-none' : 'opacity-100'
+              }`}>
+                <div className="text-center">
+                  <Camera className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg mb-2">Kamera Stream'i</p>
+                  <p className="text-sm">
+                    {selectedDevice 
+                      ? 'Başlat butonuna tıklayarak stream\'i başlatın' 
+                      : 'Bir cihaz seçin ve stream\'i başlatın'
+                    }
+                  </p>
                 </div>
-              )}
+              </div>
 
               {/* Stream Overlay */}
               {isStreaming && selectedDevice && (
@@ -359,6 +497,19 @@ export default function ESP32Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Location Selector Modal */}
+      {showLocationSelector && deviceToSetLocation && (
+        <LocationSelector
+          onLocationSelect={(lat, lng, address) => {
+            updateDeviceLocation(deviceToSetLocation.id, lat, lng, address);
+          }}
+          onCancel={() => {
+            setShowLocationSelector(false);
+            setDeviceToSetLocation(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { X, Filter, Map as MapIcon, Grid3x3, Search, Sparkles } from 'lucide-rea
 import toast from 'react-hot-toast';
 
 // Components
-import Header from '@/components/Layout/Header';
+import ProHeader from '@/components/Layout/ProHeader';
 import LocationCard from '@/components/ui/LocationCard';
 import ReportForm from '@/components/CrowdReport/ReportForm';
 import AuthModal from '@/components/Auth/AuthModal';
@@ -549,22 +549,14 @@ export default function ProfessionalHome() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
-      {/* Header */}
-      <Header
-        stats={realTimeStats}
-        onAnalyticsClick={() => setShowAnalytics(!showAnalytics)}
+      {/* 🎨 Ultra-Professional Header */}
+      <ProHeader
         onAuthClick={() => setShowAuthModal(true)}
         onPremiumClick={() => setShowPremiumModal(true)}
-        onGamificationClick={() => setShowGamification(!showGamification)}
-        onRecommendationsClick={() => setShowRecommendations(!showRecommendations)}
-        onMapControlsClick={() => setShowMapControls(!showMapControls)}
-        onPWASettingsClick={() => setShowPWASettings(true)}
-        onTrackedLocationsClick={() => setShowTrackedLocations(!showTrackedLocations)}
         onProfileClick={() => setShowProfileModal(true)}
         onSettingsClick={() => setShowSettingsModal(true)}
         onNotificationsClick={() => setShowNotifications(true)}
         onAIClick={() => setShowAIChat(true)}
-        onLiveCrowdClick={() => setShowLiveCrowd(!showLiveCrowd)}
         onPhotoGalleryClick={() => setShowPhotoGallery(true)}
       />
 

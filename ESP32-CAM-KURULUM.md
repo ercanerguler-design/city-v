@@ -1,6 +1,18 @@
 # 🚀 ESP32-CAM City-V Entegrasyonu Kurulum Rehberi
 
-## 📦 Gerekli Malzemeler
+## � Firmware Versiyonu: **v3.0** (2025-10-15)
+
+### ✨ v3.0 Yeni Özellikler:
+- ✅ **Zone-based AI Analysis** (3x3 grid crowd detection)
+- ✅ **Real-time Object Detection** (kişi, masa, sandalye)
+- ✅ **CORS-enabled Streaming** (web entegrasyonu)
+- ✅ **RESTful API** (/stream, /status, /analyze)
+- ✅ **Auto-reconnect WiFi**
+- ✅ **Brownout detector fix**
+
+---
+
+## �📦 Gerekli Malzemeler
 - **ESP32-CAM modülü** (AI-Thinker versiyonu önerili)
 - **USB-Serial adaptörü** (CP2102 veya CH340G)
 - **Jumper kablolar**

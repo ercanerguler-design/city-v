@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32-CAM Stream Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+            font-family: Arial;
+        }
+        #stream {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            border: 3px solid lime;
+        }
+        h1 {
+            color: lime;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎥 ESP32-CAM Direct Stream Test</h1>
+    <p>Stream URL: http://192.168.1.9/stream</p>
+    
+    <!-- MJPEG Stream - Basit IMG yöntemi -->
+    <img id="stream" src="http://192.168.1.9/stream" alt="ESP32-CAM Stream">
+    
+    <script>
+        const img = document.getElementById('stream');
+        
+        img.onload = () => {
+            console.log('✅ Stream yüklendi!', img.naturalWidth, 'x', img.naturalHeight);
+        };
+        
+        img.onerror = (e) => {
+            console.error('❌ Stream hatası:', e);
+            alert('Stream bağlanamadı! CORS veya network sorunu olabilir.');
+        };
+    </script>
+</body>
+</html>

@@ -1,19 +1,45 @@
 /*
- * ESP32-CAM City-V Entegrasyonu
- * Bu kod ESP32-CAM'inizi City-V platformuna bağlar
+ * ========================================
+ * 🎥 ESP32-CAM City-V AI Analiz Sistemi
+ * ========================================
  * 
- * Özellikler:
- * - Brownout detector fix dahil
- * - Canlı kamera stream
- * - Otomatik kalabalık analizi
- * - WiFi bağlantısı
- * - City-V API entegrasyonu
+ * 📌 VERSİYON: v3.0 (2025-10-15)
+ * 📌 YAZAR: City-V Team
+ * 📌 MODEL: AI-Thinker ESP32-CAM
  * 
- * Gerekli Kütüphaneler:
+ * 🎯 YENİ ÖZELLİKLER (v3.0):
+ * ✅ Zone-based crowd analysis (3x3 grid)
+ * ✅ Multi-factor scoring (dark, motion, edge, zone occupancy)
+ * ✅ CORS-enabled streaming for web integration
+ * ✅ Real-time AI detection support
+ * ✅ RESTful API endpoints (/stream, /status, /analyze)
+ * ✅ Brownout detector fix
+ * ✅ Auto-reconnect WiFi
+ * ✅ City-V platform integration
+ * 
+ * 📡 API ENDPOINTS:
+ * - http://[IP]/stream      → Canlı video stream (MJPEG)
+ * - http://[IP]/status      → Cihaz durumu (JSON)
+ * - http://[IP]/analyze     → Manuel analiz tetikle
+ * - http://[IP]/capture     → Tek frame yakala (gelecek)
+ * 
+ * 📦 GEREKLİ KÜTÜPHANELER:
  * - ESP32 Camera (esp_camera.h)
- * - WiFi
- * - HTTPClient  
- * - ArduinoJson
+ * - WiFi, HTTPClient
+ * - ArduinoJson (v6+)
+ * 
+ * 🔧 KURULUM:
+ * 1. Arduino IDE → Boards Manager → ESP32 by Espressif (v2.0.0+)
+ * 2. Tools → Board → AI Thinker ESP32-CAM
+ * 3. Tools → Partition Scheme → Huge APP (3MB No OTA)
+ * 4. WiFi bilgilerini güncelleyin (ssid, password)
+ * 5. Upload (GPIO0'ı GND'ye bağlayın)
+ * 
+ * 🚀 KULLANIM:
+ * 1. Serial Monitor'den IP adresini öğrenin
+ * 2. http://localhost:3000/esp32 → Dashboard
+ * 3. IP girin ve "Canlı İzlemeyi Başlat" tıklayın
+ * 4. AI tespit otomatik başlar (5sn aralıklarla)
  */
 
 #include "esp_camera.h"
@@ -49,17 +75,18 @@
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
-// =========================
-// WiFi ve API Konfigürasyonu
-// =========================
-const char* ssid = "ErcanSce";              // WiFi ağ adınızı buraya yazın
-const char* password = "Ka250806Ka";      // WiFi şifrenizi buraya yazın
+// ========================================
+// 🌐 WiFi ve API Konfigürasyonu
+// ========================================
+// ⚠️ ÖNEMLİ: Kendi WiFi bilgilerinizi buraya yazın!
+const char* ssid = "ErcanSce";                    // 📡 WiFi ağ adınız
+const char* password = "Ka250806Ka";              // 🔒 WiFi şifreniz
 
-// City-V API ayarları
-const char* cityv_host = "cityv.vercel.app";  // Veya kendi domain'iniz
+// 🏙️ City-V Platform Ayarları
+const char* cityv_host = "cityv.vercel.app";      // City-V domain (veya localhost:3000)
 const char* api_endpoint = "/api/esp32/crowd-report";
-const char* device_id = "esp32_cam_001";     // Benzersiz cihaz ID'si
-const char* location_name = "Test Lokasyonu"; // Lokasyon adı
+const char* device_id = "esp32_cam_001";          // 🆔 Benzersiz cihaz kimliği
+const char* location_name = "Test Lokasyonu";     // 📍 Kamera konumu (örn: "Cafe Giriş")
 
 // Global değişkenler
 httpd_handle_t camera_httpd = NULL;
@@ -67,6 +94,12 @@ httpd_handle_t stream_httpd = NULL;
 unsigned long lastReport = 0;
 const unsigned long reportInterval = 30000; // 30 saniye
 bool cameraInitialized = false;
+
+// Otomatik konum değişkenleri
+float device_latitude = 0.0;
+float device_longitude = 0.0;
+String device_address = "";
+bool locationFetched = false;
 
 // =========================
 // LED Status Functions
@@ -90,12 +123,15 @@ void blinkLED(int times = 1, int delayMs = 200) {
   uint8_t * _jpg_buf = NULL;
   char * part_buf[64];
 
+  // CORS headers ÖNCE set edilmeli (type'dan önce)
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "GET, OPTIONS");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "*");
+  
   res = httpd_resp_set_type(req, "multipart/x-mixed-replace;boundary=frame");
   if(res != ESP_OK) {
     return res;
   }
-
-  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
   while(true) {
     fb = esp_camera_fb_get();
@@ -148,11 +184,55 @@ void blinkLED(int times = 1, int delayMs = 200) {
 }
 
 // =========================
+// CORS Preflight Handler (OPTIONS)
+// =========================
+static esp_err_t options_handler(httpd_req_t *req) {
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "*");
+  httpd_resp_set_hdr(req, "Access-Control-Max-Age", "86400");
+  httpd_resp_set_status(req, "204 No Content");
+  httpd_resp_send(req, NULL, 0);
+  return ESP_OK;
+}
+
+// =========================
+// Single Frame Capture Handler (AI analizi için)
+// =========================
+static esp_err_t capture_handler(httpd_req_t *req) {
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "GET, OPTIONS");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "*");
+  
+  camera_fb_t * fb = esp_camera_fb_get();
+  if (!fb) {
+    Serial.println("❌ Frame capture hatası");
+    httpd_resp_send_500(req);
+    return ESP_FAIL;
+  }
+
+  httpd_resp_set_type(req, "image/jpeg");
+  httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=capture.jpg");
+  
+  esp_err_t res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
+  
+  esp_camera_fb_return(fb);
+  
+  if (res == ESP_OK) {
+    Serial.printf("✅ Frame captured: %d bytes\n", fb->len);
+  }
+  
+  return res;
+}
+
+// =========================
 // Status Handler (Cihaz bilgileri)
 // =========================
 static esp_err_t status_handler(httpd_req_t *req) {
-  httpd_resp_set_type(req, "application/json");
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "GET, OPTIONS");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "*");
+  httpd_resp_set_type(req, "application/json");
   
   DynamicJsonDocument doc(1024);
   doc["status"] = "online";
@@ -166,10 +246,12 @@ static esp_err_t status_handler(httpd_req_t *req) {
   doc["camera_init"] = cameraInitialized;
   doc["psram"] = psramFound();
   
-  // Koordinatlar (kendi lokasyonunuzu girin)
+  // Koordinatlar (otomatik veya varsayılan)
   JsonObject coordinates = doc.createNestedObject("coordinates");
-  coordinates["lat"] = 39.9334; // Ankara - değiştirin
-  coordinates["lng"] = 32.8597; // Ankara - değiştirin
+  coordinates["lat"] = device_latitude;
+  coordinates["lng"] = device_longitude;
+  coordinates["auto_detected"] = locationFetched;
+  coordinates["address"] = device_address;
   
   String response;
   serializeJson(doc, response);
@@ -200,12 +282,30 @@ void startCameraServer() {
     .user_ctx  = NULL
   };
 
+  // Capture endpoint (single frame for AI)
+  httpd_uri_t capture_uri = {
+    .uri       = "/capture",
+    .method    = HTTP_GET,
+    .handler   = capture_handler,
+    .user_ctx  = NULL
+  };
+
+  // OPTIONS endpoint (CORS preflight)
+  httpd_uri_t options_uri = {
+    .uri       = "/*",
+    .method    = HTTP_OPTIONS,
+    .handler   = options_handler,
+    .user_ctx  = NULL
+  };
+
   // Ana server başlat
   Serial.printf("🌐 HTTP server başlatılıyor port %d\n", config.server_port);
   if (httpd_start(&camera_httpd, &config) == ESP_OK) {
     httpd_register_uri_handler(camera_httpd, &stream_uri);
     httpd_register_uri_handler(camera_httpd, &status_uri);
-    Serial.println("✅ Camera server başladı");
+    httpd_register_uri_handler(camera_httpd, &capture_uri);
+    httpd_register_uri_handler(camera_httpd, &options_uri);
+    Serial.println("✅ Camera server başladı (CORS + AI capture enabled)");
     blinkLED(3, 100); // Başarı göstergesi
   }
 
@@ -320,10 +420,12 @@ void sendCrowdReport(String crowdLevel) {
   doc["source"] = "esp32cam";
   doc["version"] = "2.0";
   
-  // Koordinatlar
+  // Koordinatlar (otomatik alınmış)
   JsonObject coordinates = doc.createNestedObject("coordinates");
-  coordinates["lat"] = 39.9334; // Ankara koordinatları (değiştirin)
-  coordinates["lng"] = 32.8597;
+  coordinates["lat"] = device_latitude;
+  coordinates["lng"] = device_longitude;
+  coordinates["auto_detected"] = locationFetched;
+  coordinates["address"] = device_address;
   
   // Gelişmiş metadata
   JsonObject metadata = doc.createNestedObject("metadata");
@@ -377,6 +479,75 @@ void sendCrowdReport(String crowdLevel) {
 
   http.end();
   Serial.println("📡 HTTP bağlantısı kapatıldı\n");
+}
+
+// =========================
+// Otomatik Konum Alma (IP Geolocation)
+// =========================
+bool fetchLocationFromIP() {
+  if(WiFi.status() != WL_CONNECTED) {
+    Serial.println("❌ WiFi bağlantısı yok, konum alınamıyor");
+    return false;
+  }
+
+  Serial.println("\n📍 Otomatik konum alınıyor (IP Geolocation)...");
+  
+  HTTPClient http;
+  
+  // ipapi.co servisi kullan (ücretsiz, limit: 1000/gün)
+  http.begin("http://ipapi.co/json/");
+  http.addHeader("User-Agent", "ESP32-CAM/1.0");
+  http.setTimeout(10000);
+  
+  int httpCode = http.GET();
+  
+  if(httpCode == 200) {
+    String payload = http.getString();
+    Serial.println("✅ Konum verisi alındı:");
+    Serial.println(payload);
+    
+    // JSON parse et
+    DynamicJsonDocument doc(2048);
+    DeserializationError error = deserializeJson(doc, payload);
+    
+    if(!error) {
+      device_latitude = doc["latitude"];
+      device_longitude = doc["longitude"];
+      
+      String city = doc["city"] | "";
+      String region = doc["region"] | "";
+      String country = doc["country_name"] | "";
+      
+      device_address = city + ", " + region + ", " + country;
+      
+      Serial.println("\n🎯 KONUM BİLGİLERİ:");
+      Serial.println("====================");
+      Serial.printf("📍 Koordinatlar: %.6f, %.6f\n", device_latitude, device_longitude);
+      Serial.println("📫 Adres: " + device_address);
+      Serial.printf("🌍 Ülke: %s\n", country.c_str());
+      Serial.printf("🏙️ Şehir: %s\n", city.c_str());
+      Serial.println("====================\n");
+      
+      locationFetched = true;
+      http.end();
+      return true;
+    } else {
+      Serial.println("❌ JSON parse hatası: " + String(error.c_str()));
+    }
+  } else {
+    Serial.printf("❌ HTTP hatası: %d\n", httpCode);
+  }
+  
+  http.end();
+  
+  // Başarısız olursa varsayılan koordinatları kullan
+  Serial.println("⚠️ IP konum alınamadı, varsayılan koordinatlar kullanılıyor");
+  device_latitude = 39.9334;  // Ankara varsayılan
+  device_longitude = 32.8597;
+  device_address = "Varsayılan Konum (Ankara)";
+  locationFetched = false;
+  
+  return false;
 }
 
 // =========================
@@ -560,6 +731,10 @@ void setup() {
   connectWiFi();
   
   if(WiFi.status() == WL_CONNECTED) {
+    // Otomatik konum al
+    Serial.println("\n🌍 Otomatik konum tespiti başlatılıyor...");
+    fetchLocationFromIP();
+    
     // HTTP server'ları başlat  
     startCameraServer();
     
@@ -675,16 +850,30 @@ void loop() {
         Serial.println("❌ Kamera başlatılmamış");
       }
     }
+    else if(command == "location" || command == "loc" || command == "l") {
+      Serial.println("📍 Konum bilgileri:");
+      Serial.println("==================");
+      Serial.printf("📍 Koordinatlar: %.6f, %.6f\n", device_latitude, device_longitude);
+      Serial.println("📫 Adres: " + device_address);
+      Serial.printf("✅ Otomatik tespit: %s\n", locationFetched ? "Evet" : "Hayır (Varsayılan)");
+      Serial.println("==================\n");
+    }
+    else if(command == "getlocation" || command == "getloc" || command == "gl") {
+      Serial.println("🔄 Konum yeniden alınıyor...");
+      fetchLocationFromIP();
+    }
     else if(command == "help" || command == "h" || command == "?") {
       Serial.println("\n💡 MEVCUT KOMUTLAR:");
       Serial.println("==================");
-      Serial.println("📊 status (s)   - Detaylı sistem durumu");
-      Serial.println("🧪 test (t)     - Test raporu gönder");
-      Serial.println("🔍 analyze (a)   - Anlık kalabalık analizi");
-      Serial.println("🔄 restart (r)   - Sistemi yeniden başlat");
-      Serial.println("🌐 wifi (w)      - WiFi yeniden bağlan");
-      Serial.println("📹 camera (c)    - Kamera testi");
-      Serial.println("💡 help (h/?)    - Bu yardım menüsü");
+      Serial.println("📊 status (s)       - Detaylı sistem durumu");
+      Serial.println("🧪 test (t)         - Test raporu gönder");
+      Serial.println("🔍 analyze (a)      - Anlık kalabalık analizi");
+      Serial.println("📍 location (l)     - Konum bilgilerini göster");
+      Serial.println("🌍 getlocation (gl) - Konumu yeniden al");
+      Serial.println("🔄 restart (r)      - Sistemi yeniden başlat");
+      Serial.println("🌐 wifi (w)         - WiFi yeniden bağlan");
+      Serial.println("📹 camera (c)       - Kamera testi");
+      Serial.println("💡 help (h/?)       - Bu yardım menüsü");
       Serial.println("==================\n");
     }
     else {

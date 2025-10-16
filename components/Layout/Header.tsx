@@ -72,32 +72,16 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
 
           {/* Right Section - Desktop */}
           <div className="hidden lg:flex items-center gap-3">
-            {/* Tour Button - Only when logged in */}
-            {isAuthenticated && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={startOnboarding}
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl backdrop-blur-sm transition-all shadow-lg"
-                title="Rehberli Tur"
-              >
-                <HelpCircle className="w-5 h-5" />
-                <span className="font-semibold text-sm">Tur</span>
-              </motion.button>
-            )}
-
-            {/* Business Dashboard */}
+            {/* ESP32-CAM IoT Dashboard */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => window.open('/business', '_blank')}
-              className="hidden md:flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 rounded-xl backdrop-blur-sm transition-all shadow-lg"
-              title="İşletme Paneli"
+              onClick={() => window.open('/esp32', '_blank')}
+              className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl shadow-lg transition-all"
+              title="ESP32-CAM IoT Dashboard"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              <span className="hidden lg:inline font-semibold text-sm">İşletme</span>
+              <Activity className="w-5 h-5" />
+              <span className="hidden md:inline font-semibold text-sm">IoT Cam</span>
             </motion.button>
 
             {/* Theme Toggle */}
@@ -109,18 +93,6 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
             <div data-tour="camera">
               <CameraButton onPhotoGallery={onPhotoGalleryClick} />
             </div>
-
-            {/* ESP32-CAM Dashboard */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => window.open('/esp32', '_blank')}
-              className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl backdrop-blur-sm transition-all shadow-lg"
-              title="ESP32-CAM IoT Dashboard"
-            >
-              <Activity className="w-5 h-5" />
-              <span className="hidden sm:inline font-semibold text-xs md:text-sm">IoT</span>
-            </motion.button>
 
             {/* AI Assistant Button - Premium only */}
             {isAuthenticated && user?.premium && onAIClick && (
@@ -485,32 +457,16 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
 
               {/* Menu Items Grid */}
               <div className="grid grid-cols-2 gap-3">
-                {/* Tour Button */}
-                {isAuthenticated && (
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      startOnboarding();
-                    }}
-                    className="flex flex-col items-center gap-2 p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl"
-                  >
-                    <HelpCircle className="w-5 h-5" />
-                    <span className="text-xs font-medium">Tur</span>
-                  </button>
-                )}
-
-                {/* Business Dashboard */}
+                {/* ESP32-CAM IoT */}
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
-                    window.open('/business', '_blank');
+                    window.open('/esp32', '_blank');
                   }}
-                  className="flex flex-col items-center gap-2 p-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl"
+                  className="flex flex-col items-center gap-2 p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                  <span className="text-xs font-medium">İşletme</span>
+                  <Activity className="w-5 h-5" />
+                  <span className="text-xs font-medium">IoT Cam</span>
                 </button>
 
                 {/* Camera Features */}
