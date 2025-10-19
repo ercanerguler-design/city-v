@@ -102,7 +102,7 @@ export function deleteUser(userId: string): void {
 }
 
 // Premium üyelik onaylama fonksiyonu
-export function approvePremium(userId: string, tier: MembershipTier = 'premium'): void {
+export function approvePremium(userId: string, tier: MembershipTier = 'premium'): boolean {
   try {
     const allUsers = getAllUsers();
     const userIndex = allUsers.findIndex(u => u.id === userId);
@@ -124,18 +124,23 @@ export function approvePremium(userId: string, tier: MembershipTier = 'premium')
           authData.state.user.membershipExpiry = null;
           localStorage.setItem('auth-storage', JSON.stringify(authData));
           
-          // Sayfayı yenile ki değişiklikler görünsün
-          window.location.reload();
+          // Aktif kullanıcı değiştirildi, reload gerekli
+          return true;
         }
       }
+      
+      // Başka kullanıcı değiştirildi, reload gerekmiyor
+      return false;
     }
+    return false;
   } catch (error) {
     console.error('Error approving premium:', error);
+    return false;
   }
 }
 
 // Premium iptal etme fonksiyonu
-export function revokePremium(userId: string): void {
+export function revokePremium(userId: string): boolean {
   try {
     const allUsers = getAllUsers();
     const userIndex = allUsers.findIndex(u => u.id === userId);
@@ -155,12 +160,17 @@ export function revokePremium(userId: string): void {
           authData.state.user.premium = false;
           localStorage.setItem('auth-storage', JSON.stringify(authData));
           
-          // Sayfayı yenile
-          window.location.reload();
+          // Aktif kullanıcı değiştirildi, reload gerekli
+          return true;
         }
       }
+      
+      // Başka kullanıcı değiştirildi, reload gerekmiyor
+      return false;
     }
+    return false;
   } catch (error) {
     console.error('Error revoking premium:', error);
+    return false;
   }
 }

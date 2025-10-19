@@ -402,8 +402,13 @@ export default function AdminPage() {
                                 <button
                                   onClick={() => {
                                     if (confirm(`${user.name} kullanıcısına Premium üyelik verilsin mi?`)) {
-                                      approvePremium(user.id, 'premium');
+                                      const needsReload = approvePremium(user.id, 'premium');
                                       setAllUsers(getAllUsers());
+                                      
+                                      // Sadece aktif kullanıcı değiştirilirse reload yap
+                                      if (needsReload) {
+                                        window.location.reload();
+                                      }
                                     }
                                   }}
                                   className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-lg"
@@ -416,8 +421,13 @@ export default function AdminPage() {
                                 <button
                                   onClick={() => {
                                     if (confirm(`${user.name} kullanıcısının Premium üyeliği iptal edilsin mi?`)) {
-                                      revokePremium(user.id);
+                                      const needsReload = revokePremium(user.id);
                                       setAllUsers(getAllUsers());
+                                      
+                                      // Sadece aktif kullanıcı değiştirilirse reload yap
+                                      if (needsReload) {
+                                        window.location.reload();
+                                      }
                                     }
                                   }}
                                   className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
