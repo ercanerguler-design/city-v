@@ -1,9 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, User, Eye, EyeOff, Sparkles } from 'lucide-react';
+
+// Google Sign-In tipi
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -18,7 +25,65 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const { login, register } = useAuthStore();
+  const { login, loginWithGoogle, register } = useAuthStore();
+
+  // Google Sign-In script yükleme
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadGoogleScript = () => {
+      if (window.google) return;
+
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+    };
+
+    loadGoogleScript();
+  }, [isOpen]);
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Google One Tap için callback
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '1047674633093-6f0qq1m0q7lqvh9ohe2ihjlk8ev7p58v.apps.googleusercontent.com',
+          callback: async (response: any) => {
+            try {
+              // JWT token'ı decode et
+              const decoded = JSON.parse(atob(response.credential.split('.')[1]));
+              
+              await loginWithGoogle({
+                email: decoded.email,
+                name: decoded.name,
+                picture: decoded.picture,
+              });
+
+              onClose();
+            } catch (err: any) {
+              console.error('Google login error:', err);
+              setError(err.message || 'Google ile giriş başarısız oldu.');
+            } finally {
+              setIsLoading(false);
+            }
+          },
+        });
+
+        window.google.accounts.id.prompt(); // One Tap göster
+      } else {
+        throw new Error('Google Sign-In yüklenemedi. Lütfen sayfayı yenileyin.');
+      }
+    } catch (err: any) {
+      console.error('Google init error:', err);
+      setError(err.message || 'Google ile giriş başarısız oldu.');
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,11 +245,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    // Google OAuth işlemi
-                    console.log('Google ile giriş yapılıyor...');
-                  }}
-                  className="mt-4 w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                  className="mt-4 w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path

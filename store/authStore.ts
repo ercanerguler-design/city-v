@@ -46,6 +46,7 @@ interface AuthState {
   membershipBenefits: Record<MembershipTier, MembershipBenefits>;
   
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (googleUser: { email: string; name: string; picture?: string }) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => void;
@@ -85,6 +86,63 @@ export const useAuthStore = create<AuthState>()(
           name: foundUser.name,
           email: foundUser.email,
           avatar: foundUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(foundUser.name)}&background=6366f1&color=fff`,
+          membershipTier: foundUser.membershipTier || 'free',
+          membershipExpiry: foundUser.membershipExpiry || null,
+          aiCredits: foundUser.aiCredits || 100,
+          createdAt: foundUser.createdAt ? new Date(foundUser.createdAt) : new Date(),
+          // Getter'lar için
+          get isPremium() { return this.membershipTier !== 'free'; },
+          get isBusiness() { return this.membershipTier === 'business'; },
+          get isEnterprise() { return this.membershipTier === 'enterprise'; },
+        };
+
+        set({ user: loggedInUser, isAuthenticated: true });
+      },
+
+      loginWithGoogle: async (googleUser: { email: string; name: string; picture?: string }) => {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        
+        // Kayıtlı kullanıcıları kontrol et
+        const existingUsers = JSON.parse(localStorage.getItem('all-users-storage') || '{"users":[]}');
+        const users = existingUsers.users || [];
+        
+        // Email ile kullanıcı var mı kontrol et
+        let foundUser = users.find((u: any) => u.email === googleUser.email);
+        
+        // Kullanıcı yoksa otomatik kaydet (Google ile ilk giriş)
+        if (!foundUser) {
+          const newUser = {
+            id: Date.now().toString(),
+            name: googleUser.name,
+            email: googleUser.email,
+            avatar: googleUser.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(googleUser.name)}&background=6366f1&color=fff`,
+            premium: false,
+            membershipTier: 'free',
+            createdAt: new Date().toISOString(),
+            membershipExpiry: null,
+            aiCredits: 100,
+          };
+          
+          // Yeni kullanıcıyı kaydet
+          users.push(newUser);
+          localStorage.setItem('all-users-storage', JSON.stringify({ users }));
+          foundUser = newUser;
+          
+          // Admin paneline bildir
+          try {
+            const adminStore = useAdminStore.getState();
+            adminStore.trackUserSignup(googleUser.name, newUser.id);
+          } catch (error) {
+            console.error('Admin tracking error:', error);
+          }
+        }
+        
+        // Kullanıcı bulundu veya oluşturuldu, giriş yap
+        const loggedInUser: any = {
+          id: foundUser.id,
+          name: foundUser.name,
+          email: foundUser.email,
+          avatar: foundUser.avatar || googleUser.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(foundUser.name)}&background=6366f1&color=fff`,
           membershipTier: foundUser.membershipTier || 'free',
           membershipExpiry: foundUser.membershipExpiry || null,
           aiCredits: foundUser.aiCredits || 100,
