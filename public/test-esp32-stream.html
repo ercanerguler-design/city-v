@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32-CAM Stream Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .control-panel {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        input {
+            flex: 1;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.9);
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+        .btn-test {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-start {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        .btn-stop {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .status.success {
+            background: rgba(56, 239, 125, 0.3);
+            border: 2px solid #38ef7d;
+        }
+        .status.error {
+            background: rgba(235, 51, 73, 0.3);
+            border: 2px solid #eb3349;
+        }
+        .status.info {
+            background: rgba(102, 126, 234, 0.3);
+            border: 2px solid #667eea;
+        }
+        .stream-container {
+            background: black;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .stream-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .live-badge {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(235, 51, 73, 0.9);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .pulse {
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .log {
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .url-test {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+        }
+        .url-test h3 {
+            margin-bottom: 10px;
+        }
+        .url-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .url-item {
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .url-item:hover {
+            background: rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 ESP32-CAM Stream Test</h1>
+        
+        <div class="control-panel">
+            <div class="input-group">
+                <input type="text" id="deviceIp" placeholder="ESP32 IP Adresi (örn: 192.168.1.9)" value="192.168.1.9">
+                <button class="btn-test" onclick="testConnection()">🔍 Test Bağlantı</button>
+                <button class="btn-start" onclick="startStream()">▶️ Başlat</button>
+                <button class="btn-stop" onclick="stopStream()">⏹️ Durdur</button>
+            </div>
+            
+            <div id="status"></div>
+            
+            <div class="url-test">
+                <h3>📡 Denenmesi Gereken URL'ler:</h3>
+                <div class="url-list" id="urlList"></div>
+            </div>
+        </div>
+        
+        <div class="stream-container" id="streamContainer">
+            <img id="streamImage" style="display: none;">
+            <div style="padding: 100px; text-align: center; color: #666;">
+                <h2>Kamera stream'i başlatılmadı</h2>
+                <p>Yukarıdan IP adresini girin ve "Başlat" butonuna tıklayın</p>
+            </div>
+        </div>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        let streamImg = document.getElementById('streamImage');
+        let statusDiv = document.getElementById('status');
+        let logDiv = document.getElementById('log');
+        let urlListDiv = document.getElementById('urlList');
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : '📋';
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${timestamp}] ${emoji} ${message}`;
+            logDiv.insertBefore(entry, logDiv.firstChild);
+        }
+
+        function setStatus(message, type) {
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function getStreamUrls(ip) {
+            return [
+                `http://${ip}/stream`,
+                `http://${ip}:81/stream`,
+                `http://${ip}/cam`,
+                `http://${ip}:81/cam`,
+                `http://${ip}/video`,
+                `http://${ip}:8080/stream`,
+            ];
+        }
+
+        function updateUrlList() {
+            const ip = document.getElementById('deviceIp').value;
+            const urls = getStreamUrls(ip);
+            urlListDiv.innerHTML = '';
+            
+            urls.forEach((url, index) => {
+                const item = document.createElement('div');
+                item.className = 'url-item';
+                item.textContent = `${index + 1}. ${url}`;
+                item.onclick = () => {
+                    document.getElementById('deviceIp').value = ip;
+                    streamImg.src = url;
+                    addLog(`Manuel URL deneniyor: ${url}`, 'info');
+                };
+                urlListDiv.appendChild(item);
+            });
+        }
+
+        async function testConnection() {
+            const ip = document.getElementById('deviceIp').value;
+            if (!ip) {
+                alert('Lütfen IP adresi girin!');
+                return;
+            }
+
+            setStatus('🔍 Bağlantı test ediliyor...', 'info');
+            addLog(`Bağlantı testi başlatıldı: ${ip}`, 'info');
+            updateUrlList();
+
+            const urls = getStreamUrls(ip);
+            
+            for (let i = 0; i < urls.length; i++) {
+                const url = urls[i];
+                try {
+                    addLog(`Test ediliyor [${i+1}/${urls.length}]: ${url}`, 'info');
+                    
+                    const response = await fetch(url, { 
+                        method: 'HEAD',
+                        mode: 'no-cors',
+                        signal: AbortSignal.timeout(3000)
+                    });
+                    
+                    addLog(`✅ BAŞARILI! ${url} çalışıyor!`, 'success');
+                    setStatus(`✅ BAĞLANTI BAŞARILI: ${url}`, 'success');
+                    return;
+                } catch (error) {
+                    addLog(`❌ Başarısız: ${url} - ${error.message}`, 'error');
+                }
+            }
+            
+            setStatus('❌ Hiçbir URL çalışmıyor! ESP32 açık mı kontrol edin.', 'error');
+        }
+
+        function startStream() {
+            const ip = document.getElementById('deviceIp').value;
+            if (!ip) {
+                alert('Lütfen IP adresi girin!');
+                return;
+            }
+
+            const streamUrl = `http://${ip}/stream`;
+            addLog(`Stream başlatılıyor: ${streamUrl}`, 'info');
+            setStatus('🎬 Stream başlatılıyor...', 'info');
+
+            streamImg.style.display = 'block';
+            streamImg.src = streamUrl;
+
+            streamImg.onload = () => {
+                addLog(`✅ STREAM BAŞARILI! Boyut: ${streamImg.naturalWidth}x${streamImg.naturalHeight}`, 'success');
+                setStatus(`✅ CANLI YAYIN AKTIF: ${streamUrl}`, 'success');
+                
+                // Live badge ekle
+                let badge = document.getElementById('liveBadge');
+                if (!badge) {
+                    badge = document.createElement('div');
+                    badge.id = 'liveBadge';
+                    badge.className = 'live-badge';
+                    badge.innerHTML = '<div class="pulse"></div> LIVE';
+                    document.getElementById('streamContainer').appendChild(badge);
+                }
+            };
+
+            streamImg.onerror = () => {
+                addLog(`❌ STREAM HATASI: ${streamUrl} bağlantı kurulamadı!`, 'error');
+                setStatus(`❌ STREAM HATASI: Bağlantı kurulamadı!`, 'error');
+                streamImg.style.display = 'none';
+                
+                // Otomatik olarak diğer URL'leri dene
+                addLog('🔄 Alternatif URL\'ler deneniyor...', 'info');
+                const urls = getStreamUrls(ip);
+                tryNextUrl(urls, 1); // İlkini zaten denedik, 2.den başla
+            };
+        }
+
+        function tryNextUrl(urls, index) {
+            if (index >= urls.length) {
+                addLog('❌ Tüm URL\'ler denendi, hiçbiri çalışmadı!', 'error');
+                return;
+            }
+
+            const url = urls[index];
+            addLog(`Deneniyor [${index+1}/${urls.length}]: ${url}`, 'info');
+            
+            streamImg.src = url;
+            
+            streamImg.onload = () => {
+                addLog(`✅ BAŞARILI! ${url} çalışıyor!`, 'success');
+                setStatus(`✅ CANLI YAYIN: ${url}`, 'success');
+            };
+            
+            streamImg.onerror = () => {
+                addLog(`❌ Başarısız: ${url}`, 'error');
+                setTimeout(() => tryNextUrl(urls, index + 1), 1000);
+            };
+        }
+
+        function stopStream() {
+            streamImg.src = '';
+            streamImg.style.display = 'none';
+            
+            const badge = document.getElementById('liveBadge');
+            if (badge) badge.remove();
+            
+            setStatus('⏹️ Stream durduruldu', 'info');
+            addLog('Stream kapatıldı', 'info');
+        }
+
+        // Sayfa yüklendiğinde URL listesini göster
+        updateUrlList();
+        addLog('ESP32-CAM Stream Test hazır', 'success');
+    </script>
+</body>
+</html>

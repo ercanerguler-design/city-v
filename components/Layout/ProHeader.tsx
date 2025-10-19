@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
+import { usePremiumStore } from '@/lib/stores/premiumStore';
 import { MapPin, User, Crown, Bell, Settings, Brain, Activity, Sparkles, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from '@/components/ui/ThemeToggle';
@@ -40,6 +41,8 @@ export default function ProHeader({
   onPhotoGalleryClick,
 }: ProHeaderProps) {
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { checkSubscriptionStatus } = usePremiumStore();
+  const isPremium = checkSubscriptionStatus();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [campaignNotifications, setCampaignNotifications] = useState<any[]>([]);
@@ -193,20 +196,22 @@ export default function ProHeader({
 
             {/* Desktop Actions */}
             <div className="hidden lg:flex items-center gap-3">
-              {/* City-V IoT Button */}
-              <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => window.open('/esp32', '_blank')}
-                className="group relative px-4 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl border border-white/20 transition-all shadow-lg"
-              >
-                <div className="flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-emerald-300 group-hover:animate-pulse" />
-                  <span className="font-semibold text-sm">IoT Monitor</span>
-                </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full" />
-              </motion.button>
+              {/* City-V IoT Button - Premium Only */}
+              {isPremium && (
+                <motion.button
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => window.open('/esp32', '_blank')}
+                  className="group relative px-4 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl border border-white/20 transition-all shadow-lg"
+                >
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-emerald-300 group-hover:animate-pulse" />
+                    <span className="font-semibold text-sm">IoT Monitor</span>
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping" />
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full" />
+                </motion.button>
+              )}
 
               {/* Theme Toggle */}
               <div className="p-0.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20">
@@ -219,7 +224,7 @@ export default function ProHeader({
               </div>
 
               {/* AI Assistant (Premium) */}
-              {isAuthenticated && user?.premium && onAIClick && (
+              {isAuthenticated && user?.isPremium && onAIClick && (
                 <motion.button
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
@@ -275,7 +280,7 @@ export default function ProHeader({
                     )}
                     <div className="hidden xl:block text-left">
                       <p className="text-sm font-bold leading-none">{user.name}</p>
-                      {user.premium && (
+                      {user.membershipTier && user.membershipTier !== 'free' && (
                         <p className="text-xs text-yellow-300 flex items-center gap-1 mt-0.5">
                           <Crown className="w-3 h-3" />
                           Premium
@@ -296,7 +301,7 @@ export default function ProHeader({
                         <div className="p-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
                           <p className="font-bold text-lg">{user.name}</p>
                           <p className="text-sm text-white/80">{user.email}</p>
-                          {user.premium && (
+                          {user.membershipTier && user.membershipTier !== 'free' && (
                             <div className="mt-2 flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-lg w-fit">
                               <Crown className="w-4 h-4 text-yellow-300" />
                               <span className="text-sm font-semibold">Premium Üye</span>
@@ -327,7 +332,7 @@ export default function ProHeader({
                             <span className="font-medium text-gray-900 dark:text-white">Ayarlar</span>
                           </button>
 
-                          {!user.premium && onPremiumClick && (
+                          {(!user.membershipTier || user.membershipTier === 'free') && onPremiumClick && (
                             <button
                               onClick={() => {
                                 onPremiumClick();

@@ -1,4 +1,5 @@
 import MultiDeviceDashboard from '@/components/ESP32/MultiDeviceDashboard';
+import PremiumGuard from '@/components/Auth/PremiumGuard';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function MultiDevicePage() {
-  return <MultiDeviceDashboard />;
+  return (
+    <PremiumGuard>
+      <MultiDeviceDashboard />
+    </PremiumGuard>
+  );
 }

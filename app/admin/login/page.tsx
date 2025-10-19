@@ -102,29 +102,6 @@ export default function AdminLoginPage() {
             </motion.div>
           </div>
 
-          {/* Demo Credentials Info */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl"
-          >
-            <div className="flex items-start gap-3">
-              <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                  Demo Giriş Bilgileri
-                </p>
-                <p className="text-blue-800 dark:text-blue-200">
-                  <span className="font-mono font-medium">admin@cityview.com</span>
-                </p>
-                <p className="text-blue-800 dark:text-blue-200">
-                  <span className="font-mono font-medium">admin123</span>
-                </p>
-              </div>
-            </div>
-          </motion.div>
-
           {/* Form */}
           <motion.form
             initial={{ opacity: 0, y: 10 }}
@@ -144,7 +121,7 @@ export default function AdminLoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@cityview.com"
+                  placeholder="Email adresinizi girin"
                   required
                   className="w-full pl-11 pr-4 py-3 bg-gray-50 dark:bg-slate-700 border-2 border-gray-200 dark:border-slate-600 
                            rounded-xl focus:border-purple-500 dark:focus:border-purple-400 focus:ring-4 focus:ring-purple-500/10 

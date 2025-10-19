@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
+    "@react-email/components": "^0.5.7",
+    "@react-email/render": "^1.4.0",
     "@tensorflow-models/coco-ssd": "^2.2.3",
     "@tensorflow/tfjs": "^4.22.0",
     "@turf/distance": "^7.2.0",
@@ -28,6 +30,7 @@
     "react-leaflet": "^5.0.0",
     "react-leaflet-markercluster": "^5.0.0-rc.0",
     "recharts": "^3.2.1",
+    "resend": "^6.2.0",
     "socket.io-client": "^4.8.1",
     "tailwind-merge": "^3.3.1",
     "zustand": "^5.0.8"

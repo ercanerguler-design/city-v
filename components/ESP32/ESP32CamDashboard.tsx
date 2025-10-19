@@ -191,13 +191,17 @@ export default function ESP32CamDashboard({
       const detectedPeople = detectionResult.objects.filter(o => o.class === 'person');
       console.log(`🎯 [TRACKING] ${detectedPeople.length} kişi analiz ediliyor...`);
       
-      // Her kişi için tracking
+      // Her kişi için tracking (UNIQUE ID ile)
       detectedPeople.forEach((obj, index) => {
         const [x, y, width, height] = obj.bbox;
+        const centerX = x + (width / 2);
         const centerY = y + (height / 2);
-        const personId = `person_${index}`;
         
-        console.log(`👤 [TRACKING] Person ${index}: Y=${centerY.toFixed(0)}, Line=${ENTRY_LINE_Y}`);
+        // ✅ UNIQUE ID: Pozisyon bazlı (yakın nesneler aynı kişi)
+        const positionKey = `${Math.floor(centerX / 50)}_${Math.floor(centerY / 50)}`;
+        const personId = `person_${positionKey}`;
+        
+        console.log(`👤 [TRACKING] ${personId}: Y=${centerY.toFixed(0)}, Line=${ENTRY_LINE_Y}`);
         
         const prevData = trackedPersons.get(personId);
         
@@ -205,21 +209,33 @@ export default function ESP32CamDashboard({
           const prevY = prevData.y;
           const yDiff = Math.abs(centerY - prevY);
           
+          // ✅ Minimum hareket mesafesi kontrolü (30px)
+          if (yDiff < 30) {
+            console.log(`📊 [TRACKING] Çok az hareket: ${yDiff.toFixed(0)}px`);
+            trackedPersons.set(personId, {
+              y: centerY,
+              timestamp: currentTime,
+              lastCrossing: prevData.lastCrossing || 0
+            });
+            return;
+          }
+          
           console.log(`📊 [TRACKING] Önceki: ${prevY.toFixed(0)} → Şimdi: ${centerY.toFixed(0)} (Fark: ${yDiff.toFixed(0)}px)`);
           
-          // ÇİZGİ GEÇİŞ TESPİTİ
-          const crossedLineDown = (prevY < ENTRY_LINE_Y && centerY > ENTRY_LINE_Y);
-          const crossedLineUp = (prevY > ENTRY_LINE_Y && centerY < ENTRY_LINE_Y);
+          // ✅ ÇİZGİ GEÇİŞ TESPİTİ (Tolerance: ±20px)
+          const TOLERANCE = 20;
+          const crossedLineDown = (prevY < (ENTRY_LINE_Y - TOLERANCE) && centerY > (ENTRY_LINE_Y + TOLERANCE));
+          const crossedLineUp = (prevY > (ENTRY_LINE_Y + TOLERANCE) && centerY < (ENTRY_LINE_Y - TOLERANCE));
           
-          // Cooldown kontrolü (3sn)
+          // Cooldown kontrolü (2sn)
           const lastCrossing = prevData.lastCrossing || 0;
-          const canCross = (currentTime - lastCrossing) >= 3000;
+          const canCross = (currentTime - lastCrossing) >= 2000;
           
           if (canCross) {
             if (crossedLineDown) {
               entryCount++;
-              console.log(`✅ [TRACKING] 📥 GİRİŞ! Person ${index}`);
-              log(`📥 GİRİŞ ALGILANDI! Kişi #${index}`, 'success');
+              console.log(`✅ [TRACKING] 📥 GİRİŞ! ${personId} (Y: ${prevY.toFixed(0)} → ${centerY.toFixed(0)})`);
+              log(`📥 GİRİŞ ALGILANDI! ${personId}`, 'success');
               
               trackedPersons.set(personId, {
                 y: centerY,
@@ -229,8 +245,8 @@ export default function ESP32CamDashboard({
               return;
             } else if (crossedLineUp) {
               exitCount++;
-              console.log(`✅ [TRACKING] 📤 ÇIKIŞ! Person ${index}`);
-              log(`📤 ÇIKIŞ ALGILANDI! Kişi #${index}`, 'info');
+              console.log(`✅ [TRACKING] 📤 ÇIKIŞ! ${personId} (Y: ${prevY.toFixed(0)} → ${centerY.toFixed(0)})`);
+              log(`📤 ÇIKIŞ ALGILANDI! ${personId}`, 'info');
               
               trackedPersons.set(personId, {
                 y: centerY,
@@ -240,10 +256,10 @@ export default function ESP32CamDashboard({
               return;
             }
           } else {
-            console.log(`⏳ [TRACKING] Cooldown aktif (${((currentTime - lastCrossing)/1000).toFixed(1)}s/3s)`);
+            console.log(`⏳ [TRACKING] Cooldown aktif (${((currentTime - lastCrossing)/1000).toFixed(1)}s/2s)`);
           }
         } else {
-          console.log(`⚠️ [TRACKING] İlk görülme: Person ${index}`);
+          console.log(`⚠️ [TRACKING] İlk görülme: ${personId}`);
         }
         
         trackedPersons.set(personId, {
@@ -298,31 +314,14 @@ export default function ESP32CamDashboard({
       return;
     }
 
-    // Önce bağlantıyı test et
-    const connected = await fetchStatus();
-    if (!connected) {
-      alert('❌ Cihaza bağlanılamıyor! IP adresini ve cihazı kontrol edin.');
-      return;
-    }
-
-    log('🎬 GERÇEK City-V IoT stream başlatılıyor...', 'info');
+    log('🎬 City-V IoT stream başlatılıyor...', 'info');
     
-    // Stream URL oluştur
-    const streamUrl = `http://${deviceIp}:81/stream`;
+    // Stream URL oluştur (port 81 OLMADAN, doğrudan /stream endpoint'i kullan)
+    const streamUrl = `http://${deviceIp}/stream`;
     console.log(`🎥 City-V IoT Stream URL: ${streamUrl}`);
     
-    // Stream test et
-    try {
-      const testResponse = await fetch(streamUrl, { 
-        method: 'HEAD',
-        signal: AbortSignal.timeout(3000)
-      });
-      console.log(`🌐 Stream endpoint response: ${testResponse.status}`);
-    } catch (error) {
-      console.log('⚠️ Stream endpoint test başarısız, devam ediliyor...');
-    }
-    
     setIsStreaming(true);
+    setIsConnected(true); // Optimistik bağlantı durumu
     
     if (streamRef.current) {
       // Önce eski src'yi temizle
@@ -337,8 +336,10 @@ export default function ESP32CamDashboard({
       }, 100);
     }
 
-    // İLK ANALİZİ HEMEN BAŞLAT
-    await runAnalysis();
+    // İLK ANALİZİ HEMEN BAŞLAT (stream yüklendikten sonra)
+    setTimeout(() => {
+      runAnalysis();
+    }, 2000);
     
     // Otomatik analiz başlat (5sn aralık)
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -361,94 +362,30 @@ export default function ESP32CamDashboard({
     }
   };
 
-  // Canvas Drawing
+  // Canvas Drawing - TensorFlow.js ile entegre
   useEffect(() => {
     if (!canvasRef.current || !streamRef.current || !analysisData || !showDetections) return;
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
     const stream = streamRef.current;
     
-    if (!ctx) return;
-
     // Canvas boyutunu stream ile tam eşitle
-    const streamRect = stream.getBoundingClientRect();
-    const naturalWidth = stream.naturalWidth || 640;
-    const naturalHeight = stream.naturalHeight || 480;
+    const naturalWidth = stream.naturalWidth || 800;
+    const naturalHeight = stream.naturalHeight || 600;
     
-    // Canvas internal resolution (gerçek piksel)
-    canvas.width = naturalWidth;
-    canvas.height = naturalHeight;
+    console.log(`🎨 Canvas çiziliyor: ${naturalWidth}x${naturalHeight}`);
     
-    // Canvas display size (CSS boyut)
-    canvas.style.width = `${streamRect.width}px`;
-    canvas.style.height = `${streamRect.height}px`;
+    // ✅ TensorFlow.js drawDetections kullan (GİRİŞ ÇİZGİSİ DAHİL)
+    const tfObjects = analysisData.objects.map(obj => ({
+      class: obj.type,
+      score: obj.confidence,
+      bbox: [obj.bbox.x, obj.bbox.y, obj.bbox.width, obj.bbox.height] as [number, number, number, number]
+    }));
     
-    console.log(`🎨 Canvas ayarlandı: ${canvas.width}x${canvas.height} (display: ${streamRect.width}x${streamRect.height})`);
+    drawDetections(canvas, tfObjects, naturalWidth, naturalHeight);
     
-    // Temizle
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 📏 SANAL GİRİŞ ÇİZGİSİ ÇİZ (ÖNCELİKLE)
-    ctx.strokeStyle = '#00FF00';
-    ctx.lineWidth = 4;
-    ctx.setLineDash([15, 10]); // Kesikli çizgi
-    ctx.beginPath();
-    ctx.moveTo(0, ENTRY_LINE_Y);
-    ctx.lineTo(canvas.width, ENTRY_LINE_Y);
-    ctx.stroke();
-    ctx.setLineDash([]); // Reset
-    
-    // Çizgi üzerine text (arka plan ile)
-    const lineText = '↓ GİRİŞ HATTI / ENTRY LINE ↑';
-    ctx.font = 'bold 18px Arial';
-    const textWidth = ctx.measureText(lineText).width;
-    const textX = (canvas.width - textWidth) / 2;
-    const textY = ENTRY_LINE_Y - 15;
-    
-    // Text arka planı (siyah kutu)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(textX - 10, textY - 20, textWidth + 20, 30);
-    
-    // Text
-    ctx.fillStyle = '#00FF00';
-    ctx.fillText(lineText, textX, textY);
-
-    // Her nesne için bounding box çiz
-    analysisData.objects.forEach((obj) => {
-      const { x, y, width, height } = obj.bbox;
-      
-      // Renk seçimi
-      let color = '#00FF00';
-      if (obj.type === 'person') color = '#FF0000';
-      else if (obj.type === 'table') color = '#0000FF';
-      else if (obj.type === 'chair') color = '#FFFF00';
-
-      // Kutu çiz
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
-      ctx.strokeRect(x, y, width, height);
-
-      // Etiket arka planı
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y - 25, Math.min(width, 150), 25);
-
-      // Etiket metni
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 12px Arial';
-      const label = `${obj.type.toUpperCase()} ${Math.round(obj.confidence * 100)}%`;
-      ctx.fillText(label, x + 5, y - 8);
-      
-      // 🎯 Kişi merkezini göster (debugging)
-      if (obj.type === 'person') {
-        const centerY = y + (height / 2);
-        ctx.fillStyle = centerY < ENTRY_LINE_Y ? '#FF00FF' : '#00FFFF'; // Üst=Mor, Alt=Cyan
-        ctx.beginPath();
-        ctx.arc(x + width/2, centerY, 5, 0, 2 * Math.PI);
-        ctx.fill();
-      }
-    });
-  }, [analysisData, showDetections]);
+    console.log(`✅ Canvas çizimi tamamlandı: ${tfObjects.length} nesne`);
+  }, [analysisData, showDetections, drawDetections]);
 
   // Cleanup
   useEffect(() => {
@@ -674,18 +611,20 @@ export default function ESP32CamDashboard({
                   LIVE: {deviceIp}
                 </div>
                 
-                {/* GERÇEK City-V IMAGE STREAM */}
+                {/* GERÇEK City-V IMAGE STREAM - YÜKSEK KALİTE */}
                 <img
                   ref={streamRef}
-                  src={`http://${deviceIp}/stream`}
                   alt="City-V Live Stream"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   crossOrigin="anonymous"
                   style={{ 
                     width: '100%', 
                     height: '100%',
-                    objectFit: 'cover',
-                    display: 'block'
+                    objectFit: 'contain', // ✅ Cover yerine contain (sıkıştırmayı önler)
+                    imageRendering: 'crisp-edges', // ✅ Keskin kenarlar
+                    display: 'block',
+                    maxWidth: '100%',
+                    maxHeight: '100%'
                   }}
                   onLoad={(e) => {
                     const img = e.target as HTMLImageElement;
@@ -694,27 +633,32 @@ export default function ESP32CamDashboard({
                     console.log(`🎥 Stream URL: ${img.src}`);
                     log('✅ City-V IoT canlı yayını başarıyla bağlandı!', 'success');
                     
-                    // Stream yüklendiğinde canvas'ı da ayarla
+                    // Stream yüklendiğinde canvas'ı da ayarla (GERÇEK BOYUT)
                     if (canvasRef.current) {
-                      canvasRef.current.width = img.naturalWidth || 640;
-                      canvasRef.current.height = img.naturalHeight || 480;
+                      const width = img.naturalWidth || 800; // ✅ Varsayılan 800px
+                      const height = img.naturalHeight || 600; // ✅ Varsayılan 600px
+                      canvasRef.current.width = width;
+                      canvasRef.current.height = height;
+                      console.log(`🎨 Canvas boyutu ayarlandı: ${width}x${height}`);
                     }
                   }}
                   onError={(e) => {
                     const img = e.target as HTMLImageElement;
                     console.error(`❌ City-V IoT STREAM HATA!`);
                     console.error(`🔗 Başarısız URL: ${img.src}`);
+                    console.error(`💡 Çözüm: ESP32 cihazının açık olduğundan ve doğru IP'ye sahip olduğundan emin olun!`);
                     log('❌ City-V IoT stream bağlantısı kesildi!', 'error');
                   }}
                 />
-                {/* AI DETECTION OVERLAY CANVAS */}
+                {/* AI DETECTION OVERLAY CANVAS - YÜKSEK KALİTE */}
                 <canvas
                   ref={canvasRef}
                   className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
                   style={{ 
                     width: '100%', 
                     height: '100%',
-                    objectFit: 'cover'
+                    objectFit: 'contain', // ✅ Stream ile aynı
+                    imageRendering: 'crisp-edges' // ✅ Keskin çizimler
                   }}
                 />
                 

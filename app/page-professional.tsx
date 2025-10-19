@@ -38,6 +38,11 @@ import LiveCrowdSidebar from '@/components/RealTime/LiveCrowdSidebar';
 import QRScanner from '@/components/Camera/QRScanner';
 import PhotoGallery from '@/components/Camera/PhotoGallery';
 
+// Business Box Promotion Components
+import BusinessBoxBanner from '@/components/business-box/BusinessBoxBanner';
+import BusinessBoxFloatingButton from '@/components/business-box/BusinessBoxFloatingButton';
+import BusinessBoxModal from '@/components/business-box/BusinessBoxModal';
+
 // Hooks
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
 import { useThemeStore } from '@/lib/stores/themeStore';
@@ -109,7 +114,7 @@ export default function ProfessionalHome() {
 
   // Stores
   const { selectedCategories, crowdLevelFilter, searchQuery, showFavoritesOnly, favorites, clearFilters } = useFilterStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { selectedCity, userLocation, userAddress, requestUserLocation } = useLocationStore();
   const { toggleTheme } = useThemeStore();
   const { trackVisit } = useAnalyticsStore();
@@ -549,6 +554,9 @@ export default function ProfessionalHome() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
+      {/* 🚀 Business Box Banner */}
+      <BusinessBoxBanner />
+
       {/* 🎨 Ultra-Professional Header */}
       <ProHeader
         onAuthClick={() => setShowAuthModal(true)}
@@ -572,12 +580,9 @@ export default function ProfessionalHome() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Location Picker - Sadece harita görünümünde */}
-        {viewMode === 'map' && (
-          <div className="absolute top-4 left-4 z-30">
-            <LocationPicker onCityChange={handleCityChange} />
-          </div>
-        )}
+        {/* Location Picker - Açılır kapanır konum butonu */}
+        <LocationPicker onCityChange={handleCityChange} />
+
         {/* Toolbar */}
         <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-3 md:px-4 py-3 shadow-sm transition-colors duration-300">
           <div className="flex items-center gap-2 md:gap-3">
@@ -889,8 +894,8 @@ export default function ProfessionalHome() {
         )}
       </AnimatePresence>
 
-      {/* Floating Premium Banner */}
-      {isAuthenticated && !checkSubscriptionStatus() && (
+      {/* Floating Premium Banner - Sadece free kullanıcılara göster */}
+      {isAuthenticated && (!user?.membershipTier || user.membershipTier === 'free') && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -998,6 +1003,12 @@ export default function ProfessionalHome() {
           </div>
         </div>
       )}
+
+      {/* 🚀 Business Box Promotion - Floating Button */}
+      <BusinessBoxFloatingButton />
+
+      {/* 🚀 Business Box Promotion - Modal (First Visit) */}
+      <BusinessBoxModal />
 
       {/* Footer */}
       <footer className="bg-gradient-to-r from-gray-800 via-gray-900 to-black text-white py-6">

@@ -58,31 +58,48 @@ export const useLocationStore = create<LocationState>()(
             position.coords.longitude,
           ];
 
-          // Reverse geocoding ile gerçek adresi al
-          const lat = coords[0];
-          const lng = coords[1];
+          console.log('📍 Konum alındı:', coords);
 
-          // Adres bilgisini al (arka planda)
-          reverseGeocode(lat, lng).then((addressInfo) => {
-            if (addressInfo) {
-              set({ userAddress: addressInfo });
-            }
-          });
-
-          // Ankara sınırları içinde mi kontrol et
-          let detectedCity: 'ankara' | 'istanbul' = 'ankara';
-          if (lat >= 39.5 && lat <= 40.5 && lng >= 32.0 && lng <= 33.5) {
-            detectedCity = 'ankara';
-          } else if (lat >= 40.5 && lat <= 41.5 && lng >= 28.0 && lng <= 30.0) {
-            detectedCity = 'istanbul';
-          }
-
+          // Önce koordinatları kaydet
           set({
             userLocation: coords,
             isLoadingLocation: false,
             locationError: null,
-            selectedCity: detectedCity,
           });
+
+          // Reverse geocoding ile gerçek adresi al (arka planda)
+          const lat = coords[0];
+          const lng = coords[1];
+
+          try {
+            const addressInfo = await reverseGeocode(lat, lng);
+            
+            if (addressInfo) {
+              console.log('✅ Adres bilgisi alındı:', addressInfo);
+              
+              // Global şehir tespiti - Gerçek adres bilgisinden şehir al
+              let detectedCity: 'ankara' | 'istanbul' = 'ankara';
+              
+              if (addressInfo.city) {
+                const cityName = addressInfo.city.toLowerCase();
+                if (cityName.includes('ankara')) {
+                  detectedCity = 'ankara';
+                } else if (cityName.includes('istanbul') || cityName.includes('İstanbul')) {
+                  detectedCity = 'istanbul';
+                }
+              }
+
+              set({
+                userAddress: addressInfo,
+                selectedCity: detectedCity,
+              });
+            } else {
+              console.warn('⚠️ Adres bilgisi alınamadı');
+            }
+          } catch (geoError) {
+            console.error('❌ Geocoding hatası:', geoError);
+            // Geocoding başarısız olsa bile konum çalışır
+          }
         } catch (error: any) {
           let errorMessage = 'Konum alınamadı';
           

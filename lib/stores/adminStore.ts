@@ -68,10 +68,10 @@ interface AdminState {
   trackCheckIn: (userName: string, userId: string, locationName: string) => void;
 }
 
-// Demo admin credentials
+// Admin credentials
 const ADMIN_CREDENTIALS = {
-  email: 'admin@cityview.com',
-  password: 'admin123'
+  email: 'sce@scegrup.com',
+  password: 'Ka250806Ka'
 };
 
 export const useAdminStore = create<AdminState>()(

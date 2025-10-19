@@ -130,7 +130,7 @@ export function useTensorFlowDetection() {
   }, [isDetecting]);
 
   /**
-   * Canvas'a tespit sonuçlarını çiz
+   * Canvas'a tespit sonuçlarını çiz (GİRİŞ ÇİZGİSİ DAHİL)
    */
   const drawDetections = useCallback((
     canvas: HTMLCanvasElement,
@@ -148,6 +148,24 @@ export function useTensorFlowDetection() {
     // Temizle
     ctx.clearRect(0, 0, imageWidth, imageHeight);
 
+    // 🚪 SANAL GİRİŞ ÇİZGİSİ (Ortada yeşil çizgi)
+    const ENTRY_LINE_Y = imageHeight / 2;
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+    ctx.lineWidth = 4;
+    ctx.setLineDash([20, 10]); // Kesikli çizgi
+    ctx.beginPath();
+    ctx.moveTo(0, ENTRY_LINE_Y);
+    ctx.lineTo(imageWidth, ENTRY_LINE_Y);
+    ctx.stroke();
+    ctx.setLineDash([]); // Normal çizgiye dön
+
+    // Çizgi etiketi
+    ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+    ctx.fillRect(10, ENTRY_LINE_Y - 30, 150, 25);
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText('🚪 GİRİŞ ÇİZGİSİ', 20, ENTRY_LINE_Y - 12);
+
     // Her tespit için çerçeve çiz
     detections.forEach(detection => {
       const [x, y, width, height] = detection.bbox;
@@ -158,22 +176,32 @@ export function useTensorFlowDetection() {
       if (detection.class === 'dining table') color = 'rgba(0, 0, 255, 0.8)'; // Mavi
       if (detection.class === 'chair') color = 'rgba(255, 255, 0, 0.8)'; // Sarı
 
-      // Çerçeve çiz
+      // Çerçeve çiz (Daha kalın ve belirgin)
       ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 4; // ✅ 3'ten 4'e çıkarıldı
       ctx.strokeRect(x, y, width, height);
+
+      // ✅ Merkez noktası çiz (tracking için)
+      if (detection.class === 'person') {
+        const centerX = x + (width / 2);
+        const centerY = y + (height / 2);
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 6, 0, 2 * Math.PI);
+        ctx.fill();
+      }
 
       // Label arka planı
       ctx.fillStyle = color;
-      ctx.fillRect(x, y - 25, width, 25);
+      ctx.fillRect(x, y - 30, width, 30);
 
-      // Label text
+      // Label text (Daha büyük font)
       ctx.fillStyle = 'white';
-      ctx.font = 'bold 14px Arial';
+      ctx.font = 'bold 16px Arial'; // ✅ 14px'den 16px'e çıkarıldı
       ctx.fillText(
         `${detection.class} ${(detection.score * 100).toFixed(0)}%`,
         x + 5,
-        y - 7
+        y - 8
       );
     });
   }, []);
