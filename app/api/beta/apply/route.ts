@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-// Resend client oluştur
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Resend client oluştur (optional - production'da gerekli)
+const resend = process.env.RESEND_API_KEY 
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
 
 // Beta başvuru interface'i
 interface BetaApplication {
@@ -197,7 +199,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'sce@scegrup.com';
 async function sendEmail(to: string, subject: string, html: string) {
   try {
     // RESEND_API_KEY yoksa console'a yazdır (development mode)
-    if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 'your_resend_api_key_here') {
+    if (!resend || !process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 'your_resend_api_key_here') {
       console.log('\n====================================');
       console.log('📧 EMAIL (DEV MODE - Console)');
       console.log('====================================');
