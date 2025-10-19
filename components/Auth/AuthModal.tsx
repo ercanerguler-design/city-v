@@ -17,11 +17,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const { login, register } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
 
     try {
       if (mode === 'login') {
@@ -30,8 +32,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         await register(name, email, password);
       }
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Auth error:', error);
+      setError(error.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setIsLoading(false);
     }
@@ -79,6 +82,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             {/* Form */}
             <div className="p-8">
               <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Error Message */}
+                {error && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600 font-medium">{error}</p>
+                  </div>
+                )}
+
                 {mode === 'register' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -200,7 +210,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
               <div className="mt-6 text-center">
                 <button
-                  onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+                  onClick={() => {
+                    setMode(mode === 'login' ? 'register' : 'login');
+                    setError(''); // Clear error when switching modes
+                  }}
                   className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
                 >
                   {mode === 'login'

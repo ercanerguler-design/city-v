@@ -66,52 +66,50 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       login: async (email: string, password: string) => {
-        // Simüle edilmiş login - gerçek uygulamada API çağrısı yapılır
         await new Promise((resolve) => setTimeout(resolve, 1000));
         
-        const mockUser: any = {
-          id: '1',
-          name: 'Ercan Kullanıcı',
-          email: email,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent('Ercan Kullanıcı')}&background=6366f1&color=fff`,
-          membershipTier: 'free' as MembershipTier, // Default free
-          membershipExpiry: null,
-          aiCredits: 100,
-          createdAt: new Date(),
+        // Kayıtlı kullanıcıları kontrol et
+        const existingUsers = JSON.parse(localStorage.getItem('all-users-storage') || '{"users":[]}');
+        const users = existingUsers.users || [];
+        
+        // Kullanıcıyı email ile bul
+        const foundUser = users.find((u: any) => u.email === email);
+        
+        if (!foundUser) {
+          throw new Error('Bu email adresi ile kayıtlı kullanıcı bulunamadı. Lütfen kayıt olun.');
+        }
+        
+        // Kullanıcı bulundu, giriş yap
+        const loggedInUser: any = {
+          id: foundUser.id,
+          name: foundUser.name,
+          email: foundUser.email,
+          avatar: foundUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(foundUser.name)}&background=6366f1&color=fff`,
+          membershipTier: foundUser.membershipTier || 'free',
+          membershipExpiry: foundUser.membershipExpiry || null,
+          aiCredits: foundUser.aiCredits || 100,
+          createdAt: foundUser.createdAt ? new Date(foundUser.createdAt) : new Date(),
           // Getter'lar için
           get isPremium() { return this.membershipTier !== 'free'; },
           get isBusiness() { return this.membershipTier === 'business'; },
           get isEnterprise() { return this.membershipTier === 'enterprise'; },
         };
 
-        set({ user: mockUser, isAuthenticated: true });
-        
-        // Kullanıcıyı all-users storage'a kaydet (eğer yoksa)
-        try {
-          const existingUsers = JSON.parse(localStorage.getItem('all-users-storage') || '{"users":[]}');
-          const users = existingUsers.users || [];
-          
-          if (!users.find((u: any) => u.id === mockUser.id)) {
-            users.push({
-              id: mockUser.id,
-              name: mockUser.name,
-              email: mockUser.email,
-              avatar: mockUser.avatar,
-              premium: false,
-              membershipTier: 'free',
-              createdAt: mockUser.createdAt.toISOString(),
-              membershipExpiry: null,
-            });
-            localStorage.setItem('all-users-storage', JSON.stringify({ users }));
-          }
-        } catch (error) {
-          console.error('Login user save error:', error);
-        }
+        set({ user: loggedInUser, isAuthenticated: true });
       },
 
       register: async (name: string, email: string, password: string) => {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         
+        // Email kontrolü - zaten kayıtlı mı?
+        const existingUsers = JSON.parse(localStorage.getItem('all-users-storage') || '{"users":[]}');
+        const users = existingUsers.users || [];
+        
+        if (users.find((u: any) => u.email === email)) {
+          throw new Error('Bu email adresi zaten kayıtlı. Lütfen giriş yapın.');
+        }
+        
+        // Yeni kullanıcı oluştur
         const mockUser: any = {
           id: Date.now().toString(),
           name,
