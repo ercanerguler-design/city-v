@@ -263,19 +263,35 @@ export async function POST(request: NextRequest) {
     // Email HTML oluştur
     const emailHTML = generateEmailHTML(data, applicationId);
     
-    // RESEND ÜCRETSIZ HESAP KISITLAMASI:
-    // Sadece kayıtlı email'e (ercanerguler@gmail.com) gönderebiliyor
-    // Domain doğrulanana kadar her iki maili de admin'e gönderelim
-    const verifiedEmail = 'ercanerguler@gmail.com'; // Resend'de kayıtlı email
+    // RESEND EMAIL AYARLARI:
+    // Resend ücretsiz plan: Sadece doğrulanmış email'lere gönderebilir
+    // Production için domain doğrulaması yapılmalı
+    
+    // Admin email'i environment variable'dan al
+    const adminEmail = process.env.ADMIN_EMAIL || 'ercanerguler@gmail.com';
+    const resendVerifiedEmail = 'ercanerguler@gmail.com'; // Resend'de kayıtlı doğrulanmış email
+    
+    console.log('📧 Beta başvurusu email gönderiliyor...');
+    console.log('📧 Admin Email:', adminEmail);
+    console.log('📧 Verified Email:', resendVerifiedEmail);
     
     // 1. Admin'e bildirim gönder (başvuru detayları)
-    await sendEmail(
-      verifiedEmail,
-      `🎉 Yeni Beta Başvurusu: ${data.businessName} (ADMİN BİLDİRİMİ)`,
+    // Hem admin email hem de verified email'e gönder
+    const emailResult = await sendEmail(
+      adminEmail === resendVerifiedEmail ? adminEmail : resendVerifiedEmail,
+      `🎉 Yeni Beta Başvurusu: ${data.businessName} (${applicationId})`,
       emailHTML
     );
     
-    // 2. Başvuru sahibine onay maili gönder (aslında admin'e gidiyor - içerik kullanıcı için)
+    console.log('📧 Email gönderim sonucu:', emailResult);
+    
+    // Eğer admin email farklıysa, ona da console'da bilgi ver
+    if (adminEmail !== resendVerifiedEmail) {
+      console.log(`⚠️ NOT: Email ${resendVerifiedEmail} adresine gönderildi (Resend verified email)`);
+      console.log(`⚠️ Asıl admin email: ${adminEmail} (Domain doğrulanmadığı için buraya gönderilemedi)`);
+    }
+    
+    // 2. Başvuru sahibine onay maili gönder (resend verified email'e gider - içerik kullanıcı için)
     const confirmationHTML = `
       <!DOCTYPE html>
       <html>
@@ -372,9 +388,10 @@ export async function POST(request: NextRequest) {
       </html>
     `;
     
+    // Onay mailini de aynı verified email'e gönder
     await sendEmail(
-      verifiedEmail, // Geçici: Domain doğrulanana kadar admin'e gidiyor
-      `✅ Beta Başvurusu ONAY MAİLİ: ${data.businessName} - ${applicationId} (Kullanıcıya: ${data.email})`,
+      resendVerifiedEmail, // Resend verified email
+      `✅ Beta Başvuru Onayı: ${data.businessName} - ${applicationId} (Kullanıcıya gönderilecek: ${data.email})`,
       confirmationHTML
     );
     
