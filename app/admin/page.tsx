@@ -403,12 +403,18 @@ export default function AdminPage() {
                                   onClick={() => {
                                     if (confirm(`${user.name} kullanıcısına Premium üyelik verilsin mi?`)) {
                                       const needsReload = approvePremium(user.id, 'premium');
-                                      setAllUsers(getAllUsers());
                                       
-                                      // Sadece aktif kullanıcı değiştirilirse reload yap
-                                      if (needsReload) {
+                                      // Liste'yi güncelle
+                                      const updatedUsers = getAllUsers();
+                                      setAllUsers(updatedUsers);
+                                      
+                                      // Sadece aktif kullanıcı değiştirilirse ve admin değilse reload yap
+                                      if (needsReload && !isAdmin) {
                                         window.location.reload();
                                       }
+                                      
+                                      // Admin kendini premium yaptıysa sadece listeyi güncelle
+                                      console.log('✅ Premium verildi:', user.name);
                                     }
                                   }}
                                   className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-lg"
@@ -422,12 +428,18 @@ export default function AdminPage() {
                                   onClick={() => {
                                     if (confirm(`${user.name} kullanıcısının Premium üyeliği iptal edilsin mi?`)) {
                                       const needsReload = revokePremium(user.id);
-                                      setAllUsers(getAllUsers());
                                       
-                                      // Sadece aktif kullanıcı değiştirilirse reload yap
-                                      if (needsReload) {
+                                      // Liste'yi güncelle
+                                      const updatedUsers = getAllUsers();
+                                      setAllUsers(updatedUsers);
+                                      
+                                      // Sadece aktif kullanıcı değiştirilirse ve admin değilse reload yap
+                                      if (needsReload && !isAdmin) {
                                         window.location.reload();
                                       }
+                                      
+                                      // Admin kendini revoke ettiyse sadece listeyi güncelle
+                                      console.log('✅ Premium iptal edildi:', user.name);
                                     }
                                   }}
                                   className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
