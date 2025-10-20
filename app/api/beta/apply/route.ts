@@ -213,6 +213,11 @@ async function sendEmail(to: string, subject: string, html: string) {
     }
     
     // Resend ile gerçek email gönder
+    console.log('🔧 Resend email.send çağrılıyor...');
+    console.log('📤 From: City-V Beta <onboarding@resend.dev>');
+    console.log('📥 To:', to);
+    console.log('📋 Subject:', subject);
+    
     const { data, error } = await resend.emails.send({
       from: 'City-V Beta <onboarding@resend.dev>', // resend.dev domain ücretsiz kullanılabilir
       to: [to],
@@ -220,13 +225,22 @@ async function sendEmail(to: string, subject: string, html: string) {
       html: html,
     });
     
+    console.log('📨 Resend yanıtı - Data:', data);
+    console.log('📨 Resend yanıtı - Error:', error);
+    
+    console.log('📨 Resend yanıtı - Data:', data);
+    console.log('📨 Resend yanıtı - Error:', error);
+    
     if (error) {
-      console.error('❌ Email gönderim hatası:', error);
+      console.error('❌ Email gönderim hatası:');
+      console.error('   - Hata mesajı:', error.message || error);
+      console.error('   - Hata detayı:', JSON.stringify(error, null, 2));
       // Hata olsa bile uygulamayı kaydet
       return { success: false, error };
     }
     
-    console.log('✅ Email gönderildi:', data);
+    console.log('✅ Email başarıyla gönderildi!');
+    console.log('   - Message ID:', data?.id);
     return { success: true, data };
     
   } catch (error) {
