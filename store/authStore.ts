@@ -73,12 +73,18 @@ export const useAuthStore = create<AuthState>()(
         const existingUsers = JSON.parse(localStorage.getItem('all-users-storage') || '{"users":[]}');
         const users = existingUsers.users || [];
         
+        console.log('🔍 Login denemesi:', email);
+        console.log('📊 Storage\'da kayıtlı kullanıcı sayısı:', users.length);
+        
         // Kullanıcıyı email ile bul
         const foundUser = users.find((u: any) => u.email === email);
         
         if (!foundUser) {
+          console.log('❌ Kullanıcı bulunamadı:', email);
           throw new Error('Bu email adresi ile kayıtlı kullanıcı bulunamadı. Lütfen kayıt olun.');
         }
+        
+        console.log('✅ Kullanıcı bulundu:', foundUser.email, '- Tier:', foundUser.membershipTier);
         
         // Kullanıcı bulundu, giriş yap
         const loggedInUser: any = {
@@ -97,6 +103,7 @@ export const useAuthStore = create<AuthState>()(
         };
 
         set({ user: loggedInUser, isAuthenticated: true });
+        console.log('✅ Login başarılı, membershipTier:', loggedInUser.membershipTier);
       },
 
       loginWithGoogle: async (googleUser: { email: string; name: string; picture?: string }) => {
@@ -123,10 +130,16 @@ export const useAuthStore = create<AuthState>()(
             aiCredits: 100,
           };
           
-          // Yeni kullanıcıyı kaydet
+          // Yeni kullanıcıyı all-users-storage'a ekle
           users.push(newUser);
-          localStorage.setItem('all-users-storage', JSON.stringify({ users }));
+          localStorage.setItem('all-users-storage', JSON.stringify({ 
+            users,
+            lastUpdated: new Date().toISOString()
+          }));
           foundUser = newUser;
+          
+          console.log('✅ Google kullanıcısı all-users-storage\'a kaydedildi:', googleUser.email);
+          console.log('📊 Toplam kullanıcı sayısı:', users.length);
           
           // Admin paneline bildir
           try {
@@ -135,6 +148,8 @@ export const useAuthStore = create<AuthState>()(
           } catch (error) {
             console.error('Admin tracking error:', error);
           }
+        } else {
+          console.log('✅ Google kullanıcısı bulundu:', googleUser.email);
         }
         
         // Kullanıcı bulundu veya oluşturuldu, giriş yap
@@ -154,6 +169,7 @@ export const useAuthStore = create<AuthState>()(
         };
 
         set({ user: loggedInUser, isAuthenticated: true });
+        console.log('✅ Google login başarılı, membershipTier:', loggedInUser.membershipTier);
       },
 
       register: async (name: string, email: string, password: string) => {
@@ -168,12 +184,36 @@ export const useAuthStore = create<AuthState>()(
         }
         
         // Yeni kullanıcı oluştur
-        const mockUser: any = {
-          id: Date.now().toString(),
+        const newUserId = Date.now().toString();
+        const newUserData = {
+          id: newUserId,
           name,
           email,
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff`,
-          membershipTier: 'free' as MembershipTier, // Yeni kullanıcılar free başlar
+          premium: false,
+          membershipTier: 'free' as MembershipTier,
+          membershipExpiry: null,
+          aiCredits: 50,
+          createdAt: new Date().toISOString(),
+        };
+        
+        // ÖNEMLİ: Önce all-users-storage'a kaydet
+        users.push(newUserData);
+        localStorage.setItem('all-users-storage', JSON.stringify({ 
+          users,
+          lastUpdated: new Date().toISOString()
+        }));
+        
+        console.log('✅ Kullanıcı all-users-storage\'a kaydedildi:', email);
+        console.log('📊 Toplam kullanıcı sayısı:', users.length);
+        
+        // Sonra auth store'a set et
+        const mockUser: any = {
+          id: newUserId,
+          name,
+          email,
+          avatar: newUserData.avatar,
+          membershipTier: 'free' as MembershipTier,
           membershipExpiry: null,
           aiCredits: 50,
           createdAt: new Date(),
@@ -185,26 +225,10 @@ export const useAuthStore = create<AuthState>()(
 
         set({ user: mockUser, isAuthenticated: true });
         
-        // Kullanıcıyı all-users storage'a kaydet
-        try {
-          saveUser({
-            id: mockUser.id,
-            name: mockUser.name,
-            email: mockUser.email,
-            avatar: mockUser.avatar,
-            premium: false, // Free başlar
-            membershipTier: 'free',
-            createdAt: mockUser.createdAt.toISOString(),
-            membershipExpiry: null,
-          });
-        } catch (error) {
-          console.error('User save error:', error);
-        }
-        
         // Admin paneline bildir
         try {
           const adminStore = useAdminStore.getState();
-          adminStore.trackUserSignup(name, mockUser.id);
+          adminStore.trackUserSignup(name, newUserId);
         } catch (error) {
           console.error('Admin tracking error:', error);
         }
