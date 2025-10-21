@@ -18,12 +18,13 @@ import { formatTime } from '@/lib/utils';
 export default function AdminPage() {
   const router = useRouter();
   const { isAdmin, stats, refreshStats, logout } = useAdminStore();
-  const { applications, updateStatus, addNote, getPendingCount } = useBetaApplicationStore();
+  const { applications, loading, error, fetchApplications, updateStatus, getPendingCount } = useBetaApplicationStore();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'locations' | 'revenue' | 'beta'>('overview');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
   const [allUsers, setAllUsers] = useState<StoredUser[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Client-side mount kontrolü (hydration hatası önleme)
   useEffect(() => {
@@ -37,12 +38,56 @@ export default function AdminPage() {
     }
   }, [activeTab, mounted]);
 
-  // Admin değilse login sayfasına yönlendir
+  // Beta başvurularını yükle (Postgres'ten)
   useEffect(() => {
-    if (!isAdmin) {
-      router.push('/admin/login');
+    if (mounted && activeTab === 'beta') {
+      console.log('📋 Beta başvuruları yükleniyor...');
+      fetchApplications();
     }
-  }, [isAdmin, router]);
+  }, [activeTab, mounted, fetchApplications]);
+
+  // Admin kontrolü - localStorage yüklendikten sonra kontrol et
+  useEffect(() => {
+    if (!mounted) return;
+    
+    // Kısa bir delay ile localStorage'ın yüklenmesini bekle
+    const timer = setTimeout(() => {
+      setIsCheckingAuth(false);
+      
+      // localStorage'dan kontrol et
+      const adminStorage = localStorage.getItem('admin-storage');
+      if (adminStorage) {
+        try {
+          const { state } = JSON.parse(adminStorage);
+          if (state?.isAdmin) {
+            // Admin oturumu var, sayfada kal
+            return;
+          }
+        } catch (e) {
+          console.error('Admin storage parse hatası:', e);
+        }
+      }
+      
+      // isAdmin false ise login sayfasına yönlendir
+      if (!isAdmin) {
+        router.push('/admin/login');
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [mounted, isAdmin, router]);
+
+  // Auth kontrolü devam ediyorsa loading göster
+  if (!mounted || isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Admin değilse hiçbir şey gösterme
   if (!isAdmin) {
@@ -619,7 +664,7 @@ export default function AdminPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2 flex-wrap">
                             <h4 className="text-xl font-bold text-gray-900 dark:text-white">
-                              {app.businessName}
+                              {app.business_name}
                             </h4>
                             <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                               app.status === 'pending'
@@ -637,7 +682,7 @@ export default function AdminPage() {
                             </span>
                           </div>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {app.applicationId} • {new Date(app.timestamp).toLocaleString('tr-TR')}
+                            {app.application_id} • {new Date(app.created_at).toLocaleString('tr-TR')}
                           </p>
                         </div>
                       </div>
@@ -646,7 +691,7 @@ export default function AdminPage() {
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                             <Users className="w-4 h-4 text-indigo-500" />
-                            <span className="font-semibold">{app.ownerName}</span>
+                            <span className="font-semibold">{app.owner_name}</span>
                           </div>
                           <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                             <Mail className="w-4 h-4 text-blue-500" />
@@ -677,15 +722,15 @@ export default function AdminPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Building2 className="w-4 h-4 text-orange-500" />
-                            <span className="text-gray-700 dark:text-gray-300">{app.businessType}</span>
+                            <span className="text-gray-700 dark:text-gray-300">{app.business_type}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Users className="w-4 h-4 text-blue-500" />
-                            <span className="text-gray-700 dark:text-gray-300">Günlük: {app.averageDaily} müşteri</span>
+                            <span className="text-gray-700 dark:text-gray-300">Günlük: {app.average_daily} müşteri</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4 text-purple-500" />
-                            <span className="text-gray-700 dark:text-gray-300">{app.openingHours}</span>
+                            <span className="text-gray-700 dark:text-gray-300">{app.opening_hours}</span>
                           </div>
                         </div>
                       </div>
@@ -703,23 +748,23 @@ export default function AdminPage() {
                         </div>
                       )}
 
-                      {app.additionalInfo && (
+                      {app.additional_info && (
                         <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
                           <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">💬 Ek Bilgi:</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{app.additionalInfo}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{app.additional_info}</p>
                         </div>
                       )}
 
-                      {app.adminNotes && (
+                      {app.admin_notes && (
                         <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
                           <p className="text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-1">📝 Admin Notu:</p>
-                          <p className="text-sm text-yellow-600 dark:text-yellow-400">{app.adminNotes}</p>
+                          <p className="text-sm text-yellow-600 dark:text-yellow-400">{app.admin_notes}</p>
                         </div>
                       )}
 
                       <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
                         <a
-                          href={`mailto:${app.email}?subject=City-V Beta Programı - ${app.businessName}&body=Merhaba ${app.ownerName},%0D%0A%0D%0A`}
+                          href={`mailto:${app.email}?subject=City-V Beta Programı - ${app.business_name}&body=Merhaba ${app.owner_name},%0D%0A%0D%0A`}
                           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm font-medium"
                         >
                           <Mail className="w-4 h-4" />
@@ -735,21 +780,21 @@ export default function AdminPage() {
                         {app.status === 'pending' && (
                           <>
                             <button
-                              onClick={() => updateStatus(app.id, 'contacted')}
+                              onClick={() => updateStatus(app.application_id, 'contacted')}
                               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center gap-2 text-sm font-medium"
                             >
                               <MessageCircle className="w-4 h-4" />
                               İletişime Geçildi
                             </button>
                             <button
-                              onClick={() => updateStatus(app.id, 'approved')}
+                              onClick={() => updateStatus(app.application_id, 'approved')}
                               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 text-sm font-medium"
                             >
                               <CheckCircle className="w-4 h-4" />
                               Onayla
                             </button>
                             <button
-                              onClick={() => updateStatus(app.id, 'rejected')}
+                              onClick={() => updateStatus(app.application_id, 'rejected')}
                               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center gap-2 text-sm font-medium"
                             >
                               <XCircle className="w-4 h-4" />

@@ -19,6 +19,8 @@ import Link from 'next/link';
 export default function BetaApplicationPage() {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [applicationId, setApplicationId] = useState('');
+  
   const [formData, setFormData] = useState({
     // Step 1: İşletme Bilgileri
     businessName: '',
@@ -74,15 +76,18 @@ export default function BetaApplicationPage() {
       const result = await response.json();
       
       if (result.success) {
-        console.log('Beta Application:', formData);
-        console.log('Application ID:', result.applicationId);
+        console.log('✅ Beta Application başarılı:', formData);
+        console.log('✅ Application ID:', result.applicationId);
+        console.log('📝 Başvuru Postgres\'e kaydedildi!');
+        
+        setApplicationId(result.applicationId);
         setSubmitted(true);
       } else {
         alert('Başvuru gönderilirken hata oluştu: ' + result.error);
       }
       
     } catch (error) {
-      console.error('Form gönderim hatası:', error);
+      console.error('❌ Form gönderim hatası:', error);
       alert('Başvuru gönderilirken bir hata oluştu. Lütfen tekrar deneyin.');
     }
   };

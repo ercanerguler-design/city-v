@@ -298,6 +298,11 @@ export const useAdminStore = create<AdminState>()(
     }),
     {
       name: 'admin-storage',
+      // Sadece oturum bilgilerini persist et
+      partialize: (state) => ({ 
+        isAdmin: state.isAdmin, 
+        adminUser: state.adminUser 
+      }),
     }
   )
 );

@@ -46,7 +46,7 @@ interface AuthState {
   membershipBenefits: Record<MembershipTier, MembershipBenefits>;
   
   login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: (googleUser: { email: string; name: string; picture?: string }) => Promise<void>;
+  loginWithGoogle: (googleUser: { email: string; name: string; picture?: string; googleId?: string }) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => void;
@@ -106,70 +106,70 @@ export const useAuthStore = create<AuthState>()(
         console.log('✅ Login başarılı, membershipTier:', loggedInUser.membershipTier);
       },
 
-      loginWithGoogle: async (googleUser: { email: string; name: string; picture?: string }) => {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        
-        // Kayıtlı kullanıcıları kontrol et
-        const existingUsers = JSON.parse(localStorage.getItem('all-users-storage') || '{"users":[]}');
-        const users = existingUsers.users || [];
-        
-        // Email ile kullanıcı var mı kontrol et
-        let foundUser = users.find((u: any) => u.email === googleUser.email);
-        
-        // Kullanıcı yoksa otomatik kaydet (Google ile ilk giriş)
-        if (!foundUser) {
-          const newUser = {
-            id: Date.now().toString(),
-            name: googleUser.name,
-            email: googleUser.email,
-            avatar: googleUser.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(googleUser.name)}&background=6366f1&color=fff`,
-            premium: false,
-            membershipTier: 'free',
-            createdAt: new Date().toISOString(),
-            membershipExpiry: null,
-            aiCredits: 100,
-          };
+      loginWithGoogle: async (googleUser: { email: string; name: string; picture?: string; googleId?: string }) => {
+        try {
+          console.log('🔐 Google login başlatılıyor:', googleUser.email);
           
-          // Yeni kullanıcıyı all-users-storage'a ekle
-          users.push(newUser);
-          localStorage.setItem('all-users-storage', JSON.stringify({ 
-            users,
-            lastUpdated: new Date().toISOString()
-          }));
-          foundUser = newUser;
+          // API'ye Google kullanıcı bilgilerini gönder (Postgres'e kaydet/kontrol et)
+          const response = await fetch('/api/auth/google', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: googleUser.email,
+              name: googleUser.name,
+              picture: googleUser.picture,
+              googleId: googleUser.googleId
+            })
+          });
           
-          console.log('✅ Google kullanıcısı all-users-storage\'a kaydedildi:', googleUser.email);
-          console.log('📊 Toplam kullanıcı sayısı:', users.length);
+          const data = await response.json();
           
-          // Admin paneline bildir
-          try {
-            const adminStore = useAdminStore.getState();
-            adminStore.trackUserSignup(googleUser.name, newUser.id);
-          } catch (error) {
-            console.error('Admin tracking error:', error);
+          if (!data.success) {
+            throw new Error(data.error || 'Google login başarısız');
           }
-        } else {
-          console.log('✅ Google kullanıcısı bulundu:', googleUser.email);
-        }
-        
-        // Kullanıcı bulundu veya oluşturuldu, giriş yap
-        const loggedInUser: any = {
-          id: foundUser.id,
-          name: foundUser.name,
-          email: foundUser.email,
-          avatar: foundUser.avatar || googleUser.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(foundUser.name)}&background=6366f1&color=fff`,
-          membershipTier: foundUser.membershipTier || 'free',
-          membershipExpiry: foundUser.membershipExpiry || null,
-          aiCredits: foundUser.aiCredits || 100,
-          createdAt: foundUser.createdAt ? new Date(foundUser.createdAt) : new Date(),
-          // Getter'lar için
-          get isPremium() { return this.membershipTier !== 'free'; },
-          get isBusiness() { return this.membershipTier === 'business'; },
-          get isEnterprise() { return this.membershipTier === 'enterprise'; },
-        };
+          
+          const dbUser = data.user;
+          
+          // Kullanıcı state'ini oluştur
+          const loggedInUser: any = {
+            id: dbUser.id.toString(),
+            name: dbUser.name,
+            email: dbUser.email,
+            avatar: dbUser.profile_picture || googleUser.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(dbUser.name)}&background=6366f1&color=fff`,
+            membershipTier: dbUser.membership_tier || 'free',
+            membershipExpiry: dbUser.membership_expiry ? new Date(dbUser.membership_expiry) : null,
+            aiCredits: dbUser.ai_credits || 100,
+            createdAt: new Date(dbUser.created_at),
+            // Getter'lar
+            get isPremium() { return this.membershipTier !== 'free'; },
+            get isBusiness() { return this.membershipTier === 'business'; },
+            get isEnterprise() { return this.membershipTier === 'enterprise'; },
+          };
 
-        set({ user: loggedInUser, isAuthenticated: true });
-        console.log('✅ Google login başarılı, membershipTier:', loggedInUser.membershipTier);
+          set({ user: loggedInUser, isAuthenticated: true });
+          
+          if (data.isNewUser) {
+            console.log('🎉 Yeni Google kullanıcısı oluşturuldu:', googleUser.email);
+            
+            // Admin paneline bildir
+            try {
+              const adminStore = useAdminStore.getState();
+              adminStore.trackUserSignup(dbUser.name, dbUser.id.toString());
+            } catch (error) {
+              console.error('Admin tracking error:', error);
+            }
+          } else {
+            console.log('✅ Mevcut Google kullanıcısı giriş yaptı:', googleUser.email);
+          }
+          
+          console.log('✅ Google login başarılı, membershipTier:', loggedInUser.membershipTier);
+          
+        } catch (error) {
+          console.error('❌ Google login hatası:', error);
+          throw error;
+        }
       },
 
       register: async (name: string, email: string, password: string) => {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { sql } from '@vercel/postgres';
 
 // Resend client oluştur (optional - production'da gerekli)
 const resend = process.env.RESEND_API_KEY 
@@ -274,6 +275,50 @@ export async function POST(request: NextRequest) {
     const applicationId = `BETA-${Date.now().toString().slice(-8)}`;
     const timestamp = new Date().toISOString();
     
+    // ✅ POSTGRES'E KAYDET (Email göndermeden ÖNCE)
+    try {
+      console.log('💾 Başvuru Postgres\'e kaydediliyor...', applicationId);
+      
+      await sql`
+        INSERT INTO beta_applications (
+          application_id, business_name, owner_name, email, phone, 
+          location, business_type, average_daily, opening_hours, 
+          current_solution, goals, heard_from, website, additional_info, 
+          status, created_at
+        ) VALUES (
+          ${applicationId}, 
+          ${data.businessName}, 
+          ${data.ownerName}, 
+          ${data.email}, 
+          ${data.phone}, 
+          ${data.location}, 
+          ${data.businessType},
+          ${data.averageDaily}, 
+          ${data.openingHours}, 
+          ${data.currentSolution || 'none'},
+          ${data.goals}, 
+          ${data.heardFrom || 'other'}, 
+          ${data.website || null}, 
+          ${data.additionalInfo || null}, 
+          'pending', 
+          NOW()
+        )
+      `;
+      
+      console.log('✅ Başvuru Postgres\'e kaydedildi:', applicationId);
+    } catch (dbError) {
+      console.error('❌ Postgres kayıt hatası:', dbError);
+      // Email yine de gönder, başvuru kaybolmasın
+      // Ama error response döndür
+      return NextResponse.json(
+        { 
+          error: 'Başvuru veritabanına kaydedilemedi',
+          details: dbError instanceof Error ? dbError.message : 'Bilinmeyen hata'
+        },
+        { status: 500 }
+      );
+    }
+    
     // Email HTML oluştur
     const emailHTML = generateEmailHTML(data, applicationId);
     
@@ -428,18 +473,29 @@ export async function POST(request: NextRequest) {
     if (data.additionalInfo) console.log('Ek Bilgi:', data.additionalInfo);
     console.log('====================================\n');
     
-    // Başarılı response
+    // Başarılı response - Admin paneline eklemek için tüm veriyi döndür
     return NextResponse.json({
       success: true,
       applicationId: applicationId,
       timestamp: timestamp,
       message: 'Başvurunuz başarıyla alındı. Email gönderildi.',
-      data: {
+      applicationData: {
+        id: Date.now().toString(),
+        applicationId: applicationId,
         businessName: data.businessName,
         ownerName: data.ownerName,
         email: data.email,
         phone: data.phone,
-        location: data.location
+        location: data.location,
+        businessType: data.businessType,
+        averageDaily: data.averageDaily,
+        openingHours: data.openingHours,
+        goals: data.goals,
+        website: data.website || '',
+        additionalInfo: data.additionalInfo || '',
+        status: 'pending' as const,
+        timestamp: new Date(timestamp),
+        notes: []
       }
     });
     
