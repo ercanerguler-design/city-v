@@ -86,10 +86,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         client_id: client_id,
         callback: handleCredentialResponse,
         auto_select: false,
-        // Mobilde redirect (popup engellenir), masaüstünde popup
-        ux_mode: isMobile ? 'redirect' : 'popup',
-        // Mobilde redirect URI (Google Console'da eklenmiş olmalı)
-        redirect_uri: isMobile ? `${window.location.origin}/auth/callback` : undefined,
+        // Her platformda popup kullan (redirect URI gerektirmez)
+        ux_mode: 'popup',
+        // Popup engellenmesi için One Tap göster
+        prompt_parent_id: isMobile ? 'google-signin-button' : undefined,
       });
 
       const buttonDiv = document.getElementById('google-signin-button');
