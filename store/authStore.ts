@@ -67,43 +67,48 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       login: async (email: string, password: string) => {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        
-        // Kayıtlı kullanıcıları kontrol et
-        const existingUsers = JSON.parse(localStorage.getItem('all-users-storage') || '{"users":[]}');
-        const users = existingUsers.users || [];
-        
-        console.log('🔍 Login denemesi:', email);
-        console.log('📊 Storage\'da kayıtlı kullanıcı sayısı:', users.length);
-        
-        // Kullanıcıyı email ile bul
-        const foundUser = users.find((u: any) => u.email === email);
-        
-        if (!foundUser) {
-          console.log('❌ Kullanıcı bulunamadı:', email);
-          throw new Error('Bu email adresi ile kayıtlı kullanıcı bulunamadı. Lütfen kayıt olun.');
-        }
-        
-        console.log('✅ Kullanıcı bulundu:', foundUser.email, '- Tier:', foundUser.membershipTier);
-        
-        // Kullanıcı bulundu, giriş yap
-        const loggedInUser: any = {
-          id: foundUser.id,
-          name: foundUser.name,
-          email: foundUser.email,
-          avatar: foundUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(foundUser.name)}&background=6366f1&color=fff`,
-          membershipTier: foundUser.membershipTier || 'free',
-          membershipExpiry: foundUser.membershipExpiry || null,
-          aiCredits: foundUser.aiCredits || 100,
-          createdAt: foundUser.createdAt ? new Date(foundUser.createdAt) : new Date(),
-          // Getter'lar için
-          get isPremium() { return this.membershipTier !== 'free'; },
-          get isBusiness() { return this.membershipTier === 'business'; },
-          get isEnterprise() { return this.membershipTier === 'enterprise'; },
-        };
+        try {
+          console.log('🔐 Login API çağrısı:', email);
+          
+          // Postgres'ten login (API)
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password })
+          });
+          
+          const data = await response.json();
+          
+          if (!data.success) {
+            throw new Error(data.error || 'Giriş başarısız');
+          }
+          
+          const dbUser = data.user;
+          
+          // Kullanıcı state'ini oluştur
+          const loggedInUser: any = {
+            id: dbUser.id.toString(),
+            name: dbUser.name,
+            email: dbUser.email,
+            avatar: dbUser.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(dbUser.name)}&background=6366f1&color=fff`,
+            membershipTier: dbUser.membershipTier || 'free',
+            membershipExpiry: dbUser.membershipExpiry ? new Date(dbUser.membershipExpiry) : null,
+            aiCredits: dbUser.aiCredits || 100,
+            createdAt: new Date(dbUser.createdAt),
+            get isPremium() { return this.membershipTier !== 'free'; },
+            get isBusiness() { return this.membershipTier === 'business'; },
+            get isEnterprise() { return this.membershipTier === 'enterprise'; },
+          };
 
-        set({ user: loggedInUser, isAuthenticated: true });
-        console.log('✅ Login başarılı, membershipTier:', loggedInUser.membershipTier);
+          set({ user: loggedInUser, isAuthenticated: true });
+          console.log('✅ Login başarılı (Postgres), membershipTier:', loggedInUser.membershipTier);
+          
+        } catch (error: any) {
+          console.error('❌ Login hatası:', error);
+          throw error;
+        }
       },
 
       loginWithGoogle: async (googleUser: { email: string; name: string; picture?: string; googleId?: string }) => {
@@ -173,64 +178,56 @@ export const useAuthStore = create<AuthState>()(
       },
 
       register: async (name: string, email: string, password: string) => {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        
-        // Email kontrolü - zaten kayıtlı mı?
-        const existingUsers = JSON.parse(localStorage.getItem('all-users-storage') || '{"users":[]}');
-        const users = existingUsers.users || [];
-        
-        if (users.find((u: any) => u.email === email)) {
-          throw new Error('Bu email adresi zaten kayıtlı. Lütfen giriş yapın.');
-        }
-        
-        // Yeni kullanıcı oluştur
-        const newUserId = Date.now().toString();
-        const newUserData = {
-          id: newUserId,
-          name,
-          email,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff`,
-          premium: false,
-          membershipTier: 'free' as MembershipTier,
-          membershipExpiry: null,
-          aiCredits: 50,
-          createdAt: new Date().toISOString(),
-        };
-        
-        // ÖNEMLİ: Önce all-users-storage'a kaydet
-        users.push(newUserData);
-        localStorage.setItem('all-users-storage', JSON.stringify({ 
-          users,
-          lastUpdated: new Date().toISOString()
-        }));
-        
-        console.log('✅ Kullanıcı all-users-storage\'a kaydedildi:', email);
-        console.log('📊 Toplam kullanıcı sayısı:', users.length);
-        
-        // Sonra auth store'a set et
-        const mockUser: any = {
-          id: newUserId,
-          name,
-          email,
-          avatar: newUserData.avatar,
-          membershipTier: 'free' as MembershipTier,
-          membershipExpiry: null,
-          aiCredits: 50,
-          createdAt: new Date(),
-          // Getter'lar için
-          get isPremium() { return this.membershipTier !== 'free'; },
-          get isBusiness() { return this.membershipTier === 'business'; },
-          get isEnterprise() { return this.membershipTier === 'enterprise'; },
-        };
-
-        set({ user: mockUser, isAuthenticated: true });
-        
-        // Admin paneline bildir
         try {
-          const adminStore = useAdminStore.getState();
-          adminStore.trackUserSignup(name, newUserId);
-        } catch (error) {
-          console.error('Admin tracking error:', error);
+          console.log('📝 Register API çağrısı:', email);
+          
+          // Postgres'e kayıt (API)
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name, email, password })
+          });
+          
+          const data = await response.json();
+          
+          if (!data.success) {
+            throw new Error(data.error || 'Kayıt başarısız');
+          }
+          
+          const dbUser = data.user;
+          
+          // Kullanıcı state'ini oluştur
+          const newUser: any = {
+            id: dbUser.id.toString(),
+            name: dbUser.name,
+            email: dbUser.email,
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(dbUser.name)}&background=6366f1&color=fff`,
+            membershipTier: dbUser.membershipTier || 'free',
+            membershipExpiry: null,
+            aiCredits: dbUser.aiCredits || 50,
+            createdAt: new Date(dbUser.createdAt),
+            get isPremium() { return this.membershipTier !== 'free'; },
+            get isBusiness() { return this.membershipTier === 'business'; },
+            get isEnterprise() { return this.membershipTier === 'enterprise'; },
+          };
+
+          set({ user: newUser, isAuthenticated: true });
+          
+          console.log('✅ Kayıt başarılı (Postgres):', email);
+          
+          // Admin paneline bildir
+          try {
+            const adminStore = useAdminStore.getState();
+            adminStore.trackUserSignup(name, dbUser.id.toString());
+          } catch (error) {
+            console.error('Admin tracking error:', error);
+          }
+          
+        } catch (error: any) {
+          console.error('❌ Register hatası:', error);
+          throw error;
         }
       },
 
