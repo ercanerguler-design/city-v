@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { useAdminStore } from '@/lib/stores/adminStore';
 import { useBetaApplicationStore } from '@/store/betaApplicationStore';
-import { getAllUsers, approvePremium, revokePremium } from '@/lib/stores/userManager';
 import type { StoredUser } from '@/lib/stores/userManager';
 import { formatTime } from '@/lib/utils';
 
@@ -33,7 +32,7 @@ export default function AdminPage() {
 
   // Kullanıcıları yükle (Postgres'ten)
   useEffect(() => {
-    if (mounted && activeTab === 'users') {
+    if (mounted && (activeTab === 'users' || activeTab === 'overview')) {
       console.log('👥 Kullanıcılar Postgres\'ten yükleniyor...');
       fetchUsers();
     }
@@ -61,12 +60,25 @@ export default function AdminPage() {
           profilePicture: user.profile_picture
         }));
         setAllUsers(formattedUsers);
+        
+        // İstatistikleri güncelle
+        updateStatsFromUsers(formattedUsers);
       } else {
         console.error('❌ Kullanıcılar yüklenemedi:', data.error);
       }
     } catch (error) {
       console.error('❌ Kullanıcı yükleme hatası:', error);
     }
+  };
+
+  // Kullanıcılardan istatistikleri hesapla
+  const updateStatsFromUsers = (users: StoredUser[]) => {
+    const totalUsers = users.length;
+    const premiumUsers = users.filter(u => u.membershipTier && u.membershipTier !== 'free').length;
+    const freeUsers = totalUsers - premiumUsers;
+    
+    // adminStore stats'ı güncelle
+    refreshStats(); // Store'u güncelle
   };
 
   // Beta başvurularını yükle (Postgres'ten)
@@ -270,118 +282,97 @@ export default function AdminPage() {
               <StatCard
                 icon={Users}
                 label="Toplam Kullanıcı"
-                value={stats.totalUsers.toLocaleString()}
-                change={`+${stats.userGrowth.month} bu ay`}
+                value={allUsers.length.toLocaleString()}
                 gradient="bg-gradient-to-br from-blue-500 to-blue-600"
               />
               <StatCard
                 icon={Activity}
                 label="Aktif Kullanıcı"
-                value={stats.activeUsers.toLocaleString()}
-                change={`+${stats.userGrowth.week} bu hafta`}
+                value={allUsers.filter(u => u.isActive).length.toLocaleString()}
                 gradient="bg-gradient-to-br from-green-500 to-green-600"
               />
               <StatCard
                 icon={Crown}
                 label="Premium Üye"
-                value={stats.premiumUsers.toLocaleString()}
+                value={allUsers.filter(u => u.membershipTier && u.membershipTier !== 'free').length.toLocaleString()}
                 gradient="bg-gradient-to-br from-yellow-500 to-orange-500"
               />
               <StatCard
                 icon={DollarSign}
-                label="Aylık Gelir"
-                value={`₺${stats.revenue.monthly.toLocaleString()}`}
-                change={`₺${stats.revenue.yearly.toLocaleString()} yıllık`}
+                label="Free Üye"
+                value={allUsers.filter(u => !u.membershipTier || u.membershipTier === 'free').length.toLocaleString()}
                 gradient="bg-gradient-to-br from-purple-500 to-pink-500"
               />
             </div>
 
-            {/* Secondary Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <MiniStatCard icon={AlertCircle} label="Raporlar" value={stats.totalReports} />
-              <MiniStatCard icon={MapPin} label="Check-inler" value={stats.totalCheckIns} />
-              <MiniStatCard icon={Heart} label="Favoriler" value={stats.totalFavorites} />
-              <MiniStatCard icon={Star} label="Takip Edilenler" value={stats.totalTrackedLocations} />
-            </div>
-
-            {/* Popular Locations & Recent Activities */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Popular Locations */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg"
-              >
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-indigo-500" />
-                  Popüler Mekanlar
-                </h3>
-                <div className="space-y-3">
-                  {stats.popularLocations.map((location, index) => (
-                    <div
-                      key={location.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold ${
-                          index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                          index === 1 ? 'bg-gray-300 text-gray-700' :
-                          'bg-orange-400 text-orange-900'
-                        }`}>
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{location.name}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{location.category}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-gray-900 dark:text-white">{location.visits.toLocaleString()}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">ziyaret</p>
-                      </div>
-                    </div>
-                  ))}
+            {/* Kullanıcı İstatistikleri */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg"
+            >
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-indigo-500" />
+                Kullanıcı Dağılımı
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Toplam Kayıtlı</p>
+                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{allUsers.length}</p>
                 </div>
-              </motion.div>
-
-              {/* Recent Activities */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg"
-              >
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-purple-500" />
-                  Son Aktiviteler
-                </h3>
-                <div className="space-y-3">
-                  {stats.recentActivities.map((activity) => (
-                    <div
-                      key={activity.id}
-                      className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-700 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
-                    >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        activity.type === 'signup' ? 'bg-green-100 dark:bg-green-900/30' :
-                        activity.type === 'premium' ? 'bg-yellow-100 dark:bg-yellow-900/30' :
-                        activity.type === 'report' ? 'bg-blue-100 dark:bg-blue-900/30' :
-                        'bg-purple-100 dark:bg-purple-900/30'
-                      }`}>
-                        {activity.type === 'signup' && <Users className="w-4 h-4 text-green-600 dark:text-green-400" />}
-                        {activity.type === 'premium' && <Crown className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />}
-                        {activity.type === 'report' && <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-                        {activity.type === 'checkin' && <MapPin className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{activity.userName}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{activity.details}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatTime(activity.timestamp)}</p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Premium Üyeler</p>
+                  <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+                    {allUsers.filter(u => u.membershipTier && u.membershipTier !== 'free').length}
+                  </p>
                 </div>
-              </motion.div>
-            </div>
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20 rounded-xl p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Free Üyeler</p>
+                  <p className="text-3xl font-bold text-gray-600 dark:text-gray-400">
+                    {allUsers.filter(u => !u.membershipTier || u.membershipTier === 'free').length}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Son Kayıt Olan Kullanıcılar */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg"
+            >
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-purple-500" />
+                Son Kayıt Olan Kullanıcılar
+              </h3>
+              <div className="space-y-3">
+                {allUsers.slice(0, 5).map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-bold">
+                        {user.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.name}</p>
+                        {user.membershipTier && user.membershipTier !== 'free' && (
+                          <Crown className="w-4 h-4 text-yellow-500" />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                    </div>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      {new Date(user.joinDate).toLocaleDateString('tr-TR')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
           </div>
         )}
 
@@ -425,7 +416,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">Tüm Kullanıcılar</h3>
                     <button
-                      onClick={() => setAllUsers(getAllUsers())}
+                      onClick={() => fetchUsers()}
                       className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <RefreshCw className="w-4 h-4" />
@@ -476,21 +467,35 @@ export default function AdminPage() {
                             <div className="flex items-center gap-2">
                               {(!user.membershipTier || user.membershipTier === 'free') ? (
                                 <button
-                                  onClick={() => {
+                                  onClick={async () => {
                                     if (confirm(`${user.name} kullanıcısına Premium üyelik verilsin mi?`)) {
-                                      const needsReload = approvePremium(user.id, 'premium');
-                                      
-                                      // Liste'yi güncelle
-                                      const updatedUsers = getAllUsers();
-                                      setAllUsers(updatedUsers);
-                                      
-                                      // Sadece aktif kullanıcı değiştirilirse ve admin değilse reload yap
-                                      if (needsReload && !isAdmin) {
-                                        window.location.reload();
+                                      try {
+                                        console.log('🔄 Premium veriliyor:', user.email);
+                                        
+                                        // Postgres'e kaydet
+                                        const response = await fetch('/api/admin/users', {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({
+                                            userId: user.id,
+                                            updates: { membershipTier: 'premium' }
+                                          })
+                                        });
+                                        
+                                        const data = await response.json();
+                                        
+                                        if (data.success) {
+                                          console.log('✅ Premium verildi:', user.name);
+                                          // Listeyi yeniden yükle
+                                          await fetchUsers();
+                                        } else {
+                                          console.error('❌ Premium verme hatası:', data.error);
+                                          alert('Premium üyelik verilemedi: ' + data.error);
+                                        }
+                                      } catch (error) {
+                                        console.error('❌ Premium verme hatası:', error);
+                                        alert('Premium üyelik verilemedi');
                                       }
-                                      
-                                      // Admin kendini premium yaptıysa sadece listeyi güncelle
-                                      console.log('✅ Premium verildi:', user.name);
                                     }
                                   }}
                                   className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-lg"
@@ -501,21 +506,35 @@ export default function AdminPage() {
                                 </button>
                               ) : (
                                 <button
-                                  onClick={() => {
+                                  onClick={async () => {
                                     if (confirm(`${user.name} kullanıcısının Premium üyeliği iptal edilsin mi?`)) {
-                                      const needsReload = revokePremium(user.id);
-                                      
-                                      // Liste'yi güncelle
-                                      const updatedUsers = getAllUsers();
-                                      setAllUsers(updatedUsers);
-                                      
-                                      // Sadece aktif kullanıcı değiştirilirse ve admin değilse reload yap
-                                      if (needsReload && !isAdmin) {
-                                        window.location.reload();
+                                      try {
+                                        console.log('🔄 Premium iptal ediliyor:', user.email);
+                                        
+                                        // Postgres'ten kaldır
+                                        const response = await fetch('/api/admin/users', {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({
+                                            userId: user.id,
+                                            updates: { membershipTier: 'free' }
+                                          })
+                                        });
+                                        
+                                        const data = await response.json();
+                                        
+                                        if (data.success) {
+                                          console.log('✅ Premium iptal edildi:', user.name);
+                                          // Listeyi yeniden yükle
+                                          await fetchUsers();
+                                        } else {
+                                          console.error('❌ Premium iptal hatası:', data.error);
+                                          alert('Premium üyelik iptal edilemedi: ' + data.error);
+                                        }
+                                      } catch (error) {
+                                        console.error('❌ Premium iptal hatası:', error);
+                                        alert('Premium üyelik iptal edilemedi');
                                       }
-                                      
-                                      // Admin kendini revoke ettiyse sadece listeyi güncelle
-                                      console.log('✅ Premium iptal edildi:', user.name);
                                     }
                                   }}
                                   className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
