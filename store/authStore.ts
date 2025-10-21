@@ -114,6 +114,7 @@ export const useAuthStore = create<AuthState>()(
       loginWithGoogle: async (googleUser: { email: string; name: string; picture?: string; googleId?: string }) => {
         try {
           console.log('🔐 Google login başlatılıyor:', googleUser.email);
+          console.log('📦 Google user data:', googleUser);
           
           // API'ye Google kullanıcı bilgilerini gönder (Postgres'e kaydet/kontrol et)
           const response = await fetch('/api/auth/google', {
@@ -129,13 +130,19 @@ export const useAuthStore = create<AuthState>()(
             })
           });
           
-          const data = await response.json();
+          console.log('📡 API response status:', response.status);
           
-          if (!data.success) {
-            throw new Error(data.error || 'Google login başarısız');
+          const data = await response.json();
+          console.log('📊 API response data:', data);
+          
+          if (!response.ok || !data.success) {
+            const errorMsg = data.error || data.details || 'Google login başarısız';
+            console.error('❌ API error:', errorMsg);
+            throw new Error(errorMsg);
           }
           
           const dbUser = data.user;
+          console.log('👤 DB User:', dbUser);
           
           // Kullanıcı state'ini oluştur
           const loggedInUser: any = {
@@ -146,7 +153,7 @@ export const useAuthStore = create<AuthState>()(
             membershipTier: dbUser.membership_tier || 'free',
             membershipExpiry: dbUser.membership_expiry ? new Date(dbUser.membership_expiry) : null,
             aiCredits: dbUser.ai_credits || 100,
-            createdAt: new Date(dbUser.created_at),
+            createdAt: new Date(dbUser.created_at || dbUser.join_date || new Date()),
             // Getter'lar
             get isPremium() { return this.membershipTier !== 'free'; },
             get isBusiness() { return this.membershipTier === 'business'; },
@@ -154,6 +161,7 @@ export const useAuthStore = create<AuthState>()(
           };
 
           set({ user: loggedInUser, isAuthenticated: true });
+          console.log('✅ State updated, user:', loggedInUser.email);
           
           if (data.isNewUser) {
             console.log('🎉 Yeni Google kullanıcısı oluşturuldu:', googleUser.email);
@@ -163,7 +171,8 @@ export const useAuthStore = create<AuthState>()(
               const adminStore = useAdminStore.getState();
               adminStore.trackUserSignup(dbUser.name, dbUser.id.toString());
             } catch (error) {
-              console.error('Admin tracking error:', error);
+              console.error('⚠️ Admin tracking error:', error);
+              // Admin tracking hatası kullanıcı girişini engellemez
             }
           } else {
             console.log('✅ Mevcut Google kullanıcısı giriş yaptı:', googleUser.email);
@@ -171,9 +180,10 @@ export const useAuthStore = create<AuthState>()(
           
           console.log('✅ Google login başarılı, membershipTier:', loggedInUser.membershipTier);
           
-        } catch (error) {
+        } catch (error: any) {
           console.error('❌ Google login hatası:', error);
-          throw error;
+          console.error('❌ Error stack:', error.stack);
+          throw new Error(error.message || 'Google ile giriş yapılırken bir hata oluştu');
         }
       },
 
