@@ -31,12 +31,43 @@ export default function AdminPage() {
     setMounted(true);
   }, []);
 
-  // Kullanıcıları yükle
+  // Kullanıcıları yükle (Postgres'ten)
   useEffect(() => {
     if (mounted && activeTab === 'users') {
-      setAllUsers(getAllUsers());
+      console.log('👥 Kullanıcılar Postgres\'ten yükleniyor...');
+      fetchUsers();
     }
   }, [activeTab, mounted]);
+
+  // Kullanıcıları Postgres'ten çek
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/users');
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log(`✅ ${data.users.length} kullanıcı yüklendi`);
+        // Postgres formatını StoredUser formatına çevir
+        const formattedUsers: StoredUser[] = data.users.map((user: any) => ({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          membershipTier: user.membership_tier || 'free',
+          joinDate: user.join_date || user.created_at,
+          lastLogin: user.last_login,
+          totalSpent: 0, // Postgres'te henüz yok
+          aiCredits: user.ai_credits || 0,
+          isActive: user.is_active !== false,
+          profilePicture: user.profile_picture
+        }));
+        setAllUsers(formattedUsers);
+      } else {
+        console.error('❌ Kullanıcılar yüklenemedi:', data.error);
+      }
+    } catch (error) {
+      console.error('❌ Kullanıcı yükleme hatası:', error);
+    }
+  };
 
   // Beta başvurularını yükle (Postgres'ten)
   useEffect(() => {
