@@ -86,7 +86,10 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
 
   if (!isOpen) return null;
 
-  if (!isAuthenticated || !user?.premium) {
+  // Premium kontrolü - membershipTier kullan
+  const isPremiumUser = user?.membershipTier && user.membershipTier !== 'free';
+  
+  if (!isAuthenticated || !isPremiumUser) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-md mx-4 text-center">

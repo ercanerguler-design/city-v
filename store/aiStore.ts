@@ -362,7 +362,8 @@ Hangi konuda yardım istiyorsunuz?`;
 
   checkPremiumAccess: () => {
     const { user, isAuthenticated } = useAuthStore.getState();
-    return isAuthenticated && (user?.premium || false);
+    const isPremium = user?.membershipTier && user.membershipTier !== 'free';
+    return isAuthenticated && isPremium;
   },
 
   consumeCredits: (amount: number) => {

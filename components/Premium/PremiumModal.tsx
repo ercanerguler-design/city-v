@@ -28,7 +28,7 @@ export default function PremiumModal({ isOpen, onClose }: PremiumModalProps) {
   const { user } = useAuthStore();
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
-  const isPremium = user?.premium === true; // AuthStore'dan al
+  const isPremium = user?.membershipTier && user.membershipTier !== 'free'; // membershipTier kontrolü
   const daysRemaining = getDaysRemaining();
   const benefits = getPremiumBenefits();
 

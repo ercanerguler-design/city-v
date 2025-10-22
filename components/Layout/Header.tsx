@@ -95,7 +95,7 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
             </div>
 
             {/* AI Assistant Button - Premium only */}
-            {isAuthenticated && user?.premium && onAIClick && (
+            {isAuthenticated && user?.membershipTier && user.membershipTier !== 'free' && onAIClick && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -174,7 +174,7 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
             )}
 
             {/* Notifications (Premium) */}
-            {isAuthenticated && user?.premium && (
+            {isAuthenticated && user?.membershipTier && user.membershipTier !== 'free' && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -245,7 +245,7 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
 
                         {/* Premium */}
                         {isAuthenticated && (
-                          <button 
+                          <button
                             onClick={() => {
                               setShowUserMenu(false);
                               onPremiumClick?.();
@@ -254,7 +254,7 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
                           >
                             <Crown className="w-5 h-5" />
                             <span className="font-medium">Premium</span>
-                            {user?.premium && (
+                            {user?.membershipTier && user.membershipTier !== 'free' && (
                               <span className="ml-auto px-2 py-0.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold rounded-full">
                                 PRO
                               </span>
@@ -266,7 +266,8 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
                         {isAuthenticated && (
                           <button 
                             onClick={() => {
-                              if (!user?.premium) {
+                              const isPremium = user?.membershipTier && user.membershipTier !== 'free';
+                              if (!isPremium) {
                                 setShowUserMenu(false);
                                 onPremiumClick?.();
                                 return;
@@ -278,7 +279,7 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
                           >
                             <Trophy className="w-5 h-5" />
                             <span className="font-medium">Oyuncu Profili</span>
-                            {!user?.premium && (
+                            {!(user?.membershipTier && user.membershipTier !== 'free') && (
                               <Crown className="w-4 h-4 ml-auto text-amber-500" />
                             )}
                           </button>
@@ -288,7 +289,8 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
                         {isAuthenticated && (
                           <button 
                             onClick={() => {
-                              if (!user?.premium) {
+                              const isPremium = user?.membershipTier && user.membershipTier !== 'free';
+                              if (!isPremium) {
                                 setShowUserMenu(false);
                                 onPremiumClick?.();
                                 return;
@@ -300,13 +302,11 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
                           >
                             <Brain className="w-5 h-5" />
                             <span className="font-medium">Akıllı Öneriler</span>
-                            {!user?.premium && (
+                            {!(user?.membershipTier && user.membershipTier !== 'free') && (
                               <Crown className="w-4 h-4 ml-auto text-amber-500" />
                             )}
                           </button>
-                        )}
-
-                        {/* Takip Edilenler */}
+                        )}                        {/* Takip Edilenler */}
                         {isAuthenticated && (
                           <button 
                             onClick={() => {
@@ -482,7 +482,7 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
                 </div>
 
                 {/* AI Assistant */}
-                {isAuthenticated && user?.premium && onAIClick && (
+                {isAuthenticated && user?.membershipTier && user.membershipTier !== 'free' && onAIClick && (
                   <button
                     onClick={() => {
                       setIsMobileMenuOpen(false);

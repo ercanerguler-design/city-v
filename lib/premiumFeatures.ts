@@ -130,7 +130,7 @@ export const PREMIUM_FEATURES = {
  * Kullanıcının premium olup olmadığını kontrol eder
  */
 export function isPremiumUser(user: any): boolean {
-  return user?.premium === true;
+  return user?.membershipTier && user.membershipTier !== 'free';
 }
 
 /**

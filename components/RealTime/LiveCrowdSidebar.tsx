@@ -114,7 +114,7 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
       }
       setIsAnalyzing(false);
     };
-  }, [isOpen, user?.premium, locations]);
+  }, [isOpen, user?.membershipTier, locations]);
 
   const performAnalysis = async () => {
     console.log('⏳ performAnalysis fonksiyonu çağrıldı');
@@ -187,8 +187,10 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
     }
   };
 
-  // Premium kontrolü
-  if (!isAuthenticated || !user?.premium) {
+  // Premium kontrolü - membershipTier kontrolü
+  const isPremiumUser = user?.membershipTier && user.membershipTier !== 'free';
+  
+  if (!isAuthenticated || !isPremiumUser) {
     return (
       <>
         {/* 📱 Mobile Toggle Button */}
