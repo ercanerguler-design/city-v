@@ -61,7 +61,6 @@ interface AuthState {
 // @ts-ignore - Complex type inference with getters
 export const useAuthStore = create<AuthState>()(
   persist(
-    // @ts-ignore
     (set) => ({
       user: null,
       isAuthenticated: false,
@@ -309,8 +308,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       // AI Credits
-      getRemainingAICredits: () => {
-        const user = useAuthStore.getState().user;
+      getRemainingAICredits: (): number => {
+        const user: User | null = useAuthStore.getState().user;
         return user?.aiCredits || 0;
       },
 

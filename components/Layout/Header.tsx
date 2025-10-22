@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { MapPin, BarChart3, User, LogOut, Crown, Bell, Settings, Trophy, Brain, Map as MapIcon, HelpCircle, Star, Wifi, WifiOff, Activity } from 'lucide-react';
+import { MapPin, BarChart3, User, LogOut, Crown, Bell, Settings, Trophy, Brain, Map as MapIcon, HelpCircle, Star, Wifi, WifiOff, Activity, Bus } from 'lucide-react';
 import { CrowdStats } from '@/types';
 import CameraButton from '../Camera/CameraButton';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +12,7 @@ import { useOnboardingStore } from '@/lib/stores/onboardingStore';
 import { useTrackedStore } from '@/lib/stores/trackedStore';
 import useSocketStore from '@/store/socketStore';
 import useCrowdStore from '@/store/crowdStore';
+import Link from 'next/link';
 
 interface HeaderProps {
   stats: CrowdStats;
@@ -72,6 +73,19 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
 
           {/* Right Section - Desktop */}
           <div className="hidden lg:flex items-center gap-3">
+            {/* Toplu Taşıma Button */}
+            <Link href="/transport">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 rounded-xl shadow-lg transition-all"
+                title="Toplu Taşıma"
+              >
+                <Bus className="w-5 h-5" />
+                <span className="hidden md:inline font-semibold text-sm">Toplu Taşıma</span>
+              </motion.button>
+            </Link>
+
             {/* ESP32-CAM IoT Dashboard */}
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -457,6 +471,17 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
 
               {/* Menu Items Grid */}
               <div className="grid grid-cols-2 gap-3">
+                {/* Toplu Taşıma */}
+                <Link href="/transport">
+                  <div
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex flex-col items-center gap-2 p-3 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl cursor-pointer"
+                  >
+                    <Bus className="w-5 h-5" />
+                    <span className="text-xs font-medium">Toplu Taşıma</span>
+                  </div>
+                </Link>
+
                 {/* ESP32-CAM IoT */}
                 <button
                   onClick={() => {
