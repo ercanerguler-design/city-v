@@ -56,12 +56,9 @@ import { useCameraStore } from '@/store/cameraStore';
 
 // Data & Types
 import { Location, CrowdLevel } from '@/types';
-import { ankaraLocations, cityConfig, defaultCity } from '@/lib/ankaraData';
-import { mockStats, updateLocationsCrowdLevel } from '@/lib/mockData';
 import { useFilterStore } from '@/store/filterStore';
 import { useAuthStore } from '@/store/authStore';
 import { useLocationStore } from '@/store/locationStore';
-import { generateNearbyLocations, addWorkingHoursToLocations } from '@/lib/nearbyLocations';
 import { isLocationOpen } from '@/lib/workingHours';
 
 // Dynamic imports
@@ -107,8 +104,8 @@ export default function ProfessionalHome() {
   const [showLiveCrowd, setShowLiveCrowd] = useState(true); // 🔥 Canlı kalabalık otomatik açık
   const [showPhotoGallery, setShowPhotoGallery] = useState(false);
   const [viewMode, setViewMode] = useState<'map' | 'grid'>('map');
-  const [mapCenter, setMapCenter] = useState<[number, number]>(cityConfig.ankara.center);
-  const [mapZoom, setMapZoom] = useState(cityConfig.ankara.zoom);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([39.9334, 32.8597]); // Ankara merkez
+  const [mapZoom, setMapZoom] = useState(12);
   const [showLocationBanner, setShowLocationBanner] = useState(false);
   const [nearbyLocationsGenerated, setNearbyLocationsGenerated] = useState(false);
 
@@ -168,113 +165,32 @@ export default function ProfessionalHome() {
     }
   ]);
 
-  // Şehir değişince lokasyonları güncelle
+  // Şehir değişince sadece harita merkezini güncelle (locations API'den gelecek)
   useEffect(() => {
-    const config = cityConfig[selectedCity];
-    setLocations(addWorkingHoursToLocations(config.locations));
-    setMapCenter(config.center);
-    setMapZoom(config.zoom);
+    // Şehir merkezleri
+    const cityCenters: Record<string, [number, number]> = {
+      ankara: [39.9334, 32.8597],
+      istanbul: [41.0082, 28.9784],
+      izmir: [38.4237, 27.1428]
+    };
+    
+    setMapCenter(cityCenters[selectedCity] || [39.9334, 32.8597]);
+    setMapZoom(12);
   }, [selectedCity]);
 
-  // Konum alındığında yakındaki GERÇEK yerleri bul
+  // Kullanıcı konumu alındığında harita merkezini güncelle
   useEffect(() => {
     if (userLocation) {
-      console.log('========================================');
-      console.log('useEffect: KONUM DEGISTI!');
-      console.log('========================================');
+      console.log('📍 Kullanıcı konumu algılandı:', userLocation);
+      setMapCenter(userLocation);
+      setMapZoom(14); // Daha yakın zoom
       
-      // FİLTRELERİ TEMİZLE
+      // Filtreleri temizle
       useFilterStore.getState().clearFilters();
-      console.log('Filtreler temizlendi');
-      
-      console.log('\n🎯 ============================================');
-      console.log('🎯 KONUM DEĞİŞTİ - YENİ YERLER ÇEKILIYOR!');
-      console.log('🎯 ============================================');
-      console.log('📍 Konum:', userLocation[0].toFixed(6), userLocation[1].toFixed(6));
-      
-      // Google Places API ile gerçek yerler çek - async fonksiyon içinde
-      const fetchPlaces = async () => {
-        setIsLoadingPlaces(true);
-        console.log('� Business Locations API çağrılıyor...\n');
-        
-        try {
-          const response = await fetch('/api/cityv/business-locations');
-          
-          if (!response.ok) {
-            throw new Error('Business locations yüklenemedi');
-          }
-
-          const data = await response.json();
-          
-          console.log('\n✅ ============================================');
-          console.log('✅ BUSINESS API YANITI ALINDI!');
-          console.log('✅ ============================================');
-          console.log('📊 Bulunan işletme sayısı:', data.count);
-          
-          if (data.locations && data.locations.length > 0) {
-            // Mesafe hesaplama (Haversine formula)
-            const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-              const R = 6371; // Dünya yarıçapı (km)
-              const dLat = toRad(lat2 - lat1);
-              const dLon = toRad(lon2 - lon1);
-              const a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-              return R * c;
-            };
-
-            const toRad = (value: number): number => {
-              return value * Math.PI / 180;
-            };
-
-            // Her lokasyona mesafe ekle
-            const locationsWithDistance = data.locations.map((loc: any) => ({
-              ...loc,
-              distance: calculateDistance(
-                userLocation[0],
-                userLocation[1],
-                loc.coordinates[1], // lat
-                loc.coordinates[0]  // lng
-              )
-            }));
-
-            // Mesafeye göre sırala
-            locationsWithDistance.sort((a: any, b: any) => a.distance - b.distance);
-
-            console.log('🏆 İlk 3 işletme:');
-            locationsWithDistance.slice(0, 3).forEach((loc: any, i: number) => {
-              console.log(`   ${i+1}. ${loc.name} (${loc.category}) - ${loc.distance?.toFixed(1)} km`);
-              if (loc.crowdLevel) console.log(`      👥 ${loc.crowdLevel}`);
-            });
-            
-            console.log('\n🔄 setLocations() çağrılıyor...');
-            setLocations(locationsWithDistance);
-            setNearbyLocationsGenerated(true);
-            setIsLoadingPlaces(false);
-            
-            console.log('✅ STATE GÜNCELLENDİ!');
-            console.log('✅ Yeni locations.length:', locationsWithDistance.length);
-            console.log('✅ ============================================\n');
-          } else {
-            console.warn('\n⚠️ Business lokasyon bulunamadı');
-            setLocations([]);
-            setNearbyLocationsGenerated(true);
-            setIsLoadingPlaces(false);
-          }
-        } catch (error) {
-          console.error('💥 Business API HATASI:', error);
-          setIsLoadingPlaces(false);
-        }
-      };
-      
-      // Async fonksiyonu çağır
-      fetchPlaces();
     }
   }, [userLocation]);
 
-  // Business locations'ları çek ve haritaya ekle
+  // Business locations'ları çek ve haritaya ekle (SADECE GERÇEK VERİ)
   useEffect(() => {
     const fetchBusinessLocations = async () => {
       try {
@@ -284,51 +200,64 @@ export default function ProfessionalHome() {
         
         if (data.success && data.locations) {
           console.log('✅ Business locations alındı:', data.locations.length);
+          console.log('📍 Locations detay:', data.locations);
           
           // Business locations'ı Location formatına dönüştür
-          const businessLocations: Location[] = data.locations.map((business: any) => ({
-            id: `biz-${business.id}`, // Business prefix ile unique ID
-            name: business.name,
-            category: business.category,
-            coordinates: business.coordinates,
-            address: business.address,
-            description: business.description,
-            currentCrowdLevel: business.crowdLevel,
-            photos: business.photos,
-            workingHours: business.workingHours,
-            phone: business.phone,
-            email: business.email,
-            website: business.website,
-            features: business.features,
-            isBusiness: true, // Business marker ayırt etmek için
-            businessData: business // Tüm business verilerini sakla
-          }));
-          
-          // Mevcut locations'lara ekle - duplicate kontrolü
-          setLocations(prev => {
-            const nonBusinessLocations = prev.filter((loc: any) => !loc.isBusiness);
+          const businessLocations: Location[] = data.locations.map((business: any) => {
+            // API'den [lng, lat] geliyor, Leaflet için [lat, lng] çevirelim
+            const lat = business.coordinates[1];
+            const lng = business.coordinates[0];
             
-            // Business locations'ı duplicate olmadan ekle
-            const existingBusinessIds = new Set(
-              prev.filter((loc: any) => loc.isBusiness).map((loc: any) => loc.id)
-            );
+            console.log(`🏪 ${business.name}: [${lat}, ${lng}] (lat, lng)`);
             
-            const newBusinessLocations = businessLocations.filter(
-              (loc) => !existingBusinessIds.has(loc.id)
-            );
-            
-            return [...nonBusinessLocations, ...newBusinessLocations];
+            return {
+              id: `business-${business.businessId}`, // Business prefix ile unique ID
+              name: business.name,
+              category: business.category || 'restaurant',
+              coordinates: [lat, lng], // Leaflet için [lat, lng] formatı
+              address: business.address,
+              description: business.description,
+              currentCrowdLevel: business.crowdLevel || 'orta',
+              photos: business.photos || [],
+              workingHours: business.workingHours,
+              phone: business.phone,
+              email: business.email,
+              website: business.website,
+              features: business.features || [],
+              isBusiness: true, // Business marker olarak işaretle
+              businessData: business, // Tüm business verilerini sakla
+              // Crowd data ekle
+              currentPeople: business.currentPeople || 0,
+              isLive: business.isLive || false,
+              hasCampaigns: business.hasCampaigns || false,
+              campaigns: business.campaigns || []
+            };
           });
           
+          console.log('🗺️ Haritaya eklenecek locations:', businessLocations.length);
+          
+          // Sadece business locations'ları set et (mock data YOK)
+          setLocations(businessLocations);
+          setIsLoadingPlaces(false);
+          
           console.log('✅ Business locations haritaya eklendi');
+        } else {
+          console.warn('⚠️ Business location bulunamadı');
+          setLocations([]);
+          setIsLoadingPlaces(false);
         }
       } catch (error) {
         console.error('❌ Business locations çekilemedi:', error);
+        setLocations([]);
+        setIsLoadingPlaces(false);
       }
     };
     
-    // Sayfa yüklendiğinde ve her 30 saniyede bir güncelle (real-time data için)
+    // Sayfa yüklendiğinde çek
+    setIsLoadingPlaces(true);
     fetchBusinessLocations();
+    
+    // Her 30 saniyede bir güncelle (real-time IoT data için)
     const interval = setInterval(fetchBusinessLocations, 30000);
     
     return () => clearInterval(interval);
