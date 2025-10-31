@@ -10,9 +10,40 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   
-  // Stream URL'i oluştur
-  const streamUrl = camera.stream_url || `http://${camera.ip_address}:${camera.port}/stream`;
-  const finalStreamUrl = `${streamUrl}?t=${refreshKey}`;
+  // RTSP'yi HTTP'ye çevir - Browser RTSP desteklemiyor
+  const getHttpStreamUrl = () => {
+    let url = camera.stream_url || `http://${camera.ip_address}:${camera.port}/stream`;
+    
+    // RTSP URL'ini parse et ve HTTP'ye çevir
+    if (url.startsWith('rtsp://')) {
+      try {
+        // rtsp://user:pass@192.168.1.2:80/stream formatını parse et
+        const rtspRegex = /rtsp:\/\/(?:([^:]+):([^@]+)@)?(.+)/;
+        const match = url.match(rtspRegex);
+        
+        if (match) {
+          const [, username, password, hostPath] = match;
+          // HTTP URL'e çevir - ESP32-CAM için genelde /stream endpoint'i
+          url = `http://${hostPath}`;
+          
+          // Eğer credentials varsa basic auth header ile proxy kullan
+          if (username && password) {
+            // Camera proxy API'sine yönlendir
+            url = `/api/camera-proxy?url=${encodeURIComponent(url)}&auth=${btoa(`${username}:${password}`)}`;
+          }
+        }
+      } catch (e) {
+        console.error('RTSP URL parse error:', e);
+        // Fallback: IP:port/stream
+        url = `http://${camera.ip_address}:${camera.port}/stream`;
+      }
+    }
+    
+    return url;
+  };
+  
+  const streamUrl = getHttpStreamUrl();
+  const finalStreamUrl = `${streamUrl}${streamUrl.includes('?') ? '&' : '?'}t=${refreshKey}`;
 
   // Otomatik refresh (her 5 saniyede bir)
   useEffect(() => {
