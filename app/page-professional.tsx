@@ -6,6 +6,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Filter, Map as MapIcon, Grid3x3, Search, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+// Leaflet CSS
+import 'leaflet/dist/leaflet.css';
+import 'react-leaflet-markercluster/dist/styles.min.css';
+
 // Components
 import ProHeader from '@/components/Layout/ProHeader';
 import LocationCard from '@/components/ui/LocationCard';
