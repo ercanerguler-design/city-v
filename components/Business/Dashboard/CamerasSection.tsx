@@ -49,8 +49,44 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
   useEffect(() => {
     if (businessProfile) {
       loadCameras();
+      updatePlanInfo();
     }
   }, [businessProfile]);
+
+  // Plan bilgisini güncelle
+  const updatePlanInfo = () => {
+    const userStr = localStorage.getItem('business_user');
+    if (!userStr) return;
+
+    try {
+      const user = JSON.parse(userStr);
+      const membership = user.membership_type || 'free';
+      
+      const limits: { [key: string]: number } = {
+        'free': 1,
+        'premium': 10,
+        'enterprise': 50,
+        'business': 10
+      };
+
+      const maxCameras = limits[membership] || 1;
+      const remaining = Math.max(0, maxCameras - cameras.length);
+
+      setPlanInfo({
+        type: membership,
+        maxCameras,
+        currentCameras: cameras.length,
+        remainingSlots: remaining
+      });
+    } catch (error) {
+      console.error('Plan info error:', error);
+    }
+  };
+
+  // Kamera sayısı değiştiğinde planInfo'yu güncelle
+  useEffect(() => {
+    updatePlanInfo();
+  }, [cameras]);
 
   const loadCameras = async () => {
     try {
@@ -77,7 +113,46 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
     }
   };
 
+  // Üyelik limiti kontrolü
+  const checkCameraLimit = (): boolean => {
+    const userStr = localStorage.getItem('business_user');
+    if (!userStr) return false;
+
+    try {
+      const user = JSON.parse(userStr);
+      const membership = user.membership_type || 'free';
+      
+      // Üyelik limitlheri
+      const limits: { [key: string]: number } = {
+        'free': 1,
+        'premium': 10,
+        'enterprise': 50,
+        'business': 10 // business tier de 10 kamera
+      };
+
+      const maxCameras = limits[membership] || 1;
+      const currentCount = cameras.length;
+
+      if (currentCount >= maxCameras) {
+        toast.error(
+          `${membership.toUpperCase()} üyelikte maksimum ${maxCameras} kamera ekleyebilirsiniz.\nŞu anda ${currentCount} kameranız var.`,
+          { duration: 5000 }
+        );
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
   const handleAddCamera = async (cameraData: any) => {
+    // Limit kontrolü
+    if (!checkCameraLimit()) {
+      return;
+    }
+
     try {
       const token = localStorage.getItem('business_token');
       
@@ -93,7 +168,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
       const data = await response.json();
 
       if (data.success) {
-        toast.success('Kamera başarıyla eklendi!');
+        toast.success('✅ Kamera başarıyla eklendi!');
         setShowAddModal(false);
         loadCameras();
       } else {

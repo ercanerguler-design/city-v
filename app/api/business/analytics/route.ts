@@ -20,10 +20,10 @@ export async function GET(req: NextRequest) {
     // 1. Bugünkü toplam ziyaretçi sayısı (iot_crowd_analysis)
     const todayVisitorsResult = await query(
       `SELECT 
-        COALESCE(SUM(current_occupancy), 0) as total_visitors,
-        COUNT(DISTINCT device_id) as active_cameras
+        COALESCE(SUM(ica.current_occupancy), 0) as total_visitors,
+        COUNT(DISTINCT ica.device_id) as active_cameras
        FROM iot_crowd_analysis ica
-       JOIN iot_devices id ON ica.device_id = id.id
+       JOIN iot_devices id ON ica.device_id = id.device_id
        WHERE id.business_id = $1 
          AND DATE(ica.timestamp) = CURRENT_DATE`,
       [businessId]
@@ -31,9 +31,9 @@ export async function GET(req: NextRequest) {
 
     // 2. Dünkü ziyaretçi sayısı (büyüme hesabı için)
     const yesterdayVisitorsResult = await query(
-      `SELECT COALESCE(SUM(current_occupancy), 0) as total_visitors
+      `SELECT COALESCE(SUM(ica.current_occupancy), 0) as total_visitors
        FROM iot_crowd_analysis ica
-       JOIN iot_devices id ON ica.device_id = id.id
+       JOIN iot_devices id ON ica.device_id = id.device_id
        WHERE id.business_id = $1 
          AND DATE(ica.timestamp) = CURRENT_DATE - INTERVAL '1 day'`,
       [businessId]
@@ -48,10 +48,10 @@ export async function GET(req: NextRequest) {
     // 4. Son 1 saatteki ortalama yoğunluk
     const avgOccupancyResult = await query(
       `SELECT 
-        COALESCE(AVG(current_occupancy), 0) as avg_occupancy,
-        MAX(current_occupancy) as max_occupancy
+        COALESCE(AVG(ica.current_occupancy), 0) as avg_occupancy,
+        MAX(ica.current_occupancy) as max_occupancy
        FROM iot_crowd_analysis ica
-       JOIN iot_devices id ON ica.device_id = id.id
+       JOIN iot_devices id ON ica.device_id = id.device_id
        WHERE id.business_id = $1 
          AND ica.timestamp >= NOW() - INTERVAL '1 hour'`,
       [businessId]

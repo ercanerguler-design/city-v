@@ -67,11 +67,11 @@ export async function GET(req: NextRequest) {
         try {
           const crowdResult = await query(
             `SELECT 
-              COALESCE(AVG(current_occupancy), 0) as avg_people,
-              COALESCE(MAX(current_occupancy), 0) as max_people,
+              COALESCE(AVG(ica.current_occupancy), 0) as avg_people,
+              COALESCE(MAX(ica.current_occupancy), 0) as max_people,
               COUNT(*) as data_points
              FROM iot_crowd_analysis ica
-             JOIN iot_devices id ON ica.device_id = id.id
+             JOIN iot_devices id ON ica.device_id = id.device_id
              JOIN business_profiles bp ON id.business_id = bp.id
              WHERE bp.id = $1 
                AND ica.timestamp >= NOW() - INTERVAL '10 minutes'`,
