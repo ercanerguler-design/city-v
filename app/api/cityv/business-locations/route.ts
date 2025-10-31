@@ -120,7 +120,10 @@ export async function GET(req: NextRequest) {
           businessId: business.business_id, // Backend için de sakla
           name: business.business_name,
           category: business.business_type || 'other',
-          coordinates: [business.longitude, business.latitude],
+          coordinates: [
+            parseFloat(business.longitude), 
+            parseFloat(business.latitude)
+          ], // String'den number'a çevir
           address: business.address,
           city: business.city,
           district: business.district,

@@ -205,10 +205,17 @@ export default function ProfessionalHome() {
           // Business locations'ı Location formatına dönüştür
           const businessLocations: Location[] = data.locations.map((business: any) => {
             // API'den [lng, lat] geliyor, Leaflet için [lat, lng] çevirelim
-            const lat = business.coordinates[1];
-            const lng = business.coordinates[0];
+            const lng = typeof business.coordinates[0] === 'number' 
+              ? business.coordinates[0] 
+              : parseFloat(business.coordinates[0]);
+            const lat = typeof business.coordinates[1] === 'number'
+              ? business.coordinates[1]
+              : parseFloat(business.coordinates[1]);
             
-            console.log(`🏪 ${business.name}: [${lat}, ${lng}] (lat, lng)`);
+            console.log(`🏪 ${business.name}:`);
+            console.log(`   Raw coordinates:`, business.coordinates);
+            console.log(`   Parsed: [${lat}, ${lng}] (lat, lng)`);
+            console.log(`   Types: lat=${typeof lat}, lng=${typeof lng}`);
             
             return {
               id: `business-${business.businessId}`, // Business prefix ile unique ID
