@@ -77,6 +77,18 @@ export default function BusinessDashboard() {
     }
   }, [router]);
 
+  // Quick Actions navigation listener
+  useEffect(() => {
+    const handleNavigation = (e: any) => {
+      const section = e.detail;
+      setActiveSection(section);
+      if (isMobile) setSidebarOpen(false);
+    };
+
+    window.addEventListener('navigateToSection', handleNavigation as EventListener);
+    return () => window.removeEventListener('navigateToSection', handleNavigation as EventListener);
+  }, [isMobile]);
+
   const loadBusinessProfile = async (userId: number) => {
     try {
       // Business profili getir - businessId olarak userId'yi kullan

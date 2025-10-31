@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 // Leaflet CSS
 import 'leaflet/dist/leaflet.css';
-import 'react-leaflet-markercluster/dist/styles.min.css';
+// Note: react-leaflet-markercluster CSS is automatically included with the component
 
 // Components
 import ProHeader from '@/components/Layout/ProHeader';

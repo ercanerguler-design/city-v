@@ -110,7 +110,10 @@ export default function OverviewSection({ businessProfile }: { businessProfile: 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Hızlı İşlemler</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center gap-3 p-4 rounded-lg border-2 border-dashed border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all group">
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('navigateToSection', { detail: 'cameras' }))}
+            className="flex items-center gap-3 p-4 rounded-lg border-2 border-dashed border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all group"
+          >
             <Camera className="w-8 h-8 text-gray-400 group-hover:text-blue-600" />
             <div className="text-left">
               <p className="font-medium text-gray-900 group-hover:text-blue-600">Kamera Ekle</p>
@@ -118,7 +121,10 @@ export default function OverviewSection({ businessProfile }: { businessProfile: 
             </div>
           </button>
 
-          <button className="flex items-center gap-3 p-4 rounded-lg border-2 border-dashed border-gray-200 hover:border-purple-500 hover:bg-purple-50 transition-all group">
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('navigateToSection', { detail: 'cameras' }))}
+            className="flex items-center gap-3 p-4 rounded-lg border-2 border-dashed border-gray-200 hover:border-purple-500 hover:bg-purple-50 transition-all group"
+          >
             <Eye className="w-8 h-8 text-gray-400 group-hover:text-purple-600" />
             <div className="text-left">
               <p className="font-medium text-gray-900 group-hover:text-purple-600">Canlı İzle</p>
@@ -126,7 +132,10 @@ export default function OverviewSection({ businessProfile }: { businessProfile: 
             </div>
           </button>
 
-          <button className="flex items-center gap-3 p-4 rounded-lg border-2 border-dashed border-gray-200 hover:border-green-500 hover:bg-green-50 transition-all group">
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('navigateToSection', { detail: 'analytics' }))}
+            className="flex items-center gap-3 p-4 rounded-lg border-2 border-dashed border-gray-200 hover:border-green-500 hover:bg-green-50 transition-all group"
+          >
             <TrendingUp className="w-8 h-8 text-gray-400 group-hover:text-green-600" />
             <div className="text-left">
               <p className="font-medium text-gray-900 group-hover:text-green-600">Raporlar</p>
