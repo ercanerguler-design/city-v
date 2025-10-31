@@ -1,14 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Maximize2, RefreshCw, Wifi, Activity } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { X, Maximize2, RefreshCw, Wifi, Activity, Eye, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface DetectedObject {
+  class: string;
+  confidence: number;
+  bbox: { x: number; y: number; width: number; height: number };
+}
 
 export default function CameraLiveView({ camera, onClose }: { camera: any; onClose: () => void }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [detections, setDetections] = useState<DetectedObject[]>([]);
+  const [showDetections, setShowDetections] = useState(true);
+  const imageRef = useRef<HTMLImageElement>(null);
   
   // RTSP'yi HTTP'ye çevir - Browser RTSP desteklemiyor
   const getHttpStreamUrl = () => {
@@ -53,6 +62,30 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
 
     return () => clearInterval(interval);
   }, []);
+
+  // AI Object Detection - her 3 saniyede bir
+  useEffect(() => {
+    loadDetections();
+    
+    const interval = setInterval(() => {
+      loadDetections();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [camera.device_id]);
+
+  const loadDetections = async () => {
+    try {
+      const response = await fetch(`/api/business/cameras/${camera.device_id}/detect`);
+      const data = await response.json();
+      
+      if (data.success && data.detections?.objects) {
+        setDetections(data.detections.objects);
+      }
+    } catch (error) {
+      console.error('Detection load error:', error);
+    }
+  };
 
   const handleImageLoad = () => {
     setIsLoading(false);
@@ -118,6 +151,13 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
           
           <div className="flex items-center gap-2">
             <button 
+              onClick={() => setShowDetections(!showDetections)}
+              className={`p-2 rounded-lg transition-colors ${showDetections ? 'bg-blue-600 hover:bg-blue-700' : 'hover:bg-gray-800'}`}
+              title={showDetections ? 'AI Detection Aktif' : 'AI Detection Kapalı'}
+            >
+              <Eye className={`w-5 h-5 ${showDetections ? 'text-white' : 'text-gray-300'}`} />
+            </button>
+            <button 
               onClick={handleRefresh}
               className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
               title="Yenile"
@@ -170,14 +210,81 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
             </div>
           )}
 
-          <img
-            src={finalStreamUrl}
-            alt={`${camera.camera_name} canlı görüntü`}
-            className={`w-full h-auto ${isLoading || error ? 'hidden' : 'block'}`}
-            style={{ maxHeight: '80vh', minHeight: '500px', objectFit: 'contain' }}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-          />
+          <div className="relative w-full h-full">
+            <img
+              ref={imageRef}
+              src={finalStreamUrl}
+              alt={`${camera.camera_name} canlı görüntü`}
+              className={`w-full h-auto ${isLoading || error ? 'hidden' : 'block'}`}
+              style={{ maxHeight: '80vh', minHeight: '500px', objectFit: 'contain' }}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+            />
+
+            {/* AI Detection Overlay */}
+            {showDetections && !isLoading && !error && imageRef.current && (
+              <svg
+                className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                style={{
+                  maxHeight: '80vh',
+                  minHeight: '500px'
+                }}
+                viewBox={`0 0 ${imageRef.current.naturalWidth || 1920} ${imageRef.current.naturalHeight || 1080}`}
+                preserveAspectRatio="xMidYMid meet"
+              >
+                <AnimatePresence>
+                  {detections.map((obj, index) => {
+                    const color = obj.class === 'person' ? '#3B82F6' : '#10B981';
+                    const label = `${obj.class} ${Math.round(obj.confidence * 100)}%`;
+                    
+                    return (
+                      <motion.g
+                        key={`${obj.class}-${index}`}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {/* Bounding Box */}
+                        <rect
+                          x={obj.bbox.x}
+                          y={obj.bbox.y}
+                          width={obj.bbox.width}
+                          height={obj.bbox.height}
+                          fill="none"
+                          stroke={color}
+                          strokeWidth="3"
+                          rx="4"
+                        />
+                        
+                        {/* Label Background */}
+                        <rect
+                          x={obj.bbox.x}
+                          y={obj.bbox.y - 25}
+                          width={label.length * 8 + 10}
+                          height="22"
+                          fill={color}
+                          rx="4"
+                        />
+                        
+                        {/* Label Text */}
+                        <text
+                          x={obj.bbox.x + 5}
+                          y={obj.bbox.y - 9}
+                          fill="white"
+                          fontSize="14"
+                          fontWeight="600"
+                          fontFamily="system-ui"
+                        >
+                          {label}
+                        </text>
+                      </motion.g>
+                    );
+                  })}
+                </AnimatePresence>
+              </svg>
+            )}
+          </div>
 
           {/* Info Overlay */}
           {!isLoading && !error && (
@@ -186,14 +293,37 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-green-400" />
                   <span className="text-sm text-white">
-                    {camera.current_occupancy || 0} kişi
+                    {detections.filter(d => d.class === 'person').length} kişi
                   </span>
                 </div>
                 <div className="w-px h-4 bg-gray-600"></div>
+                {showDetections && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-blue-400" />
+                      <span className="text-sm text-white">
+                        {detections.length} nesne
+                      </span>
+                    </div>
+                    <div className="w-px h-4 bg-gray-600"></div>
+                  </>
+                )}
                 <div className="text-sm text-gray-300">
                   {camera.resolution || '1920x1080'} • {camera.fps || 30}fps
                 </div>
               </div>
+
+              {/* AI Badge */}
+              {showDetections && detections.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="bg-blue-600 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2"
+                >
+                  <Eye className="w-4 h-4 text-white" />
+                  <span className="text-xs font-medium text-white">AI AKTIF</span>
+                </motion.div>
+              )}
             </div>
           )}
         </div>
