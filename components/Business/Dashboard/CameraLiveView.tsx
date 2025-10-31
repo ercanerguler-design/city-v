@@ -17,6 +17,7 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
   const [refreshKey, setRefreshKey] = useState(0);
   const [detections, setDetections] = useState<DetectedObject[]>([]);
   const [showDetections, setShowDetections] = useState(true);
+  const [counting, setCounting] = useState<any>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   
   // RTSP'yi HTTP'ye çevir - Browser RTSP desteklemiyor
@@ -66,12 +67,20 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
   // AI Object Detection - her 3 saniyede bir
   useEffect(() => {
     loadDetections();
+    loadCounting();
     
-    const interval = setInterval(() => {
+    const detectionInterval = setInterval(() => {
       loadDetections();
     }, 3000);
 
-    return () => clearInterval(interval);
+    const countingInterval = setInterval(() => {
+      loadCounting();
+    }, 2000);
+
+    return () => {
+      clearInterval(detectionInterval);
+      clearInterval(countingInterval);
+    };
   }, [camera.device_id]);
 
   const loadDetections = async () => {
@@ -84,6 +93,19 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
       }
     } catch (error) {
       console.error('Detection load error:', error);
+    }
+  };
+
+  const loadCounting = async () => {
+    try {
+      const response = await fetch(`/api/business/cameras/${camera.device_id}/counting`);
+      const data = await response.json();
+      
+      if (data.success && data.counting) {
+        setCounting(data.counting);
+      }
+    } catch (error) {
+      console.error('Counting load error:', error);
     }
   };
 
@@ -221,8 +243,8 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
               onError={handleImageError}
             />
 
-            {/* AI Detection Overlay */}
-            {showDetections && !isLoading && !error && imageRef.current && (
+            {/* AI Detection Overlay + Calibration Line */}
+            {!isLoading && !error && imageRef.current && (
               <svg
                 className="absolute top-0 left-0 w-full h-full pointer-events-none"
                 style={{
@@ -232,56 +254,95 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
                 viewBox={`0 0 ${imageRef.current.naturalWidth || 1920} ${imageRef.current.naturalHeight || 1080}`}
                 preserveAspectRatio="xMidYMid meet"
               >
-                <AnimatePresence>
-                  {detections.map((obj, index) => {
-                    const color = obj.class === 'person' ? '#3B82F6' : '#10B981';
-                    const label = `${obj.class} ${Math.round(obj.confidence * 100)}%`;
-                    
-                    return (
-                      <motion.g
-                        key={`${obj.class}-${index}`}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        {/* Bounding Box */}
-                        <rect
-                          x={obj.bbox.x}
-                          y={obj.bbox.y}
-                          width={obj.bbox.width}
-                          height={obj.bbox.height}
-                          fill="none"
-                          stroke={color}
-                          strokeWidth="3"
-                          rx="4"
-                        />
-                        
-                        {/* Label Background */}
-                        <rect
-                          x={obj.bbox.x}
-                          y={obj.bbox.y - 25}
-                          width={label.length * 8 + 10}
-                          height="22"
-                          fill={color}
-                          rx="4"
-                        />
-                        
-                        {/* Label Text */}
-                        <text
-                          x={obj.bbox.x + 5}
-                          y={obj.bbox.y - 9}
-                          fill="white"
-                          fontSize="14"
-                          fontWeight="600"
-                          fontFamily="system-ui"
+                {/* Calibration Line */}
+                {counting?.calibration_line && counting.calibration_line.x1 && (
+                  <g>
+                    <line
+                      x1={counting.calibration_line.x1}
+                      y1={counting.calibration_line.y1}
+                      x2={counting.calibration_line.x2}
+                      y2={counting.calibration_line.y2}
+                      stroke="#EF4444"
+                      strokeWidth="4"
+                      strokeDasharray="10,5"
+                    />
+                    {/* Entry/Exit Labels */}
+                    <text
+                      x={counting.calibration_line.x1}
+                      y={counting.calibration_line.y1 - 10}
+                      fill="#EF4444"
+                      fontSize="16"
+                      fontWeight="700"
+                      fontFamily="system-ui"
+                    >
+                      {counting.entry_direction === 'up_to_down' || counting.entry_direction === 'left_to_right' ? '↓ GİRİŞ' : '↑ ÇIKIŞ'}
+                    </text>
+                    <text
+                      x={counting.calibration_line.x2}
+                      y={counting.calibration_line.y2 + 25}
+                      fill="#EF4444"
+                      fontSize="16"
+                      fontWeight="700"
+                      fontFamily="system-ui"
+                    >
+                      {counting.entry_direction === 'up_to_down' || counting.entry_direction === 'left_to_right' ? '↑ ÇIKIŞ' : '↓ GİRİŞ'}
+                    </text>
+                  </g>
+                )}
+
+                {/* AI Detection Boxes */}
+                {showDetections && (
+                  <AnimatePresence>
+                    {detections.map((obj, index) => {
+                      const color = obj.class === 'person' ? '#3B82F6' : '#10B981';
+                      const label = `${obj.class} ${Math.round(obj.confidence * 100)}%`;
+                      
+                      return (
+                        <motion.g
+                          key={`${obj.class}-${index}`}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          transition={{ duration: 0.3 }}
                         >
-                          {label}
-                        </text>
-                      </motion.g>
-                    );
-                  })}
-                </AnimatePresence>
+                          {/* Bounding Box */}
+                          <rect
+                            x={obj.bbox.x}
+                            y={obj.bbox.y}
+                            width={obj.bbox.width}
+                            height={obj.bbox.height}
+                            fill="none"
+                            stroke={color}
+                            strokeWidth="3"
+                            rx="4"
+                          />
+                          
+                          {/* Label Background */}
+                          <rect
+                            x={obj.bbox.x}
+                            y={obj.bbox.y - 25}
+                            width={label.length * 8 + 10}
+                            height="22"
+                            fill={color}
+                            rx="4"
+                          />
+                          
+                          {/* Label Text */}
+                          <text
+                            x={obj.bbox.x + 5}
+                            y={obj.bbox.y - 9}
+                            fill="white"
+                            fontSize="14"
+                            fontWeight="600"
+                            fontFamily="system-ui"
+                          >
+                            {label}
+                          </text>
+                        </motion.g>
+                      );
+                    })}
+                  </AnimatePresence>
+                )}
               </svg>
             )}
           </div>
@@ -333,23 +394,60 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
           <div className="grid grid-cols-4 gap-4 text-center">
             <div>
               <p className="text-xs text-gray-400">Giriş</p>
-              <p className="text-lg font-bold text-white">{camera.total_entries || 0}</p>
+              <p className="text-lg font-bold text-green-400">
+                {counting?.total_entries || camera.total_entries || 0}
+              </p>
             </div>
             <div>
               <p className="text-xs text-gray-400">Çıkış</p>
-              <p className="text-lg font-bold text-white">{camera.total_exits || 0}</p>
+              <p className="text-lg font-bold text-red-400">
+                {counting?.total_exits || camera.total_exits || 0}
+              </p>
             </div>
             <div>
               <p className="text-xs text-gray-400">İçeride</p>
-              <p className="text-lg font-bold text-green-400">{camera.current_occupancy || 0}</p>
+              <p className="text-lg font-bold text-blue-400">
+                {counting?.current_occupancy || camera.current_occupancy || 0}
+              </p>
             </div>
             <div>
               <p className="text-xs text-gray-400">Kapasite</p>
-              <p className="text-lg font-bold text-blue-400">
-                {camera.max_capacity ? `${camera.max_capacity}` : '∞'}
+              <p className="text-lg font-bold text-white">
+                {counting?.max_capacity || camera.max_capacity || '∞'}
               </p>
             </div>
           </div>
+
+          {/* Calibration Warning */}
+          {counting && !counting.calibrated && (
+            <div className="mt-3 p-2 bg-yellow-500/20 rounded-lg border border-yellow-500/50">
+              <p className="text-xs text-yellow-300 text-center">
+                ⚠️ Kamera kalibre edilmemiş - Giriş/Çıkış sayımı yapılmıyor
+              </p>
+            </div>
+          )}
+
+          {/* Occupancy Progress */}
+          {counting?.occupancy_percent && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-gray-400">Doluluk</span>
+                <span className="text-xs font-bold text-white">{counting.occupancy_percent}%</span>
+              </div>
+              <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${counting.occupancy_percent}%` }}
+                  className={`h-full ${
+                    counting.occupancy_percent < 50 ? 'bg-green-500' :
+                    counting.occupancy_percent < 75 ? 'bg-yellow-500' :
+                    counting.occupancy_percent < 90 ? 'bg-orange-500' :
+                    'bg-red-500'
+                  }`}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </motion.div>
