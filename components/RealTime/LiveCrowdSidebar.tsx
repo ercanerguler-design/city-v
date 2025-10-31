@@ -45,35 +45,27 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // 🔥 DEMO: Canlı kalabalık sistemi demonstrasyonu
+  // Gerçek business locations ile analiz (mock data YOK)
   useEffect(() => {
-    if (isOpen) {
-      console.log('🚀 DEMO: Canlı kalabalık sistemi başlatılıyor!');
+    if (isOpen && locations && locations.length > 0) {
+      console.log('🚀 Canlı kalabalık sistemi başlatılıyor...');
+      console.log('📊 Gerçek business sayısı:', locations.length);
       
-      const demoLocations = [
-        { id: 'smart-cafe-1', name: 'Akıllı Kafe Tunalı', category: 'cafe', coordinates: [32.85, 39.92] },
-        { id: 'demo-restaurant-1', name: 'McDonald\'s Kızılay', category: 'restaurant', coordinates: [32.86, 39.93] },
-        { id: 'demo-bank-1', name: 'İş Bankası', category: 'bank', coordinates: [32.84, 39.91] },
-        { id: 'demo-market-1', name: 'CarrefourSA', category: 'supermarket', coordinates: [32.87, 39.94] },
-        { id: 'demo-hospital-1', name: 'Hacettepe Hastanesi', category: 'hospital', coordinates: [32.88, 39.95] }
-      ];
+      // İlk analizi hemen başlat - gerçek business locations ile
+      analyzeOpenLocations(locations);
       
-      // İlk analizi hemen başlat
-      console.log('📊 İlk crowd analizi başlatılıyor...');
-      analyzeOpenLocations(demoLocations);
-      
-      // Her 10 saniyede bir güncelle (demo için hızlı)
-      const demoInterval = setInterval(() => {
-        console.log('🔄 Periyodik crowd analizi çalışıyor...');
-        analyzeOpenLocations(demoLocations);
-      }, 10000);
+      // Her 30 saniyede bir güncelle (API ile senkronize)
+      const interval = setInterval(() => {
+        console.log('🔄 Crowd analizi güncelleniyor...');
+        analyzeOpenLocations(locations);
+      }, 30000);
       
       return () => {
-        clearInterval(demoInterval);
-        console.log('🛑 Demo interval temizlendi');
+        clearInterval(interval);
+        console.log('🛑 Analiz interval temizlendi');
       };
     }
-  }, [isOpen, analyzeOpenLocations]);
+  }, [isOpen, locations, analyzeOpenLocations]);
   const handleToggle = onToggle || (() => setInternalIsOpen(!internalIsOpen));
   
   // Calculate total locations on map
