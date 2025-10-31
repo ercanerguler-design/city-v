@@ -35,10 +35,27 @@ const navItems: NavItem[] = [
 export default function BusinessDashboard() {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState('overview');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Mobil için kapalı başlat
   const [businessUser, setBusinessUser] = useState<any>(null);
   const [businessProfile, setBusinessProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Mobil kontrol
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setSidebarOpen(true); // Desktop'ta sidebar açık
+      } else {
+        setSidebarOpen(false); // Mobilde kapalı
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Auth kontrolü
   useEffect(() => {
@@ -106,12 +123,26 @@ export default function BusinessDashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      {/* Mobile Overlay */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside 
         className={`${
-          sidebarOpen ? 'w-64' : 'w-20'
-        } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col`}
+          isMobile 
+            ? sidebarOpen 
+              ? 'translate-x-0' 
+              : '-translate-x-full'
+            : sidebarOpen 
+              ? 'w-64' 
+              : 'w-20'
+        } ${isMobile ? 'fixed inset-y-0 left-0 z-50 w-64' : 'relative'} bg-white border-r border-gray-200 transition-all duration-300 flex flex-col`}
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
@@ -138,7 +169,10 @@ export default function BusinessDashboard() {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveSection(item.id)}
+                onClick={() => {
+                  setActiveSection(item.id);
+                  if (isMobile) setSidebarOpen(false); // Mobilde section değişince sidebar'ı kapat
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                   isActive
                     ? 'bg-blue-50 text-blue-600 font-medium'
@@ -146,7 +180,7 @@ export default function BusinessDashboard() {
                 }`}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>{item.label}</span>}
+                {(sidebarOpen || isMobile) && <span>{item.label}</span>}
               </button>
             );
           })}
@@ -187,28 +221,28 @@ export default function BusinessDashboard() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden w-full">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
-          <div className="flex items-center gap-4">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6">
+          <div className="flex items-center gap-2 md:gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <MenuIcon className="w-5 h-5" />
             </button>
-            <h1 className="text-xl font-bold text-gray-900">
+            <h1 className="text-lg md:text-xl font-bold text-gray-900 truncate">
               {navItems.find(item => item.id === activeSection)?.label || 'Dashboard'}
             </h1>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <button className="p-2 hover:bg-gray-100 rounded-lg relative">
               <Bell className="w-5 h-5 text-gray-600" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
-            <div className="h-8 w-px bg-gray-200"></div>
-            <div className="text-sm">
+            <div className="hidden md:block h-8 w-px bg-gray-200"></div>
+            <div className="hidden md:block text-sm">
               <p className="text-gray-500">İşletme</p>
               <p className="font-medium text-gray-900">{businessProfile?.business_name || 'Yükleniyor...'}</p>
             </div>
@@ -216,7 +250,7 @@ export default function BusinessDashboard() {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
+        <main className="flex-1 overflow-y-auto bg-gray-50 p-3 md:p-6">
           {activeSection === 'overview' && <OverviewSection businessProfile={businessProfile} />}
           {activeSection === 'cameras' && <CamerasSection businessProfile={businessProfile} />}
           {activeSection === 'location' && <LocationSection businessProfile={businessProfile} />}
