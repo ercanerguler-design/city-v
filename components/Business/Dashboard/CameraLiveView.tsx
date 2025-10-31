@@ -18,6 +18,8 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
   const [detections, setDetections] = useState<DetectedObject[]>([]);
   const [showDetections, setShowDetections] = useState(true);
   const [counting, setCounting] = useState<any>(null);
+  const [heatmap, setHeatmap] = useState<any>(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const imageRef = useRef<HTMLImageElement>(null);
   
   // RTSP'yi HTTP'ye çevir - Browser RTSP desteklemiyor
@@ -77,9 +79,14 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
       loadCounting();
     }, 2000);
 
+    const heatmapInterval = setInterval(() => {
+      loadHeatmap();
+    }, 4000);
+
     return () => {
       clearInterval(detectionInterval);
       clearInterval(countingInterval);
+      clearInterval(heatmapInterval);
     };
   }, [camera.device_id]);
 
@@ -106,6 +113,19 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
       }
     } catch (error) {
       console.error('Counting load error:', error);
+    }
+  };
+
+  const loadHeatmap = async () => {
+    try {
+      const response = await fetch(`/api/business/cameras/${camera.device_id}/heatmap`);
+      const data = await response.json();
+      
+      if (data.success && data.heatmap) {
+        setHeatmap(data);
+      }
+    } catch (error) {
+      console.error('Heatmap load error:', error);
     }
   };
 
@@ -178,6 +198,13 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
               title={showDetections ? 'AI Detection Aktif' : 'AI Detection Kapalı'}
             >
               <Eye className={`w-5 h-5 ${showDetections ? 'text-white' : 'text-gray-300'}`} />
+            </button>
+            <button 
+              onClick={() => setShowHeatmap(!showHeatmap)}
+              className={`p-2 rounded-lg transition-colors ${showHeatmap ? 'bg-orange-600 hover:bg-orange-700' : 'hover:bg-gray-800'}`}
+              title={showHeatmap ? 'Heatmap Aktif' : 'Heatmap Kapalı'}
+            >
+              <Activity className={`w-5 h-5 ${showHeatmap ? 'text-white' : 'text-gray-300'}`} />
             </button>
             <button 
               onClick={handleRefresh}
@@ -254,6 +281,65 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
                 viewBox={`0 0 ${imageRef.current.naturalWidth || 1920} ${imageRef.current.naturalHeight || 1080}`}
                 preserveAspectRatio="xMidYMid meet"
               >
+                {/* Heatmap Zones */}
+                {showHeatmap && heatmap?.zones && heatmap.zones.length > 0 && (
+                  <g>
+                    {heatmap.zones.map((zone: any, index: number) => {
+                      const heatmapData = heatmap.heatmap?.find((h: any) => h.zone_id === zone.id);
+                      const fillColor = heatmapData?.color || '#3B82F6';
+                      const opacity = showDetections ? 0.3 : 0.5;
+
+                      return (
+                        <g key={zone.id}>
+                          {/* Zone Polygon */}
+                          <polygon
+                            points={zone.points.map((p: any) => `${p.x},${p.y}`).join(' ')}
+                            fill={fillColor}
+                            fillOpacity={opacity}
+                            stroke={fillColor}
+                            strokeWidth="3"
+                          />
+                          
+                          {/* Zone Info */}
+                          {heatmapData && (
+                            <g>
+                              {/* Zone Name + Count */}
+                              <text
+                                x={zone.points.reduce((sum: number, p: any) => sum + p.x, 0) / zone.points.length}
+                                y={zone.points.reduce((sum: number, p: any) => sum + p.y, 0) / zone.points.length - 10}
+                                fill="white"
+                                fontSize="18"
+                                fontWeight="700"
+                                fontFamily="system-ui"
+                                textAnchor="middle"
+                                stroke="black"
+                                strokeWidth="3"
+                                paintOrder="stroke"
+                              >
+                                {zone.name}
+                              </text>
+                              <text
+                                x={zone.points.reduce((sum: number, p: any) => sum + p.x, 0) / zone.points.length}
+                                y={zone.points.reduce((sum: number, p: any) => sum + p.y, 0) / zone.points.length + 20}
+                                fill="white"
+                                fontSize="24"
+                                fontWeight="900"
+                                fontFamily="system-ui"
+                                textAnchor="middle"
+                                stroke="black"
+                                strokeWidth="3"
+                                paintOrder="stroke"
+                              >
+                                {heatmapData.people_count} kişi
+                              </text>
+                            </g>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </g>
+                )}
+
                 {/* Calibration Line */}
                 {counting?.calibration_line && counting.calibration_line.x1 && (
                   <g>
@@ -374,17 +460,30 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
                 </div>
               </div>
 
-              {/* AI Badge */}
-              {showDetections && detections.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="bg-blue-600 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2"
-                >
-                  <Eye className="w-4 h-4 text-white" />
-                  <span className="text-xs font-medium text-white">AI AKTIF</span>
-                </motion.div>
-              )}
+              {/* Status Badges */}
+              <div className="flex gap-2">
+                {showDetections && detections.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="bg-blue-600 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2"
+                  >
+                    <Eye className="w-4 h-4 text-white" />
+                    <span className="text-xs font-medium text-white">AI</span>
+                  </motion.div>
+                )}
+                {showHeatmap && heatmap?.zones && heatmap.zones.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-orange-600 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2"
+                  >
+                    <Activity className="w-4 h-4 text-white" />
+                    <span className="text-xs font-medium text-white">HEATMAP</span>
+                  </motion.div>
+                )}
+              </div>
             </div>
           )}
         </div>
