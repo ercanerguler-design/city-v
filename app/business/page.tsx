@@ -1,53 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { 
-  TrendingUp, Users, Camera, DollarSign, Clock, LogOut, 
-  BarChart3, Menu, Home, Video, MessageSquare, Building2,
-  Plus, Activity, Wifi, WifiOff, Settings, Eye, Trash2, Edit
-} from 'lucide-react';
-import { LanguageProvider, useLanguage } from '@/hooks/useLanguage';
-import LanguageSwitcher from '@/components/Layout/LanguageSwitcher';
-import CreateCampaignModal from '@/components/Business/CreateCampaignModal';
-import ProfessionalCampaignModal from '@/components/Business/ProfessionalCampaignModal';
-import BusinessProfileEditor from '@/components/Business/BusinessProfileEditor';
-import ESP32CameraStream from '@/components/Camera/ESP32CameraStream';
-import AddCameraModal from '@/components/Business/AddCameraModal';
-import ProfessionalCameraAnalytics from '@/components/Business/ProfessionalCameraAnalytics';
-import ZoneDrawingTool from '@/components/Business/ZoneDrawingTool';
-import CalibrationTool from '@/components/Business/CalibrationTool';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useRef } from 'react';
-import toast from 'react-hot-toast';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-interface Camera {
-  id: number;
-  camera_name: string;
-  ip_address: string;
-  port: number;
-  status: string;
-  location_description: string;
-  stream_url: string;
-  created_at: string;
+/**
+ * Business Dashboard Redirect Page
+ * Bu sayfa artık kullanılmıyor - yeni dashboard /business/dashboard yolunda
+ * Otomatik olarak yeni dashboard'a yönlendirme yapılıyor
+ */
+export default function BusinessPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Yeni dashboard'a yönlendir
+    router.push('/business/dashboard');
+  }, [router]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Yeni dashboard'a yönlendiriliyor...</p>
+      </div>
+    </div>
+  );
 }
-
-function BusinessDashboardContent() {
-  const { t } = useLanguage();
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [isAuth, setIsAuth] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [businessUser, setBusinessUser] = useState<any>(null);
-  const [licenseStatus, setLicenseStatus] = useState<'valid' | 'expired' | 'trial' | null>(null);
-  const [licenseInfo, setLicenseInfo] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [showCampaignModal, setShowCampaignModal] = useState(false);
-  const [showProfessionalCampaignModal, setShowProfessionalCampaignModal] = useState(false);
-  const [showAddCameraModal, setShowAddCameraModal] = useState(false);
-  const [showZoneDrawing, setShowZoneDrawing] = useState(false);
-  const [showCalibration, setShowCalibration] = useState(false);
-  const [cameras, setCameras] = useState<Camera[]>([]);
-  const [planInfo, setPlanInfo] = useState<any>(null);
-  const [selectedCamera, setSelectedCamera] = useState<Camera | null>(null);
   const [businessId] = useState(1);
   const [realTimeData, setRealTimeData] = useState({
     visitors: 0,
