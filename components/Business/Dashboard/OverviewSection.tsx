@@ -47,6 +47,13 @@ export default function OverviewSection({ businessProfile }: { businessProfile: 
   useEffect(() => {
     if (businessProfile) {
       loadAnalytics();
+      
+      // 30 saniyede bir otomatik güncelle
+      const interval = setInterval(() => {
+        loadAnalytics();
+      }, 30000);
+
+      return () => clearInterval(interval);
     }
   }, [businessProfile]);
 
@@ -56,12 +63,40 @@ export default function OverviewSection({ businessProfile }: { businessProfile: 
       const data = await response.json();
 
       if (data.success) {
+        // Crowd level'a göre renk belirleme
+        const getCrowdColor = (level: string) => {
+          const levelMap: Record<string, string> = {
+            'empty': 'Boş',
+            'low': 'Düşük', 
+            'medium': 'Orta',
+            'high': 'Yüksek',
+            'overcrowded': 'Çok Kalabalık'
+          };
+          return levelMap[level] || 'Bilinmiyor';
+        };
+
         // Metrikleri güncelle
         setMetrics(prev => [
-          { ...prev[0], value: data.todayVisitors.toString(), change: `+${data.visitorGrowth}%` },
-          { ...prev[1], value: data.activeCameras.toString(), change: `${data.activeCameras}/${data.totalCameras}` },
-          { ...prev[2], value: `${data.averageOccupancy}%`, change: data.crowdLevel },
-          { ...prev[3], value: `${data.avgStayMinutes}dk`, change: `+${data.stayGrowth}dk` }
+          { 
+            ...prev[0], 
+            value: data.todayVisitors.toString(), 
+            change: data.visitorGrowth >= 0 ? `+${data.visitorGrowth}%` : `${data.visitorGrowth}%` 
+          },
+          { 
+            ...prev[1], 
+            value: data.activeCameras.toString(), 
+            change: `${data.activeCameras}/${data.totalCameras}` 
+          },
+          { 
+            ...prev[2], 
+            value: `${Math.round(data.averageOccupancy)}%`, 
+            change: getCrowdColor(data.crowdLevel) 
+          },
+          { 
+            ...prev[3], 
+            value: `${data.avgStayMinutes}dk`, 
+            change: data.stayGrowth ? `+${data.stayGrowth}dk` : '+0dk' 
+          }
         ]);
       }
     } catch (error) {
