@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const streamUrl = searchParams.get('url');
+    const authToken = searchParams.get('auth'); // Base64 encoded "user:pass"
 
     if (!streamUrl) {
       return NextResponse.json(
@@ -29,12 +30,21 @@ export async function GET(request: NextRequest) {
 
     console.log('📹 Proxy stream başlatılıyor:', streamUrl);
 
+    // Headers hazırla
+    const requestHeaders: HeadersInit = {
+      'User-Agent': 'CityV-Camera-Proxy/1.0',
+      'Accept': 'multipart/x-mixed-replace, image/jpeg, */*',
+    };
+
+    // Basic Authentication ekle (eğer varsa)
+    if (authToken) {
+      requestHeaders['Authorization'] = `Basic ${authToken}`;
+      console.log('🔐 Basic Auth eklendi');
+    }
+
     // ESP32-CAM'dan stream çek
     const response = await fetch(streamUrl, {
-      headers: {
-        'User-Agent': 'CityV-Camera-Proxy/1.0',
-        'Accept': 'multipart/x-mixed-replace, image/jpeg, */*',
-      },
+      headers: requestHeaders,
       // @ts-ignore - Next.js fetch options
       cache: 'no-store',
     });
@@ -48,19 +58,19 @@ export async function GET(request: NextRequest) {
     }
 
     // CORS headers ile stream'i proxy et
-    const headers = new Headers(response.headers);
-    headers.set('Access-Control-Allow-Origin', '*');
-    headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    headers.set('Access-Control-Allow-Headers', 'Content-Type');
-    headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    headers.set('Pragma', 'no-cache');
-    headers.set('Expires', '0');
+    const responseHeaders = new Headers(response.headers);
+    responseHeaders.set('Access-Control-Allow-Origin', '*');
+    responseHeaders.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type');
+    responseHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    responseHeaders.set('Pragma', 'no-cache');
+    responseHeaders.set('Expires', '0');
 
     console.log('✅ Stream proxy aktif:', streamUrl);
 
     return new NextResponse(response.body, {
       status: 200,
-      headers,
+      headers: responseHeaders,
     });
   } catch (error: any) {
     console.error('❌ Camera proxy error:', error.message);
