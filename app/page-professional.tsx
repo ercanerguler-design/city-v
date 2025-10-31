@@ -366,13 +366,7 @@ export default function ProfessionalHome() {
     return filtered;
   }, [locations, selectedCategories, crowdLevelFilter, searchQuery, showFavoritesOnly, favorites, isLoadingPlaces]);
 
-  // Auto-update locations (demo)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLocations((prev) => updateLocationsCrowdLevel(prev));
-    }, 15000);
-    return () => clearInterval(interval);
-  }, []);
+  // Auto-update locations - API'den 30 saniyede bir güncellenecek (yukarıdaki useEffect'te)
 
   // Handlers
   const handleLocationClick = (location: Location) => {
@@ -566,11 +560,11 @@ export default function ProfessionalHome() {
       
       // GERÇEK YERLER: 100km yarıçapta ara (Ankara çevresi için)
       console.log(`�️ Harita merkezi: ${newLocation[0].toFixed(4)}, ${newLocation[1].toFixed(4)}`);
-      const nearby = generateNearbyLocations(newLocation[0], newLocation[1], 100);
-      console.log(`📦 ${nearby.length} yer state'e yazılıyor...`);
-      setLocations(nearby);
-      setNearbyLocationsGenerated(true);
-      console.log(`✅ TAMAMLANDI: ${nearby.length} yer gösteriliyor`);
+      // Business locations API'den otomatik yukleniyor
+      console.log('Harita merkezi guncellendi');
+
+
+
     } else {
       console.error('❌ Konum alınamadı!');
     }
@@ -1034,3 +1028,4 @@ export default function ProfessionalHome() {
     </div>
   );
 }
+
