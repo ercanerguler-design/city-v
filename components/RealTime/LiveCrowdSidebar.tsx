@@ -51,7 +51,7 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
       console.log('🚀 DEMO: Canlı kalabalık sistemi başlatılıyor!');
       
       const demoLocations = [
-        { id: 'demo-cafe-1', name: 'Starbucks Tunalı', category: 'cafe', coordinates: [32.85, 39.92] },
+        { id: 'smart-cafe-1', name: 'Akıllı Kafe Tunalı', category: 'cafe', coordinates: [32.85, 39.92] },
         { id: 'demo-restaurant-1', name: 'McDonald\'s Kızılay', category: 'restaurant', coordinates: [32.86, 39.93] },
         { id: 'demo-bank-1', name: 'İş Bankası', category: 'bank', coordinates: [32.84, 39.91] },
         { id: 'demo-market-1', name: 'CarrefourSA', category: 'supermarket', coordinates: [32.87, 39.94] },

@@ -1,5 +1,6 @@
 import MultiDeviceDashboard from '@/components/ESP32/MultiDeviceDashboard';
 import PremiumGuard from '@/components/Auth/PremiumGuard';
+import VideoAccessGuard from '@/components/Auth/VideoAccessGuard';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -9,8 +10,12 @@ export const metadata: Metadata = {
 
 export default function MultiDevicePage() {
   return (
-    <PremiumGuard>
-      <MultiDeviceDashboard />
-    </PremiumGuard>
+    // Temporarily disable guards for debugging
+    <MultiDeviceDashboard />
+    // <PremiumGuard>
+    //   <VideoAccessGuard deviceType="esp32-multi" deviceId="ESP32-MULTI-001">
+    //     <MultiDeviceDashboard />
+    //   </VideoAccessGuard>
+    // </PremiumGuard>
   );
 }

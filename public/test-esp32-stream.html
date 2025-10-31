@@ -1,258 +1,513 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32-CAM Stream Test</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: white;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            font-size: 2.5rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        .control-panel {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        input {
-            flex: 1;
-            padding: 15px;
-            font-size: 16px;
-            border: 2px solid rgba(255,255,255,0.3);
+<!DOCTYPE html><!DOCTYPE html>
+
+<html lang="tr"><html lang="tr">
+
+<head><head>
+
+    <meta charset="UTF-8">    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ESP32-CAM Stream Test</title>    <title>ESP32-CAM Stream Test</title>
+
+    <style>    <style>
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }        * {
+
+        body {            margin: 0;
+
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;            padding: 0;
+
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);            box-sizing: border-box;
+
+            min-height: 100vh;        }
+
+            padding: 20px;        body {
+
+        }            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+        .container { max-width: 1200px; margin: 0 auto; }            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        h1 {            min-height: 100vh;
+
+            color: white;            padding: 20px;
+
+            text-align: center;            color: white;
+
+            margin-bottom: 30px;        }
+
+            font-size: 2.5em;        .container {
+
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);            max-width: 1200px;
+
+        }            margin: 0 auto;
+
+        .controls {        }
+
+            background: white;        h1 {
+
+            padding: 20px;            text-align: center;
+
+            border-radius: 15px;            margin-bottom: 30px;
+
+            margin-bottom: 20px;            font-size: 2.5rem;
+
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+
+        }        }
+
+        .input-group { margin-bottom: 15px; }        .control-panel {
+
+        label {            background: rgba(255,255,255,0.1);
+
+            display: block;            backdrop-filter: blur(10px);
+
+            font-weight: 600;            border-radius: 15px;
+
+            margin-bottom: 8px;            padding: 20px;
+
+            color: #333;            margin-bottom: 20px;
+
+        }        }
+
+        input {        .input-group {
+
+            width: 100%;            display: flex;
+
+            padding: 12px;            gap: 10px;
+
+            border: 2px solid #ddd;            margin-bottom: 15px;
+
+            border-radius: 8px;        }
+
+            font-size: 16px;        input {
+
+            transition: border-color 0.3s;            flex: 1;
+
+        }            padding: 15px;
+
+        input:focus { outline: none; border-color: #667eea; }            font-size: 16px;
+
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }            border: 2px solid rgba(255,255,255,0.3);
+
+        button {            border-radius: 10px;
+
+            flex: 1;            background: rgba(255,255,255,0.9);
+
+            padding: 15px;            font-family: 'Courier New', monospace;
+
+            border: none;        }
+
+            border-radius: 8px;        button {
+
+            font-size: 16px;            padding: 15px 30px;
+
+            font-weight: 600;            font-size: 16px;
+
+            cursor: pointer;            font-weight: bold;
+
+            transition: all 0.3s;            border: none;
+
+        }            border-radius: 10px;
+
+        .btn-start {            cursor: pointer;
+
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);            transition: all 0.3s ease;
+
+            color: white;            text-transform: uppercase;
+
+        }        }
+
+        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }        .btn-test {
+
+        .btn-stop { background: #ef4444; color: white; }            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        .btn-stop:hover { background: #dc2626; }            color: white;
+
+        .stream-grid {        }
+
+            display: grid;        .btn-start {
+
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+
+            gap: 20px;            color: white;
+
+            margin-top: 20px;        }
+
+        }        .btn-stop {
+
+        .stream-card {            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+
+            background: white;            color: white;
+
+            border-radius: 15px;        }
+
+            overflow: hidden;        button:hover {
+
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);            transform: translateY(-2px);
+
+        }            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+
+        .stream-header {        }
+
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);        button:disabled {
+
+            color: white;            opacity: 0.5;
+
+            padding: 15px;            cursor: not-allowed;
+
+            display: flex;            transform: none;
+
+            justify-content: space-between;        }
+
+            align-items: center;        .status {
+
+        }            padding: 10px;
+
+        .stream-body {            border-radius: 10px;
+
+            position: relative;            margin-bottom: 10px;
+
+            background: #000;            font-weight: bold;
+
+            aspect-ratio: 4/3;            text-align: center;
+
+        }        }
+
+        .stream-body img {        .status.success {
+
+            width: 100%;            background: rgba(56, 239, 125, 0.3);
+
+            height: 100%;            border: 2px solid #38ef7d;
+
+            object-fit: contain;        }
+
+        }        .status.error {
+
+        .status {            background: rgba(235, 51, 73, 0.3);
+
+            display: inline-flex;            border: 2px solid #eb3349;
+
+            align-items: center;        }
+
+            gap: 5px;        .status.info {
+
+            padding: 5px 12px;            background: rgba(102, 126, 234, 0.3);
+
+            border-radius: 20px;            border: 2px solid #667eea;
+
+            font-size: 14px;        }
+
+            font-weight: 600;        .stream-container {
+
+        }            background: black;
+
+        .status.online { background: #10b981; }            border-radius: 15px;
+
+        .status.offline { background: #ef4444; }            overflow: hidden;
+
+        .pulse {            position: relative;
+
+            width: 8px;            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+
+            height: 8px;        }
+
+            background: white;        .stream-container img {
+
+            border-radius: 50%;            width: 100%;
+
+            animation: pulse 2s infinite;            height: auto;
+
+        }            display: block;
+
+        @keyframes pulse {        }
+
+            0%, 100% { opacity: 1; }        .live-badge {
+
+            50% { opacity: 0.3; }            position: absolute;
+
+        }            top: 20px;
+
+        .info { background: #f3f4f6; padding: 15px; }            left: 20px;
+
+        .info-item {            background: rgba(235, 51, 73, 0.9);
+
+            display: flex;            padding: 8px 16px;
+
+            justify-content: space-between;            border-radius: 20px;
+
+            margin-bottom: 8px;            font-weight: bold;
+
+            font-size: 14px;            display: flex;
+
+        }            align-items: center;
+
+        .info-label { color: #6b7280; font-weight: 600; }            gap: 8px;
+
+        .info-value { color: #1f2937; font-weight: 700; }        }
+
+    </style>        .pulse {
+
+</head>            width: 10px;
+
+<body>            height: 10px;
+
+    <div class="container">            background: white;
+
+        <h1>🎥 ESP32-CAM Stream Test</h1>            border-radius: 50%;
+
+                    animation: pulse 1s infinite;
+
+        <div class="controls">        }
+
+            <h2 style="margin-bottom: 20px; color: #333;">Kamera IP Ayarları</h2>        @keyframes pulse {
+
+            <div class="input-group">            0%, 100% { opacity: 1; }
+
+                <label for="ip1">📹 Kamera 1 IP:</label>            50% { opacity: 0.3; }
+
+                <input type="text" id="ip1" value="192.168.1.9" placeholder="192.168.1.9">        }
+
+            </div>        .log {
+
+            <div class="input-group">            background: rgba(0,0,0,0.5);
+
+                <label for="ip2">📹 Kamera 2 IP:</label>            border-radius: 10px;
+
+                <input type="text" id="ip2" value="192.168.1.10" placeholder="192.168.1.10">            padding: 15px;
+
+            </div>            margin-top: 20px;
+
+            <div class="input-group">            font-family: 'Courier New', monospace;
+
+                <label for="ip3">📹 Kamera 3 IP:</label>            font-size: 12px;
+
+                <input type="text" id="ip3" value="192.168.1.11" placeholder="192.168.1.11">            max-height: 300px;
+
+            </div>            overflow-y: auto;
+
+            <div class="input-group">        }
+
+                <label for="ip4">📹 Kamera 4 IP:</label>        .log-entry {
+
+                <input type="text" id="ip4" value="192.168.1.12" placeholder="192.168.1.12">            padding: 5px 0;
+
+            </div>            border-bottom: 1px solid rgba(255,255,255,0.1);
+
+            <div class="btn-group">        }
+
+                <button class="btn-start" onclick="startStreams()">▶️ Başlat</button>        .url-test {
+
+                <button class="btn-stop" onclick="stopStreams()">⏹️ Durdur</button>            margin-top: 15px;
+
+            </div>            padding: 15px;
+
+        </div>            background: rgba(0,0,0,0.3);
+
             border-radius: 10px;
-            background: rgba(255,255,255,0.9);
-            font-family: 'Courier New', monospace;
-        }
-        button {
-            padding: 15px 30px;
-            font-size: 16px;
-            font-weight: bold;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-        }
-        .btn-test {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .btn-start {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-        }
-        .btn-stop {
-            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
-            color: white;
-        }
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .status {
-            padding: 10px;
-            border-radius: 10px;
+
+        <div class="stream-grid" id="streamGrid"></div>        }
+
+    </div>        .url-test h3 {
+
             margin-bottom: 10px;
-            font-weight: bold;
-            text-align: center;
-        }
-        .status.success {
-            background: rgba(56, 239, 125, 0.3);
-            border: 2px solid #38ef7d;
-        }
-        .status.error {
-            background: rgba(235, 51, 73, 0.3);
-            border: 2px solid #eb3349;
-        }
-        .status.info {
-            background: rgba(102, 126, 234, 0.3);
-            border: 2px solid #667eea;
-        }
-        .stream-container {
-            background: black;
-            border-radius: 15px;
-            overflow: hidden;
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        .stream-container img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-        .live-badge {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(235, 51, 73, 0.9);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: bold;
+
+    <script>        }
+
+        let cameras = [];        .url-list {
+
             display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .pulse {
-            width: 10px;
-            height: 10px;
-            background: white;
-            border-radius: 50%;
-            animation: pulse 1s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-        .log {
-            background: rgba(0,0,0,0.5);
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 20px;
+
+        function startStreams() {            flex-direction: column;
+
+            const ips = [            gap: 5px;
+
+                document.getElementById('ip1').value,        }
+
+                document.getElementById('ip2').value,        .url-item {
+
+                document.getElementById('ip3').value,            padding: 10px;
+
+                document.getElementById('ip4').value            background: rgba(255,255,255,0.1);
+
+            ];            border-radius: 5px;
+
             font-family: 'Courier New', monospace;
-            font-size: 12px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        .log-entry {
-            padding: 5px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        .url-test {
-            margin-top: 15px;
-            padding: 15px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 10px;
-        }
-        .url-test h3 {
-            margin-bottom: 10px;
-        }
-        .url-list {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        .url-item {
-            padding: 10px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 5px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .url-item:hover {
-            background: rgba(255,255,255,0.2);
-        }
-    </style>
+
+            cameras = ips.map((ip, index) => ({            font-size: 14px;
+
+                id: `ESP32-${String(index + 1).padStart(3, '0')}`,            cursor: pointer;
+
+                name: `Kamera ${index + 1}`,            transition: background 0.2s;
+
+                ip: ip,        }
+
+                streamUrl: `http://${ip}/stream`,        .url-item:hover {
+
+                status: 'offline',            background: rgba(255,255,255,0.2);
+
+                startTime: new Date()        }
+
+            }));    </style>
+
 </head>
-<body>
-    <div class="container">
-        <h1>🎥 ESP32-CAM Stream Test</h1>
-        
-        <div class="control-panel">
-            <div class="input-group">
-                <input type="text" id="deviceIp" placeholder="ESP32 IP Adresi (örn: 192.168.1.9)" value="192.168.1.9">
-                <button class="btn-test" onclick="testConnection()">🔍 Test Bağlantı</button>
-                <button class="btn-start" onclick="startStream()">▶️ Başlat</button>
-                <button class="btn-stop" onclick="stopStream()">⏹️ Durdur</button>
-            </div>
+
+            renderStreams();<body>
+
+                <div class="container">
+
+            cameras.forEach((camera, index) => {        <h1>🎥 ESP32-CAM Stream Test</h1>
+
+                const img = document.getElementById(`stream-${index}`);        
+
+                if (img) {        <div class="control-panel">
+
+                    img.src = camera.streamUrl;            <div class="input-group">
+
+                    img.onerror = () => updateStatus(index, 'offline');                <input type="text" id="deviceIp" placeholder="ESP32 IP Adresi (örn: 192.168.1.9)" value="192.168.1.9">
+
+                    img.onload = () => updateStatus(index, 'online');                <button class="btn-test" onclick="testConnection()">🔍 Test Bağlantı</button>
+
+                }                <button class="btn-start" onclick="startStream()">▶️ Başlat</button>
+
+            });                <button class="btn-stop" onclick="stopStream()">⏹️ Durdur</button>
+
+        }            </div>
+
             
-            <div id="status"></div>
-            
-            <div class="url-test">
-                <h3>📡 Denenmesi Gereken URL'ler:</h3>
-                <div class="url-list" id="urlList"></div>
-            </div>
-        </div>
-        
-        <div class="stream-container" id="streamContainer">
+
+        function stopStreams() {            <div id="status"></div>
+
+            cameras.forEach((camera, index) => {            
+
+                const img = document.getElementById(`stream-${index}`);            <div class="url-test">
+
+                if (img) {                <h3>📡 Denenmesi Gereken URL'ler:</h3>
+
+                    img.src = '';                <div class="url-list" id="urlList"></div>
+
+                    updateStatus(index, 'offline');            </div>
+
+                }        </div>
+
+            });        
+
+        }        <div class="stream-container" id="streamContainer">
+
             <img id="streamImage" style="display: none;">
-            <div style="padding: 100px; text-align: center; color: #666;">
-                <h2>Kamera stream'i başlatılmadı</h2>
-                <p>Yukarıdan IP adresini girin ve "Başlat" butonuna tıklayın</p>
-            </div>
-        </div>
-        
-        <div class="log" id="log"></div>
-    </div>
 
-    <script>
-        let streamImg = document.getElementById('streamImage');
-        let statusDiv = document.getElementById('status');
-        let logDiv = document.getElementById('log');
-        let urlListDiv = document.getElementById('urlList');
+        function updateStatus(index, status) {            <div style="padding: 100px; text-align: center; color: #666;">
 
-        function addLog(message, type = 'info') {
-            const timestamp = new Date().toLocaleTimeString();
+            const statusEl = document.getElementById(`status-${index}`);                <h2>Kamera stream'i başlatılmadı</h2>
+
+            if (statusEl) {                <p>Yukarıdan IP adresini girin ve "Başlat" butonuna tıklayın</p>
+
+                statusEl.className = `status ${status}`;            </div>
+
+                statusEl.innerHTML = status === 'online'         </div>
+
+                    ? '<span class="pulse"></span> CANLI'         
+
+                    : '<span class="pulse"></span> OFFLINE';        <div class="log" id="log"></div>
+
+            }    </div>
+
+
+
+            const urlEl = document.getElementById(`url-${index}`);    <script>
+
+            if (urlEl && status === 'offline') {        let streamImg = document.getElementById('streamImage');
+
+                urlEl.innerHTML = `<strong>⚠️ BAĞLANTI HATASI</strong><br>        let statusDiv = document.getElementById('status');
+
+                    • ESP32 açık değil<br>        let logDiv = document.getElementById('log');
+
+                    • IP adresi yanlış<br>        let urlListDiv = document.getElementById('urlList');
+
+                    • WiFi network'te değil`;
+
+            }        function addLog(message, type = 'info') {
+
+        }            const timestamp = new Date().toLocaleTimeString();
+
             const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : '📋';
-            const entry = document.createElement('div');
-            entry.className = 'log-entry';
-            entry.textContent = `[${timestamp}] ${emoji} ${message}`;
-            logDiv.insertBefore(entry, logDiv.firstChild);
-        }
 
-        function setStatus(message, type) {
-            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
-        }
+        function renderStreams() {            const entry = document.createElement('div');
 
-        function getStreamUrls(ip) {
-            return [
-                `http://${ip}/stream`,
-                `http://${ip}:81/stream`,
-                `http://${ip}/cam`,
-                `http://${ip}:81/cam`,
-                `http://${ip}/video`,
-                `http://${ip}:8080/stream`,
-            ];
-        }
+            const grid = document.getElementById('streamGrid');            entry.className = 'log-entry';
 
-        function updateUrlList() {
-            const ip = document.getElementById('deviceIp').value;
-            const urls = getStreamUrls(ip);
-            urlListDiv.innerHTML = '';
-            
-            urls.forEach((url, index) => {
-                const item = document.createElement('div');
-                item.className = 'url-item';
-                item.textContent = `${index + 1}. ${url}`;
-                item.onclick = () => {
-                    document.getElementById('deviceIp').value = ip;
-                    streamImg.src = url;
+            grid.innerHTML = cameras.map((camera, index) => `            entry.textContent = `[${timestamp}] ${emoji} ${message}`;
+
+                <div class="stream-card">            logDiv.insertBefore(entry, logDiv.firstChild);
+
+                    <div class="stream-header">        }
+
+                        <div>
+
+                            <div style="font-size: 18px; font-weight: 700;">${camera.name}</div>        function setStatus(message, type) {
+
+                            <div style="font-size: 12px; opacity: 0.9;">${camera.id}</div>            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+
+                        </div>        }
+
+                        <div id="status-${index}" class="status offline">
+
+                            <span class="pulse"></span> OFFLINE        function getStreamUrls(ip) {
+
+                        </div>            return [
+
+                    </div>                `http://${ip}/stream`,
+
+                    <div class="stream-body">                `http://${ip}:81/stream`,
+
+                        <img id="stream-${index}" alt="${camera.name}">                `http://${ip}/cam`,
+
+                    </div>                `http://${ip}:81/cam`,
+
+                    <div class="info">                `http://${ip}/video`,
+
+                        <div class="info-item">                `http://${ip}:8080/stream`,
+
+                            <span class="info-label">IP:</span>            ];
+
+                            <span class="info-value">${camera.ip}</span>        }
+
+                        </div>
+
+                        <div class="info-item">        function updateUrlList() {
+
+                            <span class="info-label">URL:</span>            const ip = document.getElementById('deviceIp').value;
+
+                            <span class="info-value" id="url-${index}" style="font-size: 11px; word-break: break-all;">${camera.streamUrl}</span>            const urls = getStreamUrls(ip);
+
+                        </div>            urlListDiv.innerHTML = '';
+
+                        <div class="info-item">            
+
+                            <span class="info-label">Zaman:</span>            urls.forEach((url, index) => {
+
+                            <span class="info-value">${camera.startTime.toLocaleTimeString('tr-TR')}</span>                const item = document.createElement('div');
+
+                        </div>                item.className = 'url-item';
+
+                    </div>                item.textContent = `${index + 1}. ${url}`;
+
+                </div>                item.onclick = () => {
+
+            `).join('');                    document.getElementById('deviceIp').value = ip;
+
+        }                    streamImg.src = url;
+
                     addLog(`Manuel URL deneniyor: ${url}`, 'info');
-                };
-                urlListDiv.appendChild(item);
-            });
-        }
+
+        window.onload = () => startStreams();                };
+
+    </script>                urlListDiv.appendChild(item);
+
+</body>            });
+
+</html>        }
+
 
         async function testConnection() {
             const ip = document.getElementById('deviceIp').value;

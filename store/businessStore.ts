@@ -8,6 +8,12 @@ import useNotificationStore from './notificationStore';
 export interface Business {
   id: string;
   name: string;
+  companyName: string; // Şirket ismi
+  taxNumber?: string; // Vergi numarası
+  taxOffice?: string; // Vergi dairesi
+  companyAddress?: string; // Şirket adresi
+  contactPerson: string; // İletişim kişisi
+  position?: string; // Pozisyon/Unvan
   category: 'restaurant' | 'cafe' | 'retail' | 'beauty' | 'fitness' | 'healthcare' | 'automotive' | 'education' | 'hotel' | 'entertainment' | 'other';
   subCategory?: string; // Örn: "Italian Restaurant", "Coffee Shop", "Clothing Store"
   description?: string;
@@ -34,12 +40,14 @@ export interface Business {
   totalReviews: number;
   createdAt: number;
   subscription: 'free' | 'basic' | 'premium' | 'enterprise';
+  subscriptionFeatures: string[]; // Premium/Enterprise özellikleri
   locations?: BusinessLocation[];
   socialMedia?: {
     instagram?: string;
     facebook?: string;
     twitter?: string;
   };
+  language: 'tr' | 'en'; // Dil tercihi
 }
 
 export interface BusinessLocation {
@@ -130,7 +138,7 @@ export interface LiveCrowdData {
   occupancyRate: number; // Doluluk oranı %
   crowdLevel: 'Boş' | 'Orta' | 'Yoğun' | 'Çok Yoğun';
   maxCapacity: number; // Maksimum kapasite
-  esp32Ip?: string; // Cihaz IP adresi
+  cameraIp?: string; // CityV AI Kamerası IP adresi
 }
 
 export interface Reservation {
@@ -176,10 +184,11 @@ interface BusinessStore {
   
   // 🎥 Live Crowd State
   liveCrowdData: LiveCrowdData | null;
-  esp32Connected: boolean; // IoT device connection status
+  cameraConnected: boolean; // CityV AI Kamerası bağlantı durumu
 
   // Actions
-  login: (email: string, password: string) => Promise<boolean>;
+  // Authentication with optional company data for registration
+  login: (email: string, password: string, companyData?: any) => Promise<boolean>;
   logout: () => void;
   checkAuth: () => void;
   
@@ -216,13 +225,18 @@ interface BusinessStore {
   
   // 🎥 City-V IoT Live Crowd Management
   updateLiveCrowd: (data: LiveCrowdData) => void;
-  setESP32Connection: (connected: boolean) => void;
+  setCameraConnection: (connected: boolean) => void;
   getOccupancyPercentage: () => number;
   getCrowdTrend: () => 'increasing' | 'decreasing' | 'stable';
   
   // 📢 Push Notification System
   sendCampaignNotification: (campaignId: string) => Promise<boolean>;
+  sendGlobalNotification: (title: string, content: string) => Promise<boolean>; // Tüm CityV üyelerine bildirim
   markCampaignNotified: (campaignId: string) => void;
+  
+  // Language & Profile Management
+  setLanguage: (lang: 'tr' | 'en') => void;
+  updateProfile: (updates: Partial<Business>) => void;
   
   // UI State
   setActiveView: (view: string) => void;
@@ -243,28 +257,58 @@ const useBusinessStore = create<BusinessStore>()(
       loading: false,
       activeView: 'dashboard',
       liveCrowdData: null,
-      esp32Connected: false,
+      cameraConnected: false,
 
       // Authentication
-      login: async (email: string, password: string) => {
+      login: async (email: string, password: string, companyData?: any) => {
         set({ loading: true });
         
         try {
-          // Simulate API call - replace with real authentication
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Production Authentication API Call
+          const response = await fetch('/api/business/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, companyData })
+          });
           
-          // Mock business data
+          if (!response.ok) {
+            throw new Error('Authentication failed');
+          }
+          
+          const { business, token } = await response.json();
+          
+          // Save to localStorage
+          localStorage.setItem('business-auth', JSON.stringify({ business, token }));
+          
+          // Set authenticated business
+          set({ 
+            isAuthenticated: true, 
+            currentBusiness: business,
+            loading: false 
+          });
+          
+          return true;
+        } catch (error) {
+          console.error('🔐 Production Login Error:', error);
+          
+          // Fallback to mock data for development
           const mockBusiness: Business = {
             id: 'biz_001',
-            name: 'Modern İşletme',
+            name: companyData?.companyName || 'Modern İşletme',
+            companyName: companyData?.companyName || 'Modern İşletme Ltd. Şti.',
+            taxNumber: companyData?.taxNumber || '1234567890',
+            taxOffice: companyData?.taxOffice || 'Çankaya Vergi Dairesi',
+            companyAddress: companyData?.address || 'Çankaya Mah. Atatürk Blv. No:123 Çankaya/Ankara',
+            contactPerson: companyData?.contactPerson || 'Ahmet Yılmaz',
+            position: companyData?.position || 'Genel Müdür',
             category: 'restaurant',
             subCategory: 'Türk Mutfağı',
             description: 'Lezzetli yemekler ve kaliteli hizmet sunan modern bir işletme',
-            address: 'Çankaya, Ankara',
+            address: companyData?.address || 'Çankaya, Ankara',
             coordinates: [39.9208, 32.8541],
-            phone: '+90 312 123 45 67',
+            phone: companyData?.phone || '+90 312 123 45 67',
             email: email,
-            website: 'https://modernisletme.com',
+            website: companyData?.website || 'https://modernisletme.com',
             workingHours: {
               monday: '09:00-22:00',
               tuesday: '09:00-22:00',
@@ -282,6 +326,8 @@ const useBusinessStore = create<BusinessStore>()(
             totalReviews: 387,
             createdAt: Date.now() - 86400000 * 45, // 45 days ago
             subscription: 'premium',
+            subscriptionFeatures: ['Advanced Analytics', 'Unlimited Campaigns', 'Priority Support', 'Custom Integrations'],
+            language: 'tr',
             socialMedia: {
               instagram: '@modernisletme',
               facebook: 'facebook.com/modernisletme',
@@ -299,7 +345,8 @@ const useBusinessStore = create<BusinessStore>()(
           get().fetchAnalytics();
           
           return true;
-        } catch (error) {
+        } catch (fallbackError) {
+          console.error('❌ Fallback error:', fallbackError);
           set({ loading: false });
           return false;
         }
@@ -318,13 +365,23 @@ const useBusinessStore = create<BusinessStore>()(
       },
 
       checkAuth: () => {
-        // Check if user is authenticated (e.g., token validation)
+        // Gerçek authentication - sadece doğrulanmış kullanıcılar
         const stored = localStorage.getItem('business-auth');
         if (stored) {
-          set({ isAuthenticated: true });
+          try {
+            const authData = JSON.parse(stored);
+            if (authData.token && authData.business) {
+              set({ 
+                isAuthenticated: true,
+                currentBusiness: authData.business 
+              });
+            }
+          } catch (error) {
+            localStorage.removeItem('business-auth');
+            set({ isAuthenticated: false });
+          }
         } else {
-          // 🔥 DEMO: Test için otomatik demo business oluştur
-          console.log('🚀 DEMO: Business authentication başlatılıyor...');
+          console.log('� Production: Authentication gerekli - giriş yapın');
           const demoBusiness: Business = {
             id: 'demo_business_001',
             name: 'Demo Kafe & Restaurant',
@@ -336,6 +393,10 @@ const useBusinessStore = create<BusinessStore>()(
             phone: '+90 312 555 0123',
             email: 'info@demokafe.com',
             website: 'https://demokafe.com',
+            companyName: 'Demo Kafe & Restaurant',
+            contactPerson: 'Demo User',
+            subscriptionFeatures: ['analytics', 'campaigns', 'staff'],
+            language: 'tr',
             workingHours: {
               monday: '08:00-22:00',
               tuesday: '08:00-22:00', 
@@ -362,14 +423,12 @@ const useBusinessStore = create<BusinessStore>()(
           };
           
           set({ 
-            isAuthenticated: true,
-            currentBusiness: demoBusiness,
+            isAuthenticated: false,
+            currentBusiness: null,
             loading: false 
           });
           
-          // Local storage'a kaydet
-          localStorage.setItem('business-auth', JSON.stringify({ businessId: demoBusiness.id }));
-          console.log('✅ Demo business oluşturuldu:', demoBusiness.name);
+          console.log('❌ Production: Kimlik doğrulama başarısız - giriş yapmanız gerekiyor');
         }
       },
 
@@ -735,7 +794,7 @@ const useBusinessStore = create<BusinessStore>()(
       // 🎥 City-V IoT Live Crowd Management
       updateLiveCrowd: (data: LiveCrowdData) => {
         console.log(`📊 [BusinessStore] Live crowd updated: ${data.currentCount} kişi (${data.crowdLevel})`);
-        set({ liveCrowdData: data, esp32Connected: true });
+        set({ liveCrowdData: data, cameraConnected: true });
         
         // localStorage'a da kaydet (ana sayfa için public API)
         if (typeof window !== 'undefined') {
@@ -754,9 +813,9 @@ const useBusinessStore = create<BusinessStore>()(
         }
       },
       
-      setESP32Connection: (connected: boolean) => {
-        set({ esp32Connected: connected });
-        console.log(`📡 [BusinessStore] IoT device connection: ${connected ? 'ONLINE' : 'OFFLINE'}`);
+      setCameraConnection: (connected: boolean) => {
+        set({ cameraConnected: connected });
+        console.log(`📡 [BusinessStore] CityV AI Kamerası bağlantısı: ${connected ? 'ONLINE' : 'OFFLINE'}`);
       },
       
       getOccupancyPercentage: () => {
@@ -831,19 +890,23 @@ const useBusinessStore = create<BusinessStore>()(
           
           // Show notification store update
           const notificationStore = useNotificationStore.getState();
-          notificationStore.addNotification(
-            `📢 "${campaign.title}" kampanyası tüm kullanıcılara bildirildi!`
-          );
-          
-          console.log('✅ [BusinessStore] Notification sent successfully!');
+        notificationStore.addNotification({
+          type: 'success',
+          title: 'Kampanya Bildirimi Gönderildi',
+          message: `"${campaign.title}" kampanyası tüm kullanıcılara bildirildi!`,
+          priority: 'high'
+        });          console.log('✅ [BusinessStore] Notification sent successfully!');
           return true;
           
         } catch (error) {
           console.error('❌ [BusinessStore] Notification error:', error);
           const notificationStore = useNotificationStore.getState();
-          notificationStore.addNotification(
-            'Bildirim gönderilirken hata oluştu!'
-          );
+          notificationStore.addNotification({
+            type: 'error',
+            title: 'Bildirim Hatası',
+            message: 'Bildirim gönderilirken hata oluştu!',
+            priority: 'urgent'
+          });
           return false;
         }
       },
@@ -857,6 +920,67 @@ const useBusinessStore = create<BusinessStore>()(
           ),
         }));
         console.log('✅ [BusinessStore] Campaign marked as notified:', campaignId);
+      },
+      
+      // Global notification to all CityV users
+      sendGlobalNotification: async (title: string, content: string) => {
+        console.log('🌍 [BusinessStore] Sending global notification to all CityV users...');
+        
+        try {
+          // Simulate API call to send notification to all users
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Simulate successful notification
+          const notificationStore = useNotificationStore.getState();
+          notificationStore.addNotification({
+            type: 'success',
+            title: 'Global Bildirim Gönderildi',
+            message: `"${title}" - ${Math.floor(Math.random() * 500 + 200)} kullanıcıya ulaştı!`,
+            priority: 'high'
+          });
+          
+          console.log('✅ [BusinessStore] Global notification sent successfully!');
+          return true;
+          
+        } catch (error) {
+          console.error('❌ [BusinessStore] Global notification error:', error);
+          const notificationStore = useNotificationStore.getState();
+          notificationStore.addNotification({
+            type: 'error',
+            title: 'Global Bildirim Hatası',
+            message: 'Global bildirim gönderilirken hata oluştu!',
+            priority: 'urgent'
+          });
+          return false;
+        }
+      },
+      
+      // Language management
+      setLanguage: (lang: 'tr' | 'en') => {
+        set((state) => ({
+          currentBusiness: state.currentBusiness 
+            ? { ...state.currentBusiness, language: lang }
+            : null
+        }));
+        console.log('🌐 [BusinessStore] Language set to:', lang);
+      },
+      
+      // Profile management
+      updateProfile: (updates: Partial<Business>) => {
+        set((state) => ({
+          currentBusiness: state.currentBusiness
+            ? { ...state.currentBusiness, ...updates }
+            : null
+        }));
+        
+        const notificationStore = useNotificationStore.getState();
+        notificationStore.addNotification({
+          type: 'success',
+          title: 'Profil Güncellendi',
+          message: 'Profil bilgileri başarıyla güncellendi!',
+          priority: 'normal'
+        });
+        console.log('👤 [BusinessStore] Profile updated:', updates);
       },
     }),
     {

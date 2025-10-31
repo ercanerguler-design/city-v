@@ -84,31 +84,56 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    console.log('👥 Yeni yoğunluk analizi ekleniyor:', data.device_id);
+    console.log('🤖 Professional AI yoğunluk analizi ekleniyor:', data.device_id);
+    console.log('📊 Detaylı Veri:', {
+      people: data.people_count,
+      accuracy: data.accuracy_estimate,
+      entry: data.entry_count,
+      exit: data.exit_count,
+      occupancy: data.current_occupancy,
+      trend: data.trend_direction,
+      algorithm: data.algorithm_version,
+      foreground: data.foreground_percentage
+    });
 
     // Yoğunluk seviyesini otomatik hesapla
-    let crowd_density = 'empty';
-    if (data.people_count > 0 && data.people_count <= 5) crowd_density = 'low';
-    else if (data.people_count > 5 && data.people_count <= 15) crowd_density = 'medium';
-    else if (data.people_count > 15 && data.people_count <= 25) crowd_density = 'high';
-    else if (data.people_count > 25) crowd_density = 'overcrowded';
+    let crowd_density = data.crowd_density || 'empty';
+    if (!data.crowd_density) {
+      if (data.people_count > 0 && data.people_count <= 3) crowd_density = 'low';
+      else if (data.people_count > 3 && data.people_count <= 8) crowd_density = 'medium';
+      else if (data.people_count > 8 && data.people_count <= 15) crowd_density = 'high';
+      else if (data.people_count > 15) crowd_density = 'overcrowded';
+    }
 
     const result = await sql`
       INSERT INTO iot_crowd_analysis (
         device_id, analysis_type, location_type, people_count, crowd_density,
         confidence_score, detection_objects, image_url, processing_time_ms,
-        weather_condition, temperature, humidity
+        weather_condition, temperature, humidity, entry_count, exit_count,
+        current_occupancy, trend_direction, movement_detected, detection_method
       ) VALUES (
-        ${data.device_id}, ${data.analysis_type || 'people_count'}, 
-        ${data.location_type}, ${data.people_count || 0}, ${crowd_density},
-        ${data.confidence_score || 85}, ${JSON.stringify(data.detection_objects || {})},
-        ${data.image_url || null}, ${data.processing_time_ms || 200},
-        ${data.weather_condition || 'Güneşli'}, ${data.temperature || 20},
-        ${data.humidity || 50}
+        ${data.device_id}, 
+        ${data.analysis_type || 'ai_people_count'}, 
+        ${data.location_type || 'bus_stop'}, 
+        ${data.people_count || 0}, 
+        ${crowd_density},
+        ${data.confidence_score || 0.85}, 
+        ${JSON.stringify(data.detection_objects || data.people_count || 0)},
+        ${data.image_url || null}, 
+        ${data.processing_time_ms || 200},
+        ${data.weather_condition || 'clear'}, 
+        ${data.temperature || 20},
+        ${data.humidity || 50},
+        ${data.entry_count || 0},
+        ${data.exit_count || 0},
+        ${data.current_occupancy || data.people_count || 0},
+        ${data.trend_direction || 'stable'},
+        ${data.movement_detected || 0},
+        ${data.detection_method || 'pro_multi_stage_ai'}
       ) RETURNING *
     `;
 
-    // Realtime update gönder
+    // Realtime update gönder - ENHANCED with AI data
     await sql`
       INSERT INTO iot_realtime_updates (
         update_type, source_device_id, update_data, priority_level
@@ -118,18 +143,32 @@ export async function POST(request: NextRequest) {
           people_count: data.people_count,
           crowd_density: crowd_density,
           confidence_score: data.confidence_score,
+          accuracy_estimate: data.accuracy_estimate || (data.confidence_score * 100),
+          entry_count: data.entry_count || 0,
+          exit_count: data.exit_count || 0,
+          current_occupancy: data.current_occupancy || data.people_count,
+          trend_direction: data.trend_direction || 'stable',
+          foreground_percentage: data.foreground_percentage || 0,
+          frame_number: data.frame_number || 0,
+          algorithm_version: data.algorithm_version || '3.0_professional',
+          analysis_stages: data.analysis_stages || 'histogram|background|blob_hog|optical_flow|kalman',
           timestamp: new Date().toISOString()
         })}, 
         ${crowd_density === 'high' || crowd_density === 'overcrowded' ? 3 : 1}
       )
     `;
 
-    console.log('✅ Yoğunluk analizi eklendi:', crowd_density);
+    const accuracyPercent = data.accuracy_estimate || (data.confidence_score * 100);
+    const accuracySymbol = accuracyPercent >= 90 ? '🎯' : accuracyPercent >= 75 ? '✓' : '⚠️';
+    
+    console.log(`${accuracySymbol} AI Analiz kaydedildi: ${crowd_density} | ${data.people_count} kişi | Doğruluk: ${accuracyPercent.toFixed(1)}%`);
+    console.log(`📈 Algorithm: ${data.algorithm_version || 'N/A'} | Stages: ${data.analysis_stages || 'N/A'}`);
 
     return NextResponse.json({
       success: true,
       analysis: result.rows[0],
-      message: 'Yoğunluk analizi başarıyla kaydedildi'
+      message: 'Professional AI yoğunluk analizi başarıyla kaydedildi',
+      accuracy: accuracyPercent
     });
 
   } catch (error) {

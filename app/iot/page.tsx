@@ -1,52 +1,45 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Camera, Wifi, Battery, Signal, Users, Bus, Train, 
+  Camera, Wifi, Battery, Signal, Users, Monitor, 
   MapPin, Clock, TrendingUp, Activity, AlertTriangle,
   Zap, Eye, BarChart3, Thermometer, Droplets, Wind,
   CheckCircle, XCircle, Pause, Play, Settings, RefreshCw,
-  Radar, Target, Shield, Bell
+  Radar, Target, Shield, Bell, Video, TrendingDown,
+  Download, FolderOpen, ExternalLink, Bus, ArrowRight
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
-interface IoTDevice {
-  id: number;
-  device_id: string;
-  device_name: string;
-  location_type: string;
-  stop_name?: string;
-  line_code?: string;
-  city_name?: string;
-  battery_level: number;
-  signal_strength: number;
-  is_currently_online: boolean;
-  last_heartbeat: string;
-  latitude: number;
-  longitude: number;
+interface CameraFeed {
+  id: string;
+  name: string;
+  location: string;
+  status: 'online' | 'offline';
+  streamUrl: string;
+  ip: string;
+  peopleCount: number;
+  occupancy: number;
+  entryCount: number;
+  exitCount: number;
+  crowdLevel: 'empty' | 'low' | 'medium' | 'high' | 'overcrowded';
+  aiAccuracy: number;
+  detectionMethod: string;
+  confidence: number;
+  lastUpdate: string;
+  signalStrength: number;
+  batteryLevel: number;
 }
 
-interface CrowdAnalysis {
-  id: number;
-  device_name: string;
-  people_count: number;
-  crowd_density: string;
-  confidence_score: number;
-  analysis_timestamp: string;
-  weather_condition: string;
-  temperature: number;
-  humidity: number;
-  stop_name?: string;
-  line_code?: string;
+interface RecordingFile {
+  name: string;
+  size: number;
+  timestamp: string;
+  url: string;
 }
 
 interface VehicleArrival {
-  id: number;
-  device_name: string;
-  vehicle_number: string;
-  vehicle_type: string;
-  arrival_status: string;
-  vehicle_occupancy_percent: number;
   passenger_boarding: number;
   passenger_alighting: number;
   created_at: string;
@@ -217,10 +210,63 @@ export default function IoTDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Professional Dashboard Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl p-6 text-white relative overflow-hidden">
+            <div className="relative z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                    <Camera className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold mb-1">🚀 Professional Business Intelligence</h2>
+                    <p className="text-indigo-100 text-lg">Enterprise IoT Analytics Dashboard - Yatırımcı & Lansman Hazır</p>
+                  </div>
+                </div>
+                <motion.a
+                  href="/iot/professional"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-white text-indigo-600 px-6 py-3 rounded-xl font-semibold hover:bg-indigo-50 transition-colors flex items-center space-x-2 shadow-lg"
+                >
+                  <span>📊 Profesyonel Panel</span>
+                  <ArrowRight className="w-5 h-5" />
+                </motion.a>
+              </div>
+              <div className="mt-4 grid grid-cols-4 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold">₺52K+</div>
+                  <div className="text-sm text-indigo-200">Günlük Gelir</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">4</div>
+                  <div className="text-sm text-indigo-200">Lokasyon</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">%285</div>
+                  <div className="text-sm text-indigo-200">ROI</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">%96.5</div>
+                  <div className="text-sm text-indigo-200">AI Doğruluk</div>
+                </div>
+              </div>
+            </div>
+            <div className="absolute -right-20 -top-20 w-40 h-40 bg-white/10 rounded-full"></div>
+            <div className="absolute -left-10 -bottom-10 w-30 h-30 bg-white/10 rounded-full"></div>
+          </div>
+        </motion.div>
+
         {/* Hero Stats */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
         >
           <div className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl p-6">

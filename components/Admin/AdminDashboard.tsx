@@ -14,7 +14,7 @@ interface AdminDashboardProps {
 
 export default function AdminDashboard({ isOpen, onClose }: AdminDashboardProps) {
   const { stats, refreshStats } = useAdminStore();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'locations' | 'revenue'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'business' | 'locations' | 'revenue'>('overview');
 
   // Mock chart data
   const userGrowthData = [
@@ -107,6 +107,7 @@ export default function AdminDashboard({ isOpen, onClose }: AdminDashboardProps)
                 {[
                   { id: 'overview', label: 'Genel Bakış', icon: <Activity className="w-4 h-4" /> },
                   { id: 'users', label: 'Kullanıcılar', icon: <Users className="w-4 h-4" /> },
+                  { id: 'business', label: 'İşletmeler', icon: <BarChart3 className="w-4 h-4" /> },
                   { id: 'locations', label: 'Mekanlar', icon: <MapPin className="w-4 h-4" /> },
                   { id: 'revenue', label: 'Gelir', icon: <DollarSign className="w-4 h-4" /> },
                 ].map((tab) => (
@@ -267,6 +268,221 @@ export default function AdminDashboard({ isOpen, onClose }: AdminDashboardProps)
                       change="Yeni kullanıcı"
                       color="purple"
                     />
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'business' && (
+                <div className="space-y-6">
+                  {/* Business Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <StatCard
+                      icon={<BarChart3 className="w-6 h-6" />}
+                      label="Toplam İşletme"
+                      value="247"
+                      change="+12 bu ay"
+                      color="blue"
+                    />
+                    <StatCard
+                      icon={<Crown className="w-6 h-6" />}
+                      label="Premium İşletme"
+                      value="89"
+                      change="36% toplam"
+                      color="yellow"
+                    />
+                    <StatCard
+                      icon={<TrendingUp className="w-6 h-6" />}
+                      label="Enterprise İşletme"
+                      value="34"
+                      change="14% toplam"
+                      color="purple"
+                    />
+                    <StatCard
+                      icon={<Activity className="w-6 h-6" />}
+                      label="Aktif İşletme"
+                      value="198"
+                      change="80% aktif"
+                      color="green"
+                    />
+                  </div>
+
+                  {/* Business Management Table */}
+                  <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-700 dark:to-slate-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-slate-600">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5 text-blue-600" />
+                        İşletme Yönetimi
+                      </h3>
+                      <div className="flex gap-2">
+                        <select className="px-3 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded-lg text-sm">
+                          <option value="all">Tüm İşletmeler</option>
+                          <option value="free">Ücretsiz</option>
+                          <option value="professional">Professional</option>
+                          <option value="enterprise">Enterprise</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-200 dark:border-slate-600">
+                            <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Şirket</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">İletişim</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Plan</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Aktivite</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Durum</th>
+                            <th className="text-right py-3 px-4 font-semibold text-gray-900 dark:text-white">İşlemler</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            {
+                              id: 1,
+                              companyName: 'Modern İşletme Ltd. Şti.',
+                              contactPerson: 'Ahmet Yılmaz',
+                              email: 'ahmet@modernisletme.com',
+                              phone: '+90 312 123 45 67',
+                              plan: 'Enterprise',
+                              lastActivity: '2 saat önce',
+                              status: 'Aktif',
+                              campaigns: 15,
+                              analytics: 'Yüksek'
+                            },
+                            {
+                              id: 2,
+                              companyName: 'Tech Solutions A.Ş.',
+                              contactPerson: 'Mehmet Demir',
+                              email: 'mehmet@techsolutions.com',
+                              phone: '+90 212 456 78 90',
+                              plan: 'Professional',
+                              lastActivity: '1 gün önce',
+                              status: 'Aktif',
+                              campaigns: 8,
+                              analytics: 'Orta'
+                            },
+                            {
+                              id: 3,
+                              companyName: 'Gıda Market Ltd.',
+                              contactPerson: 'Ayşe Kaya',
+                              email: 'ayse@gidamarket.com',
+                              phone: '+90 232 789 01 23',
+                              plan: 'Professional',
+                              lastActivity: '3 gün önce',
+                              status: 'Pasif',
+                              campaigns: 3,
+                              analytics: 'Düşük'
+                            }
+                          ].map((business) => (
+                            <tr key={business.id} className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                              <td className="py-4 px-4">
+                                <div>
+                                  <p className="font-semibold text-gray-900 dark:text-white">{business.companyName}</p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">{business.contactPerson}</p>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div>
+                                  <p className="text-sm text-gray-900 dark:text-white">{business.email}</p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">{business.phone}</p>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                                  business.plan === 'Enterprise' 
+                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                    : business.plan === 'Professional'
+                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                                }`}>
+                                  {business.plan}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div>
+                                  <p className="text-sm text-gray-900 dark:text-white">{business.lastActivity}</p>
+                                  <p className="text-xs text-gray-600 dark:text-gray-400">{business.campaigns} kampanya</p>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                                  business.status === 'Aktif' 
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                }`}>
+                                  {business.status}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4 text-right">
+                                <div className="flex justify-end gap-2">
+                                  <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                                    Düzenle
+                                  </button>
+                                  <button className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors">
+                                    Detay
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Business Analytics */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-700 dark:to-slate-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-slate-600">
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Plan Dağılımı</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 dark:text-gray-400">Enterprise</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-gray-200 dark:bg-slate-600 rounded-full h-2">
+                              <div className="bg-purple-600 h-2 rounded-full" style={{ width: '14%' }}></div>
+                            </div>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">14%</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 dark:text-gray-400">Professional</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-gray-200 dark:bg-slate-600 rounded-full h-2">
+                              <div className="bg-blue-600 h-2 rounded-full" style={{ width: '36%' }}></div>
+                            </div>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">36%</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 dark:text-gray-400">Ücretsiz</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-gray-200 dark:bg-slate-600 rounded-full h-2">
+                              <div className="bg-gray-600 h-2 rounded-full" style={{ width: '50%' }}></div>
+                            </div>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">50%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-700 dark:to-slate-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-slate-600">
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Son Kayıtlar</h4>
+                      <div className="space-y-3">
+                        {[
+                          { name: 'Cafe Lotus', plan: 'Professional', date: '2 saat önce' },
+                          { name: 'Market Plus', plan: 'Enterprise', date: '5 saat önce' },
+                          { name: 'Auto Service', plan: 'Professional', date: '1 gün önce' }
+                        ].map((business, index) => (
+                          <div key={index} className="flex justify-between items-center p-3 bg-white dark:bg-slate-900 rounded-lg">
+                            <div>
+                              <p className="font-semibold text-gray-900 dark:text-white">{business.name}</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">{business.plan}</p>
+                            </div>
+                            <span className="text-xs text-gray-500 dark:text-gray-500">{business.date}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

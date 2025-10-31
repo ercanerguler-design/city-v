@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['leaflet'],
   },
+
 };
 
 export default nextConfig;

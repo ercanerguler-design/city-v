@@ -9,6 +9,7 @@ import {
   Smartphone, Eye, Heart, UserCheck, Wifi,
   AlertCircle, CheckCircle
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 // Comprehensive mock data generator
 const generateMockData = () => {
@@ -63,7 +64,7 @@ const generateMockData = () => {
       {
         id: 1,
         type: 'quiet',
-        title: '🎉 Demo Cafe şu an boş!',
+        title: '🎉 İşletmeniz şu an boş!',
         message: 'Sadece 12 kişi var, beklemeden gelin',
         time: '3 dk önce',
         sent: 234,
@@ -122,6 +123,19 @@ export default function DemoPage() {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'cityv' | 'notifications'>('overview');
   const [mounted, setMounted] = useState(false);
+  const { user, isAuthenticated } = useAuth();
+  
+  // İşletme adını belirle (kullanıcı giriş yapmışsa gerçek ismi, yoksa genel isim)
+  const getBusinessName = () => {
+    if (isAuthenticated && user?.firstName && user?.lastName) {
+      return `${user.firstName} ${user.lastName}'in İşletmesi`;
+    }
+    if (isAuthenticated && user?.email) {
+      const emailPart = user.email.split('@')[0];
+      return `${emailPart} İşletmesi`;
+    }
+    return 'Akıllı İşletme';
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -167,7 +181,7 @@ export default function DemoPage() {
               <div className="hidden sm:block h-6 w-px bg-white/20" />
               <div className="hidden sm:flex items-center gap-2">
                 <Coffee className="w-5 h-5 text-blue-300" />
-                <span className="text-sm font-semibold">Demo Cafe - Kızılay</span>
+                <span className="text-sm font-semibold">{getBusinessName()} - Kızılay</span>
               </div>
             </div>
             <div className="flex items-center gap-3">

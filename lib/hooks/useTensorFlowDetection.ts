@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as cocoSsd from '@tensorflow-models/coco-ssd';
+import '@tensorflow/tfjs-backend-cpu';
+import '@tensorflow/tfjs-backend-webgl';
 import '@tensorflow/tfjs';
 
 /**
@@ -39,8 +41,32 @@ export function useTensorFlowDetection() {
     async function loadModel() {
       try {
         console.log('🤖 [TensorFlow] COCO-SSD modeli yükleniyor...');
+        
+        // WebGL uyumluluk kontrolü ve fallback
+        const tf = await import('@tensorflow/tfjs');
+        
+        // WebGL desteklenip desteklenmediğini kontrol et
+        const webglVersion = tf.ENV.features.WEBGL_VERSION;  
+        const webglSupported = typeof webglVersion === 'number' ? webglVersion > 0 : false;
+        console.log('🔍 [TensorFlow] WebGL desteği:', webglSupported, 'Version:', webglVersion);
+        
+        if (!webglSupported) {
+          // WebGL yoksa CPU backend'ini kullan
+          await tf.setBackend('cpu');
+          console.log('⚠️ [TensorFlow] CPU backend kullanılıyor (WebGL desteklenmiyor)');
+        } else {
+          // WebGL varsa ama shader hatası alıyorsak, daha güçlü ayarları dene
+          try {
+            await tf.setBackend('webgl');
+            console.log('✅ [TensorFlow] WebGL backend hazır');
+          } catch (webglError) {
+            console.warn('⚠️ [TensorFlow] WebGL hatası, CPU\'ya geçiliyor:', webglError);
+            await tf.setBackend('cpu');
+          }
+        }
+        
         const model = await cocoSsd.load({
-          base: 'mobilenet_v2' // Hızlı ve hafif (ESP32 stream için ideal)
+          base: 'lite_mobilenet_v2' // Daha hafif model (shader hatası için)
         });
         
         if (mounted) {
@@ -53,6 +79,23 @@ export function useTensorFlowDetection() {
           const errorMsg = err instanceof Error ? err.message : 'Model yüklenemedi';
           setError(errorMsg);
           console.error('❌ [TensorFlow] Model yükleme hatası:', errorMsg);
+          
+          // Son çare: CPU backend ile tekrar dene
+          try {
+            console.log('🔄 [TensorFlow] CPU backend ile tekrar deneniyor...');
+            const tf = await import('@tensorflow/tfjs');
+            await tf.setBackend('cpu');
+            const model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+            
+            if (mounted) {
+              modelRef.current = model;
+              setIsModelLoaded(true);
+              setError(null);
+              console.log('✅ [TensorFlow] CPU backend ile model yüklendi!');
+            }
+          } catch (cpuError) {
+            console.error('❌ [TensorFlow] CPU backend ile de hata:', cpuError);
+          }
         }
       }
     }

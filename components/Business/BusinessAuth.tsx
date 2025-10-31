@@ -190,15 +190,11 @@ export default function BusinessAuth() {
             </button>
           </form>
 
-          {/* Demo Account */}
-          <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-            <p className="text-sm text-blue-200 text-center mb-2">
-              Demo hesabı ile test edin:
+          {/* Production Ready */}
+          <div className="mt-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+            <p className="text-sm text-green-200 text-center">
+              🚀 Production Ready - Gerçek hesabınızla giriş yapın
             </p>
-            <div className="text-xs text-blue-300 text-center space-y-1">
-              <div>E-posta: demo@cafecentral.com</div>
-              <div>Şifre: demo123</div>
-            </div>
           </div>
         </div>
 

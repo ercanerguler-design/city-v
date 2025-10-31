@@ -42,6 +42,8 @@ import {
 
 // Kategori renkleri (GENİŞLETİLMİŞ)
 export const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
+  business: { bg: '#7C3AED', text: '#fff', border: '#5B21B6' }, // Business - Mor/Purple
+  business_verified: { bg: '#10B981', text: '#fff', border: '#059669' }, // Verified Business - Yeşil
   cafe: { bg: '#8B4513', text: '#fff', border: '#6B3410' },
   bank: { bg: '#1E40AF', text: '#fff', border: '#1E3A8A' },
   hospital: { bg: '#DC2626', text: '#fff', border: '#B91C1C' },

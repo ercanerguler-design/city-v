@@ -614,6 +614,7 @@ export default function ESP32CamDashboard({
                 {/* GERÇEK City-V IMAGE STREAM - YÜKSEK KALİTE */}
                 <img
                   ref={streamRef}
+                  src={`http://${deviceIp}/stream`}
                   alt="City-V Live Stream"
                   className="w-full h-full object-contain"
                   crossOrigin="anonymous"

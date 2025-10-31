@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Shield, Mail, Lock, ArrowLeft, Sparkles } from 'lucide-react';
@@ -13,6 +13,23 @@ export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Client-side only mount
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Sabit yıldız pozisyonları (hydration hatası önlemek için)
+  const stars = useMemo(() => 
+    Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      left: (i * 41.7) % 100,
+      top: (i * 67.3) % 100,
+      duration: 3 + (i % 3),
+      delay: (i % 3) * 0.7,
+    })), 
+  []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,28 +52,30 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-2 h-2 bg-white rounded-full opacity-20"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              scale: [0, 1, 0],
-              opacity: [0, 0.5, 0],
-            }}
-            transition={{
-              duration: 3 + Math.random() * 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          />
-        ))}
-      </div>
+      {/* Animated background elements - only render on client */}
+      {isMounted && (
+        <div className="absolute inset-0 overflow-hidden">
+          {stars.map((star) => (
+            <motion.div
+              key={star.id}
+              className="absolute w-2 h-2 bg-white rounded-full opacity-20"
+              style={{
+                left: `${star.left}%`,
+                top: `${star.top}%`,
+              }}
+              animate={{
+                scale: [0, 1, 0],
+                opacity: [0, 0.5, 0],
+              }}
+              transition={{
+                duration: star.duration,
+                repeat: Infinity,
+                delay: star.delay,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Back to home button */}
       <button

@@ -12,6 +12,8 @@ import {
   PlayCircle, Settings, AlertCircle
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import RealTimeCrowdTracker from '@/components/RealTime/RealTimeCrowdTracker';
+import VideoAccessGuard from '@/components/Auth/VideoAccessGuard';
 
 interface City {
   id: number;
@@ -49,6 +51,7 @@ export default function TransportDemo() {
   const [filterType, setFilterType] = useState('all');
   const [showDemo, setShowDemo] = useState(true);
   const [liveCount, setLiveCount] = useState(0);
+  const [realTimeCrowdData, setRealTimeCrowdData] = useState<any[]>([]);
   const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
@@ -61,11 +64,26 @@ export default function TransportDemo() {
     }
   }, [mounted]);
 
-  // Canlı sayaç animasyonu
+  // Gerçek zamanlı yoğunluk verilerini getir
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLiveCount(prev => prev + Math.floor(Math.random() * 3) + 1);
-    }, 2000);
+    const fetchRealTimeCrowdData = async () => {
+      try {
+        const response = await fetch('/api/iot/crowd-analysis?hours=1&limit=20');
+        if (response.ok) {
+          const data = await response.json();
+          const crowdAnalyses = data.analyses || [];
+          setRealTimeCrowdData(crowdAnalyses);
+          setLiveCount(crowdAnalyses.length);
+        }
+      } catch (error) {
+        console.error('Gerçek zamanlı yoğunluk verileri alınamadı:', error);
+      }
+    };
+
+    fetchRealTimeCrowdData();
+
+    // Her 10 saniyede bir güncelle
+    const interval = setInterval(fetchRealTimeCrowdData, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -138,11 +156,33 @@ export default function TransportDemo() {
     }
   };
 
-  const getCrowdingLevel = () => {
+  const getCrowdingLevel = (lineCode?: string) => {
+    // Gerçek zamanlı veriler varsa kullan
+    if (realTimeCrowdData.length > 0) {
+      // Hat koduna göre en yakın analiz verisini bul
+      const relevantData = realTimeCrowdData.find(data => 
+        data.device_id?.includes(lineCode?.substring(0, 3)) || 
+        data.location_type === 'bus_stop' ||
+        data.analysis_type === 'transport_density'
+      ) || realTimeCrowdData[Math.floor(Math.random() * realTimeCrowdData.length)];
+
+      const density = relevantData?.crowd_density?.toLowerCase() || 'empty';
+      
+      switch (density) {
+        case 'empty': return { level: 'Boş', color: 'text-gray-500', count: relevantData?.people_count || 0 };
+        case 'low': return { level: 'Az Dolu', color: 'text-green-500', count: relevantData?.people_count || 0 };
+        case 'medium': return { level: 'Orta', color: 'text-yellow-500', count: relevantData?.people_count || 0 };
+        case 'high': return { level: 'Dolu', color: 'text-orange-500', count: relevantData?.people_count || 0 };
+        case 'overcrowded': return { level: 'Çok Dolu', color: 'text-red-700', count: relevantData?.people_count || 0 };
+        default: return { level: 'Bilinmiyor', color: 'text-gray-400', count: 0 };
+      }
+    }
+
+    // Fallback: Random veri
     const levels = ['Boş', 'Az Dolu', 'Orta', 'Dolu', 'Çok Dolu'];
     const colors = ['text-green-500', 'text-yellow-500', 'text-orange-500', 'text-red-500', 'text-red-700'];
     const randomIndex = Math.floor(Math.random() * levels.length);
-    return { level: levels[randomIndex], color: colors[randomIndex] };
+    return { level: levels[randomIndex], color: colors[randomIndex], count: Math.floor(Math.random() * 30) };
   };
 
   const filteredLines = lines.filter(line => {
@@ -335,12 +375,13 @@ export default function TransportDemo() {
         </motion.div>
 
         {/* 🚀 IoT & Camera Control Panel */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="mb-12 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-3xl p-8 shadow-2xl border border-purple-500/20"
-        >
+        <VideoAccessGuard deviceType="transport-iot" deviceId="TRANSPORT-IOT-001">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className="mb-12 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-3xl p-8 shadow-2xl border border-purple-500/20"
+          >
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-2xl mb-4">
               <Camera className="h-6 w-6 animate-pulse" />
@@ -497,6 +538,7 @@ export default function TransportDemo() {
             </div>
           </div>
         </motion.div>
+        </VideoAccessGuard>
 
         {/* City Selection */}
         <motion.div
@@ -610,10 +652,27 @@ export default function TransportDemo() {
                 </select>
               </div>
 
+              {/* Gerçek Zamanlı Yoğunluk Analizi */}
+              {realTimeCrowdData.length > 0 && (
+                <div className="mb-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 rounded-2xl border border-blue-200 dark:border-slate-600">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                      🔴 Canlı Yoğunluk Analizi
+                    </h3>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {realTimeCrowdData.length} aktif analiz
+                    </span>
+                  </div>
+                  
+                  <RealTimeCrowdTracker showAllLocations={true} compact={true} />
+                </div>
+              )}
+
               {/* Lines Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredLines.map((line, i) => {
-                  const crowding = getCrowdingLevel();
+                  const crowding = getCrowdingLevel(line.line_code);
                   return (
                     <motion.div
                       key={line.id}
@@ -637,8 +696,15 @@ export default function TransportDemo() {
                             </div>
                           </div>
                         </div>
-                        <div className={`text-sm font-medium ${crowding.color}`}>
-                          {crowding.level}
+                        <div className="text-right">
+                          <div className={`text-sm font-medium ${crowding.color}`}>
+                            {crowding.level}
+                          </div>
+                          {crowding.count > 0 && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {crowding.count} kişi
+                            </div>
+                          )}
                         </div>
                       </div>
                       
@@ -662,11 +728,18 @@ export default function TransportDemo() {
                       </div>
 
                       {/* Live Indicator */}
-                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-slate-600">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                          Canlı Takip
-                        </span>
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-slate-600">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                            Canlı IoT Verisi
+                          </span>
+                        </div>
+                        {realTimeCrowdData.length > 0 && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            Son: {new Date(realTimeCrowdData[0]?.analysis_timestamp || Date.now()).toLocaleTimeString('tr-TR')}
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   );

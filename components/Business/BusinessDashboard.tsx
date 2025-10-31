@@ -12,6 +12,7 @@ import FeedbackManagement from './FeedbackManagement';
 import BusinessSettings from './BusinessSettings';
 import BusinessProfileEdit from './BusinessProfileEdit';
 import WorkingHoursEdit from './WorkingHoursEdit';
+import BusinessLiveCrowd from './BusinessLiveCrowd';
 
 interface BusinessDashboardProps {
   business: Business;
@@ -47,6 +48,14 @@ export default function BusinessDashboard({ business }: BusinessDashboardProps) 
         return <ReservationManagement business={business} />;
       case 'feedback':
         return <FeedbackManagement business={business} />;
+      case 'iot':
+        return (
+          <BusinessLiveCrowd 
+            locationId={business.id}
+            businessName={business.name}
+            maxCapacity={business.capacity || 50}
+          />
+        );
       case 'settings':
         return <BusinessSettings business={business} />;
       default:

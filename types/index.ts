@@ -19,6 +19,27 @@ export interface Location {
   googlePlaceId?: string; // Google Place ID
   isCurrentlyOpen?: boolean; // Google API'den gelen gerçek zamanlı durum
   lastWorkingHoursUpdate?: number; // Son güncelleme timestamp'i
+  // Distance from user
+  distance?: number; // km cinsinden mesafe
+  // Business sistemine özel veriler
+  businessData?: {
+    businessId: string;
+    hasMenu: boolean;
+    hasCampaign: boolean;
+    activeCampaigns: number;
+    currentOccupancy?: number;
+    maxCapacity?: number;
+    openingHours?: string;
+    socialMedia?: any;
+    lastUpdate?: string;
+    campaigns?: any[];
+    features?: {
+      aiCamera: boolean;
+      realTimeData: boolean;
+      campaigns: boolean;
+      menu: boolean;
+    };
+  };
 }
 
 export interface WorkingHours {
@@ -44,6 +65,82 @@ export type CrowdLevel = 'empty' | 'low' | 'moderate' | 'high' | 'very_high';
 export interface MapViewport {
   center: [number, number];
   zoom: number;
+}
+
+// Business types
+export interface Business {
+  id: string;
+  name: string;
+  email: string;
+  category: string;
+  subscriptionPlan: string;
+  isActive: boolean;
+  companyName?: string;
+  contactPerson?: string;
+  subscriptionFeatures?: string[];
+  language?: 'tr' | 'en';
+}
+
+// User types
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string;
+  isActive?: boolean;
+  joinDate?: string;
+}
+
+export interface StoredUser extends User {
+  id: string;
+  email: string;
+  name?: string;
+  isActive?: boolean;
+  joinDate?: string;
+}
+
+// IoT Device types
+export interface IoTDevice {
+  id: string;
+  name: string;
+  type: 'camera' | 'sensor' | 'counter' | 'station';
+  status: 'active' | 'inactive' | 'maintenance';
+  location: string;
+  lastUpdate: Date;
+  batteryLevel?: number;
+  dataPoints?: any[];
+}
+
+export interface CrowdAnalysis {
+  id: string;
+  deviceId: string;
+  timestamp: Date;
+  crowdCount: number;
+  averageAge: number;
+  genderDistribution: {
+    male: number;
+    female: number;
+  };
+  emotionalState: {
+    happy: number;
+    neutral: number;
+    sad: number;
+  };
+}
+
+// Vehicle types
+export interface VehicleArrival {
+  id: string;
+  vehicle_number: string;
+  route_name: string;
+  stop_name: string;
+  arrival_time: string;
+  arrival_status: 'approaching' | 'at_stop' | 'departed';
+  vehicle_type: 'bus' | 'metro' | 'tram';
+  vehicle_occupancy_percent: number;
+  delay_minutes: number;
 }
 
 export interface CrowdStats {

@@ -13,12 +13,14 @@ import { useAdminStore } from '@/lib/stores/adminStore';
 import { useBetaApplicationStore } from '@/store/betaApplicationStore';
 import type { StoredUser } from '@/lib/stores/userManager';
 import { formatTime } from '@/lib/utils';
+import MemberManagement from '@/components/Admin/MemberManagement';
+import BusinessUsersManagement from '@/components/Admin/BusinessUsersManagement';
 
 export default function AdminPage() {
   const router = useRouter();
   const { isAdmin, stats, refreshStats, logout } = useAdminStore();
   const { applications, loading, error, fetchApplications, updateStatus, getPendingCount } = useBetaApplicationStore();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'locations' | 'revenue' | 'beta'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'members' | 'business' | 'locations' | 'revenue' | 'beta'>('overview');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
   const [allUsers, setAllUsers] = useState<StoredUser[]>([]);
@@ -152,9 +154,11 @@ export default function AdminPage() {
   const tabs = [
     { id: 'overview', label: 'Genel Bakış', icon: BarChart3 },
     { id: 'users', label: 'Kullanıcılar', icon: Users },
+    { id: 'members', label: 'Üye Yönetimi', icon: Crown },
+    { id: 'business', label: 'Business Üyeler', icon: Building2 },
     { id: 'locations', label: 'Mekanlar', icon: MapPin },
     { id: 'revenue', label: 'Gelir', icon: DollarSign },
-    { id: 'beta', label: 'Beta Başvuruları', icon: Building2 },
+    { id: 'beta', label: 'Beta Başvuruları', icon: Inbox },
   ];
 
   // Stat Card Component
@@ -553,6 +557,20 @@ export default function AdminPage() {
             </motion.div>
               </>
             )}
+          </div>
+        )}
+
+        {/* Member Management Tab */}
+        {activeTab === 'members' && (
+          <div className="space-y-6">
+            <MemberManagement />
+          </div>
+        )}
+
+        {/* Business Users Management Tab */}
+        {activeTab === 'business' && (
+          <div className="space-y-6">
+            <BusinessUsersManagement />
           </div>
         )}
 
