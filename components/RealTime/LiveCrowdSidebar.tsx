@@ -322,20 +322,32 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-blue-500" />
             <h3 className="font-semibold text-gray-900 dark:text-white">Canlı Kalabalık</h3>
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-auto"></div>
+            {activeCrowdCount > 0 && (
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-auto"></div>
+            )}
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            {activeCrowdCount}/{totalLocationsOnMap} mekan canlı • Haritada {totalLocationsOnMap.toLocaleString()} yer
+            {activeCrowdCount > 0 ? (
+              <>
+                {activeCrowdCount} işletme canlı IoT ile izleniyor
+              </>
+            ) : (
+              <>
+                İşletmeler IoT cihazı bağladığında burada görünecek
+              </>
+            )}
           </p>
         </div>
 
         {/* Content */}
         <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-3' : 'p-2'}`}>
           {crowdData.size === 0 ? (
-            <div className="text-center text-gray-500 py-8">
-              <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Sistem başlatılıyor</p>
-              <p className="text-xs">Veriler yükleniyor...</p>
+            <div className="text-center text-gray-500 py-8 px-4">
+              <Users className="w-8 h-8 mx-auto mb-3 opacity-50" />
+              <p className="text-sm font-medium mb-1">Henüz Canlı Veri Yok</p>
+              <p className="text-xs leading-relaxed">
+                İşletmeler IoT kamera sistemi kurduktan sonra burada canlı kalabalık verileri görünecek
+              </p>
             </div>
           ) : (
             <div className={`${isMobile ? 'space-y-3' : 'space-y-2'}`}>

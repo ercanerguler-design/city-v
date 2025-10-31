@@ -136,137 +136,56 @@ const useCrowdStore = create<CrowdStore>((set, get) => ({
     return icons[level] || '⚪';
   },
 
-  // 🔥 AÇIK LOKASYONLARI SÜREKLI ANALİZ ETME METODu
+  // GERÇEK IoT VERİLERİ İLE KALABALIK ANALİZİ (MOCK DATA YOK)
   analyzeOpenLocations: (openLocations: any[]) => {
-    const currentTime = new Date();
-    const hour = currentTime.getHours();
-    const minute = currentTime.getMinutes();
-    const dayOfWeek = currentTime.getDay(); // 0=Pazar, 1=Pazartesi
+    console.log(`🔍 ${openLocations.length} işletme için gerçek IoT verileri işleniyor...`);
     
-    console.log(`🔍 ${openLocations.length} açık lokasyon analiz ediliyor... (Saat: ${hour}:${minute})`);
+    const analyzedData: CrowdData[] = openLocations
+      .filter(location => location.isLive) // Sadece canlı IoT verisi olan işletmeler
+      .map(location => {
+        // API'den gelen gerçek crowd data
+        const currentPeople = location.currentPeople || 0;
+        
+        // API'den gelen crowdLevel'ı bizim sistemimize map et
+        let crowdLevel: CrowdData['crowdLevel'] = 'low';
+        const apiCrowdLevel = location.crowdLevel?.toLowerCase() || 'empty';
+        
+        if (apiCrowdLevel === 'very_crowded') crowdLevel = 'very_high';
+        else if (apiCrowdLevel === 'crowded') crowdLevel = 'high';
+        else if (apiCrowdLevel === 'moderate') crowdLevel = 'medium';
+        else crowdLevel = 'low';
+        
+        // Bekleme süresi tahmini (gerçek kalabalığa göre)
+        let estimatedWaitTime = 0;
+        if (currentPeople > 20) estimatedWaitTime = 15;
+        else if (currentPeople > 10) estimatedWaitTime = 8;
+        else if (currentPeople > 5) estimatedWaitTime = 3;
+        
+        // Trend (gelecekte önceki veri ile karşılaştırma yapılabilir)
+        const trend: CrowdData['trend'] = 'stable';
+        
+        return {
+          locationId: location.id,
+          crowdLevel,
+          crowdCount: currentPeople,
+          lastUpdated: Date.now(),
+          coordinates: location.coordinates,
+          name: location.name,
+          category: location.category,
+          trend,
+          estimatedWaitTime
+        };
+      });
     
-    const analyzedData: CrowdData[] = openLocations.map(location => {
-      let crowdLevel: CrowdData['crowdLevel'] = 'low';
-      let crowdCount = 0;
-      let estimatedWaitTime = 0;
-      let trend: CrowdData['trend'] = 'stable';
-      
-      const category = location.category?.toLowerCase() || '';
-      
-      // KATEGORİ VE SAAT BAZLI GERÇEKÇİ KALABALIK ANALİZİ
-      if (category.includes('cafe') || category.includes('coffee')) {
-        // Kafe saatleri: Sabah 7-10, öğle 12-14, akşam 17-19 yoğun
-        if ((hour >= 7 && hour <= 10) || (hour >= 12 && hour <= 14) || (hour >= 17 && hour <= 19)) {
-          crowdLevel = 'high';
-          crowdCount = Math.floor(Math.random() * 40) + 25; // 25-65 kişi
-          estimatedWaitTime = Math.floor(Math.random() * 10) + 5; // 5-15dk
-        } else if (hour >= 10 && hour <= 12) {
-          crowdLevel = 'medium';
-          crowdCount = Math.floor(Math.random() * 20) + 10;
-          estimatedWaitTime = Math.floor(Math.random() * 5) + 2;
-        } else {
-          crowdLevel = 'low';
-          crowdCount = Math.floor(Math.random() * 15) + 5;
-          estimatedWaitTime = 0;
-        }
-      }
-      
-      else if (category.includes('restaurant') || category.includes('food')) {
-        // Restoran saatleri: Öğle 11:30-14:30, akşam 19-22 çok yoğun
-        if ((hour >= 11 && hour <= 14) || (hour >= 19 && hour <= 22)) {
-          crowdLevel = 'very_high';
-          crowdCount = Math.floor(Math.random() * 60) + 40; // 40-100 kişi
-          estimatedWaitTime = Math.floor(Math.random() * 20) + 10; // 10-30dk
-        } else if ((hour >= 15 && hour <= 18) || (hour >= 22 && hour <= 23)) {
-          crowdLevel = 'medium';
-          crowdCount = Math.floor(Math.random() * 30) + 15;
-          estimatedWaitTime = Math.floor(Math.random() * 8) + 3;
-        } else {
-          crowdLevel = 'low';
-          crowdCount = Math.floor(Math.random() * 20) + 5;
-          estimatedWaitTime = Math.floor(Math.random() * 5);
-        }
-      }
-      
-      else if (category.includes('bank') || category.includes('atm')) {
-        // Banka: Hafta içi yoğun, öğle saatleri çok yoğun
-        if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Hafta içi
-          if (hour >= 12 && hour <= 14) {
-            crowdLevel = 'high';
-            crowdCount = Math.floor(Math.random() * 25) + 15;
-            estimatedWaitTime = Math.floor(Math.random() * 15) + 5;
-          } else if ((hour >= 9 && hour <= 12) || (hour >= 14 && hour <= 17)) {
-            crowdLevel = 'medium';
-            crowdCount = Math.floor(Math.random() * 15) + 8;
-            estimatedWaitTime = Math.floor(Math.random() * 8) + 2;
-          }
-        } else {
-          crowdLevel = 'low';
-          crowdCount = Math.floor(Math.random() * 5) + 2;
-        }
-      }
-      
-      else if (category.includes('market') || category.includes('shopping')) {
-        // Market: Akşam 17-20, hafta sonu yoğun
-        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-        if (isWeekend || (hour >= 17 && hour <= 20)) {
-          crowdLevel = 'high';
-          crowdCount = Math.floor(Math.random() * 50) + 30;
-          estimatedWaitTime = Math.floor(Math.random() * 12) + 3;
-        } else if (hour >= 10 && hour <= 17) {
-          crowdLevel = 'medium';
-          crowdCount = Math.floor(Math.random() * 25) + 15;
-          estimatedWaitTime = Math.floor(Math.random() * 6) + 1;
-        } else {
-          crowdLevel = 'low';
-          crowdCount = Math.floor(Math.random() * 15) + 5;
-        }
-      }
-      
-      else {
-        // Diğer yerler için genel mantık
-        if (hour >= 12 && hour <= 14) { // Öğle yoğunluğu
-          crowdLevel = Math.random() > 0.5 ? 'medium' : 'high';
-          crowdCount = Math.floor(Math.random() * 30) + 10;
-        } else if (hour >= 17 && hour <= 19) { // Akşam yoğunluğu
-          crowdLevel = Math.random() > 0.3 ? 'high' : 'medium';
-          crowdCount = Math.floor(Math.random() * 40) + 15;
-        } else {
-          crowdLevel = 'low';
-          crowdCount = Math.floor(Math.random() * 20) + 5;
-        }
-        estimatedWaitTime = crowdLevel === 'high' ? Math.floor(Math.random() * 8) + 2 : 
-                           crowdLevel === 'medium' ? Math.floor(Math.random() * 5) + 1 : 0;
-      }
-      
-      // Trend hesaplama (rastgele ama mantıklı)
-      const trendRandom = Math.random();
-      if (hour >= 6 && hour <= 12) { // Sabah artış trendi
-        trend = trendRandom > 0.3 ? 'increasing' : 'stable';
-      } else if (hour >= 18 && hour <= 22) { // Akşam artış trendi
-        trend = trendRandom > 0.4 ? 'increasing' : 'stable';
-      } else if (hour >= 22 || hour <= 6) { // Gece azalış trendi
-        trend = trendRandom > 0.6 ? 'decreasing' : 'stable';
-      } else {
-        trend = trendRandom > 0.6 ? 'increasing' : trendRandom > 0.3 ? 'stable' : 'decreasing';
-      }
-      
-      return {
-        locationId: location.id,
-        crowdLevel,
-        crowdCount,
-        lastUpdated: Date.now(),
-        coordinates: location.coordinates,
-        name: location.name,
-        category: location.category,
-        trend,
-        estimatedWaitTime
-      };
-    });
-    
-    // Güncellenmiş verileri store'a kaydet
+    // Gerçek verileri store'a kaydet
     get().updateCrowdData(analyzedData);
-    console.log(`✅ ${analyzedData.length} lokasyon crowd analizi tamamlandı`);
+    console.log(`✅ ${analyzedData.length} işletme canlı kalabalık verisi güncellendi (IoT)`);
+    
+    // Canlı veri olmayan işletme sayısını logla
+    const noIoTCount = openLocations.length - analyzedData.length;
+    if (noIoTCount > 0) {
+      console.log(`ℹ️  ${noIoTCount} işletmenin henüz canlı IoT verisi yok`);
+    }
   }
 }));
 
