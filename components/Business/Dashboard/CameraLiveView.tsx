@@ -38,11 +38,8 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
           // HTTP URL'e çevir - ESP32-CAM için genelde /stream endpoint'i
           url = `http://${hostPath}`;
           
-          // Eğer credentials varsa basic auth header ile proxy kullan
-          if (username && password) {
-            // Camera proxy API'sine yönlendir
-            url = `/api/camera-proxy?url=${encodeURIComponent(url)}&auth=${btoa(`${username}:${password}`)}`;
-          }
+          // IMPORTANT: Direk stream kullan, proxy kaliteyi düşürüyor
+          // Credentials varsa URL'e ekle (ama artık proxy kullanma)
         }
       } catch (e) {
         console.error('RTSP URL parse error:', e);
@@ -51,20 +48,20 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
       }
     }
     
+    // Direkt stream URL döndür (192.168.1.2:80/stream gibi)
     return url;
   };
   
   const streamUrl = getHttpStreamUrl();
   const finalStreamUrl = `${streamUrl}${streamUrl.includes('?') ? '&' : '?'}t=${refreshKey}`;
 
-  // Otomatik refresh (her 5 saniyede bir)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRefreshKey(prev => prev + 1);
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // Otomatik refresh (her 5 saniyede bir) - Gereksiz çünkü /stream zaten canlı MJPEG
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setRefreshKey(prev => prev + 1);
+  //   }, 5000);
+  //   return () => clearInterval(interval);
+  // }, []);
 
   // AI Object Detection - her 3 saniyede bir
   useEffect(() => {

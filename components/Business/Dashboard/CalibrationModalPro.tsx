@@ -48,13 +48,16 @@ export default function CalibrationModalPro({ camera, onClose, onSave }: Calibra
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    // CORS hatası için crossOrigin kaldırıldı (local network için gerekli değil)
+    // img.crossOrigin = 'anonymous';
     img.src = streamUrl + '?t=' + Date.now();
     
     img.onload = () => {
-      canvas.width = CANVAS_WIDTH;
-      canvas.height = CANVAS_HEIGHT;
+      console.log('✅ Kalibrasyon görüntüsü yüklendi');
       ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       setImageLoaded(true);
       
@@ -64,9 +67,18 @@ export default function CalibrationModalPro({ camera, onClose, onSave }: Calibra
       }
     };
 
-    img.onerror = () => {
-      toast.error('Kamera görüntüsü yüklenemedi');
+    img.onerror = (err) => {
+      console.error('❌ Kamera görüntüsü yüklenemedi:', streamUrl);
+      toast.error('Kamera görüntüsü yüklenemedi. Kamera bağlantısını kontrol edin.');
       setImageLoaded(true);
+      
+      // Fallback görsel
+      ctx.fillStyle = '#1F2937';
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      ctx.fillStyle = '#9CA3AF';
+      ctx.font = 'bold 24px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Kamera Bağlantısı Yok', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
     };
   }, [camera]);
 
