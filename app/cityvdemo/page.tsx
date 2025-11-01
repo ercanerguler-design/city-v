@@ -33,8 +33,8 @@ const DEMO_LOCATIONS = [
     name: 'Kızılay Meydanı',
     category: 'Meydan',
     address: 'Kızılay, Çankaya, Ankara',
-    latitude: 39.9199,
-    longitude: 32.8543,
+    coordinates: [39.9199, 32.8543] as [number, number],
+    currentCrowdLevel: 'very_high' as const,
     crowdLevel: 'very_crowded',
     currentPeople: 487,
     rating: 4.6,
@@ -50,8 +50,8 @@ const DEMO_LOCATIONS = [
     name: 'Tunalı Hilmi Caddesi',
     category: 'Cadde',
     address: 'Tunalı, Çankaya, Ankara',
-    latitude: 39.9150,
-    longitude: 32.8520,
+    coordinates: [39.9150, 32.8520] as [number, number],
+    currentCrowdLevel: 'high' as const,
     crowdLevel: 'crowded',
     currentPeople: 324,
     rating: 4.8,
@@ -67,8 +67,8 @@ const DEMO_LOCATIONS = [
     name: 'Ankamall AVM',
     category: 'AVM',
     address: 'Akköprü, Altındağ, Ankara',
-    latitude: 39.9550,
-    longitude: 32.8170,
+    coordinates: [39.9550, 32.8170] as [number, number],
+    currentCrowdLevel: 'moderate' as const,
     crowdLevel: 'moderate',
     currentPeople: 256,
     rating: 4.5,
@@ -84,8 +84,8 @@ const DEMO_LOCATIONS = [
     name: 'Anıtkabir',
     category: 'Müze',
     address: 'Anıttepe, Çankaya, Ankara',
-    latitude: 39.9251,
-    longitude: 32.8369,
+    coordinates: [39.9251, 32.8369] as [number, number],
+    currentCrowdLevel: 'low' as const,
     crowdLevel: 'low',
     currentPeople: 87,
     rating: 5.0,
@@ -101,8 +101,8 @@ const DEMO_LOCATIONS = [
     name: 'Atatürk Orman Çiftliği',
     category: 'Park',
     address: 'Gazi, Çankaya, Ankara',
-    latitude: 39.9600,
-    longitude: 32.8100,
+    coordinates: [39.9600, 32.8100] as [number, number],
+    currentCrowdLevel: 'moderate' as const,
     crowdLevel: 'moderate',
     currentPeople: 198,
     rating: 4.7,
@@ -118,8 +118,8 @@ const DEMO_LOCATIONS = [
     name: 'Armada AVM',
     category: 'AVM',
     address: 'Söğütözü, Çankaya, Ankara',
-    latitude: 39.9100,
-    longitude: 32.8450,
+    coordinates: [39.9100, 32.8450] as [number, number],
+    currentCrowdLevel: 'high' as const,
     crowdLevel: 'crowded',
     currentPeople: 412,
     rating: 4.6,
@@ -135,8 +135,8 @@ const DEMO_LOCATIONS = [
     name: 'Kuğulu Park',
     category: 'Park',
     address: 'Küçükesat, Çankaya, Ankara',
-    latitude: 39.9180,
-    longitude: 32.8590,
+    coordinates: [39.9180, 32.8590] as [number, number],
+    currentCrowdLevel: 'low' as const,
     crowdLevel: 'low',
     currentPeople: 65,
     rating: 4.4,
@@ -152,8 +152,8 @@ const DEMO_LOCATIONS = [
     name: 'Ankara Kalesi',
     category: 'Tarihi',
     address: 'Altındağ, Ankara',
-    latitude: 39.9400,
-    longitude: 32.8650,
+    coordinates: [39.9400, 32.8650] as [number, number],
+    currentCrowdLevel: 'moderate' as const,
     crowdLevel: 'moderate',
     currentPeople: 143,
     rating: 4.5,
@@ -168,12 +168,26 @@ const DEMO_LOCATIONS = [
 
 // Canlı güncelleme simülasyonu
 const updateCrowdData = (locations: any[]) => {
-  return locations.map(loc => ({
-    ...loc,
-    currentPeople: Math.max(10, loc.currentPeople + Math.floor(Math.random() * 20) - 10),
-    change: Math.floor(Math.random() * 20) - 10,
-    trend: Math.random() > 0.5 ? 'up' : 'down',
-  }));
+  return locations.map(loc => {
+    const newPeople = Math.max(10, loc.currentPeople + Math.floor(Math.random() * 20) - 10);
+    const change = Math.floor(Math.random() * 20) - 10;
+    
+    // Kalabalık seviyesini kişi sayısına göre güncelle
+    let newCrowdLevel: 'empty' | 'low' | 'moderate' | 'high' | 'very_high';
+    if (newPeople > 400) newCrowdLevel = 'very_high';
+    else if (newPeople > 250) newCrowdLevel = 'high';
+    else if (newPeople > 150) newCrowdLevel = 'moderate';
+    else if (newPeople > 50) newCrowdLevel = 'low';
+    else newCrowdLevel = 'empty';
+    
+    return {
+      ...loc,
+      currentPeople: newPeople,
+      currentCrowdLevel: newCrowdLevel as const,
+      change,
+      trend: change > 0 ? 'up' : change < 0 ? 'down' : 'stable',
+    };
+  });
 };
 
 export default function CityVDemo() {

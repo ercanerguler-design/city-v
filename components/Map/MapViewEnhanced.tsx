@@ -64,7 +64,7 @@ function HeatmapLayer({ locations, intensity }: { locations: Location[]; intensi
         }
 
         // Isı haritası verisi hazırla
-        const heatData = locations.map(loc => {
+        const heatData = (locations || []).map(loc => {
           // Yoğunluğa göre ağırlık
           const intensityMap: Record<CrowdLevel, number> = {
             empty: 0.1,
@@ -239,7 +239,7 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
                 return createCustomMarker('default', 'empty', 40 + Math.min(count / 5, 20));
               }}
             >
-              {locations.map((location) => {
+              {(locations || []).map((location) => {
                 const distance = userLocation 
                   ? calculateDistance(userLocation[0], userLocation[1], location.coordinates[0], location.coordinates[1])
                   : null;
@@ -262,7 +262,7 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
             </MarkerClusterGroup>
           ) : (
             // Standart mod - cluster yok
-            locations.map((location) => {
+            (locations || []).map((location) => {
               const distance = userLocation 
                 ? calculateDistance(userLocation[0], userLocation[1], location.coordinates[0], location.coordinates[1])
                 : null;
