@@ -287,10 +287,21 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
           <h2 className="text-2xl font-bold text-gray-900">Kamera Yönetimi</h2>
           <p className="text-gray-500 mt-1">
             {cameras.length} / {planInfo?.maxCameras || 10} kamera kullanılıyor
+            {planInfo && cameras.length >= planInfo.maxCameras && (
+              <span className="text-red-600 font-medium ml-2">
+                • Limit doldu
+              </span>
+            )}
           </p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            if (cameras.length >= (planInfo?.maxCameras || 10)) {
+              toast.error(`${planInfo?.type === 'free' ? 'Free' : planInfo?.type === 'premium' ? 'Premium' : 'Enterprise'} planınızda maksimum ${planInfo?.maxCameras} kamera ekleyebilirsiniz. Daha fazla kamera için üyelik yükseltin.`);
+            } else {
+              setShowAddModal(true);
+            }
+          }}
           disabled={cameras.length >= (planInfo?.maxCameras || 10)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
         >

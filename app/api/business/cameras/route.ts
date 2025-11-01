@@ -26,32 +26,34 @@ function getUserFromToken(request: NextRequest) {
   }
 }
 
-// Kullanıcının planını öğren
+// Kullanıcının planını öğren (yeni membership sistemi)
 async function getUserPlan(userId: number) {
   try {
     const result = await sql`
-      SELECT plan_type
-      FROM business_subscriptions 
-      WHERE user_id = ${userId} 
-        AND is_active = true 
-        AND end_date > NOW()
-      ORDER BY created_at DESC 
-      LIMIT 1
+      SELECT membership_type, max_cameras
+      FROM business_users 
+      WHERE id = ${userId}
     `;
     
-    const planType = result.rows.length > 0 ? result.rows[0].plan_type : 'premium';
-    const maxCameras = CAMERA_LIMITS[planType as keyof typeof CAMERA_LIMITS] || CAMERA_LIMITS.premium;
+    if (result.rows.length === 0) {
+      return {
+        planType: 'free',
+        maxCameras: 1
+      };
+    }
+
+    const membershipType = result.rows[0].membership_type || 'free';
+    const maxCameras = result.rows[0].max_cameras || 1;
     
     return {
-      planType,
-      maxCameras
+      planType: membershipType,
+      maxCameras: maxCameras
     };
   } catch (error) {
-    // Hata olursa default premium plan
-    console.log('⚠️ Plan bulunamadı, default premium kullanılıyor');
+    console.log('⚠️ Plan bulunamadı, default free kullanılıyor');
     return {
-      planType: 'premium',
-      maxCameras: CAMERA_LIMITS.premium
+      planType: 'free',
+      maxCameras: 1
     };
   }
 }
