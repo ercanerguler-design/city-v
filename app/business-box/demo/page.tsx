@@ -261,32 +261,36 @@ export default function DemoPage() {
                     / {data.current.capacity} kişi kapasiteli
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mb-3">
-                  {data.current.trend === 'up' ? (
-                    <ArrowUpRight className="w-4 h-4 text-red-500" />
-                  ) : (
-                    <ArrowDownRight className="w-4 h-4 text-green-500" />
-                  )}
-                  <span className={`text-sm font-bold ${
-                    data.current.trend === 'up' ? 'text-red-600' : 'text-green-600'
-                  }`}>
-                    {mounted ? data.current.change : '--'} kişi (son 5dk)
-                  </span>
-                </div>
+                {mounted && (
+                  <div className="flex items-center gap-2 mb-3">
+                    {data.current.trend === 'up' ? (
+                      <ArrowUpRight className="w-4 h-4 text-red-500" />
+                    ) : (
+                      <ArrowDownRight className="w-4 h-4 text-green-500" />
+                    )}
+                    <span className={`text-sm font-bold ${
+                      data.current.trend === 'up' ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {data.current.change} kişi (son 5dk)
+                    </span>
+                  </div>
+                )}
                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${data.current.occupancy}%` }}
-                    transition={{ duration: 0.5 }}
-                    className={`h-full ${
-                      data.current.occupancy < 30 ? 'bg-gradient-to-r from-green-400 to-green-500' :
-                      data.current.occupancy < 70 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
-                      'bg-gradient-to-r from-red-400 to-red-500'
-                    }`}
-                  />
+                  {mounted && (
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${data.current.occupancy}%` }}
+                      transition={{ duration: 0.5 }}
+                      className={`h-full ${
+                        data.current.occupancy < 30 ? 'bg-gradient-to-r from-green-400 to-green-500' :
+                        data.current.occupancy < 70 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
+                        'bg-gradient-to-r from-red-400 to-red-500'
+                      }`}
+                    />
+                  )}
                 </div>
                 <div className="text-right text-xs text-gray-500 mt-1 font-semibold">
-                  %{data.current.occupancy} doluluk
+                  %{mounted ? data.current.occupancy : '--'} doluluk
                 </div>
               </motion.div>
 
@@ -296,9 +300,11 @@ export default function DemoPage() {
                   <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl shadow-lg">
                     <DollarSign className="w-6 h-6 text-white" />
                   </div>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-600 border-2 border-green-200">
-                    {data.revenue.trend}
-                  </span>
+                  {mounted && (
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-600 border-2 border-green-200">
+                      {data.revenue.trend}
+                    </span>
+                  )}
                 </div>
                 <div className="mb-3">
                   <div className="text-4xl font-black text-gray-900 mb-1">
@@ -326,9 +332,11 @@ export default function DemoPage() {
                   <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg">
                     <UserCheck className="w-6 h-6 text-white" />
                   </div>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-600 border-2 border-purple-200">
-                    %{data.staff.efficiency} verim
-                  </span>
+                  {mounted && (
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-600 border-2 border-purple-200">
+                      %{data.staff.efficiency} verim
+                    </span>
+                  )}
                 </div>
                 <div className="mb-3">
                   <div className="text-4xl font-black text-gray-900 mb-1">
@@ -361,9 +369,11 @@ export default function DemoPage() {
                   <div className="p-3 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl shadow-lg">
                     <Smartphone className="w-6 h-6 text-white" />
                   </div>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border-2 border-indigo-200">
-                    ⭐ {data.cityv.rating}
-                  </span>
+                  {mounted && (
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border-2 border-indigo-200">
+                      ⭐ {data.cityv.rating}
+                    </span>
+                  )}
                 </div>
                 <div className="mb-3">
                   <div className="text-4xl font-black text-gray-900 mb-1">
