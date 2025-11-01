@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Building2, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import authStorage from '@/lib/authStorage';
 
 export default function BusinessLoginPage() {
   const router = useRouter();
@@ -19,6 +20,8 @@ export default function BusinessLoginPage() {
     setError('');
     setIsLoading(true);
 
+    console.log('📱 Login attempt:', { email, isMobile: /Mobile|Android|iPhone/i.test(navigator.userAgent) });
+
     try {
       const response = await fetch('/api/business/auth/login', {
         method: 'POST',
@@ -29,24 +32,46 @@ export default function BusinessLoginPage() {
       });
 
       const data = await response.json();
+      console.log('📋 Login response:', { success: response.ok, hasToken: !!data.token });
 
       if (!response.ok) {
         throw new Error(data.error || 'Giriş başarısız');
       }
 
-      // Token'ı localStorage'a kaydet
-      localStorage.setItem('business_token', data.token);
-      localStorage.setItem('business_user', JSON.stringify(data.user));
-
-      toast.success('Giriş başarılı! Yönlendiriliyorsunuz...');
+      // Token ve user'ı kaydet (cross-platform storage)
+      const tokenSaved = authStorage.setToken(data.token);
+      const userSaved = authStorage.setUser(data.user);
       
-      // Yeni profesyonel dashboard'a yönlendir
+      console.log('💾 Storage check:', {
+        tokenSaved,
+        userSaved,
+        mobile: /Mobile|Android|iPhone/i.test(navigator.userAgent),
+        tokenLength: data.token?.length || 0
+      });
+
+      if (!tokenSaved || !userSaved) {
+        throw new Error('Veri kaydetme hatası. Tarayıcı ayarlarınızı kontrol edin.');
+      }
+      
+      // Doğrulama: Kaydedilen veriyi oku
+      const verifyToken = authStorage.getToken();
+      const verifyUser = authStorage.getUser();
+      
+      if (!verifyToken || !verifyUser) {
+        throw new Error('Tarayıcı depolama doğrulaması başarısız. Lütfen çerezleri etkinleştirin.');
+      }
+
+      toast.success('✅ Giriş başarılı! Yönlendiriliyorsunuz...');
+      
+      console.log('🚀 Redirecting to dashboard...');
+      
+      // Redirect için window.location kullan (mobilde daha güvenilir)
       setTimeout(() => {
-        router.push('/business/dashboard');
-      }, 500);
+        window.location.href = '/business/dashboard';
+      }, 800);
 
     } catch (err: any) {
-      console.error('Login error:', err);
+      console.error('❌ Login error:', err);
       setError(err.message || 'Giriş başarısız. Email ve şifrenizi kontrol edin.');
       toast.error(err.message || 'Giriş başarısız');
     } finally {

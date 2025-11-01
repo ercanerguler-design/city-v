@@ -8,6 +8,7 @@ import {
   Bell, Search, ChevronDown, UserCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import authStorage from '@/lib/authStorage';
 
 // Dashboard Sections
 import OverviewSection from '@/components/Business/Dashboard/OverviewSection';
@@ -62,15 +63,26 @@ export default function BusinessDashboard() {
   // Auth kontrolü - Token doğrulama
   useEffect(() => {
     const verifyToken = async () => {
-      const token = localStorage.getItem('business_token');
+      console.log('🔐 Dashboard auth check...');
+      
+      // Cross-platform storage kullan
+      const token = authStorage.getToken();
+      
+      console.log('📋 Token check:', { 
+        hasToken: !!token, 
+        tokenLength: token?.length || 0,
+        mobile: /Mobile|Android|iPhone/i.test(navigator.userAgent)
+      });
 
       if (!token) {
         console.log('❌ Token bulunamadı, login sayfasına yönlendiriliyor...');
-        router.push('/business/login');
+        window.location.href = '/business/login';
         return;
       }
 
       try {
+        console.log('🔍 Verifying token...');
+        
         // Token'ı backend'de doğrula
         const response = await fetch('/api/business/verify-token', {
           method: 'POST',
@@ -81,13 +93,14 @@ export default function BusinessDashboard() {
         });
 
         const data = await response.json();
+        console.log('📋 Token verify response:', { valid: data.valid, hasUser: !!data.user });
 
         if (data.valid) {
-          console.log('✅ Token geçerli, kullanıcı yüklendi');
+          console.log('✅ Token geçerli, kullanıcı yüklendi:', data.user?.email);
           setBusinessUser(data.user);
           
-          // Profile'ı localStorage'a kaydet
-          localStorage.setItem('business_user', JSON.stringify(data.user));
+          // User'ı cross-platform storage'a kaydet
+          authStorage.setUser(data.user);
           
           if (data.profile) {
             const profileWithUserId = {
@@ -100,17 +113,15 @@ export default function BusinessDashboard() {
           setLoading(false);
         } else {
           console.log('❌ Token geçersiz:', data.error);
-          localStorage.removeItem('business_token');
-          localStorage.removeItem('business_user');
+          authStorage.clear();
           toast.error('Oturumunuz sonlanmış. Lütfen tekrar giriş yapın.');
-          router.push('/business/login');
+          window.location.href = '/business/login';
         }
       } catch (error) {
         console.error('❌ Token doğrulama hatası:', error);
-        localStorage.removeItem('business_token');
-        localStorage.removeItem('business_user');
+        authStorage.clear();
         toast.error('Bağlantı hatası. Lütfen tekrar giriş yapın.');
-        router.push('/business/login');
+        window.location.href = '/business/login';
       }
     };
 
@@ -157,10 +168,9 @@ export default function BusinessDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('business_token');
-    localStorage.removeItem('business_user');
+    authStorage.clear();
     toast.success('Çıkış yapıldı');
-    router.push('/business/login');
+    window.location.href = '/business/login';
   };
 
   if (loading) {
