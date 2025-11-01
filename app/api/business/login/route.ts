@@ -16,9 +16,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Kullanıcıyı bul
+    // Kullanıcıyı bul (membership bilgileriyle)
     const result = await sql`
-      SELECT * FROM business_users WHERE email = ${email} AND is_active = true
+      SELECT id, email, password_hash, full_name, phone, 
+             membership_type, membership_expiry_date, max_cameras, is_active
+      FROM business_users 
+      WHERE email = ${email} AND is_active = true
     `;
 
     if (result.rows.length === 0) {
@@ -65,7 +68,10 @@ export async function POST(request: Request) {
         id: user.id,
         email: user.email,
         fullName: user.full_name,
-        phone: user.phone
+        phone: user.phone,
+        membership_type: user.membership_type || 'free',
+        membership_expiry_date: user.membership_expiry_date,
+        max_cameras: user.max_cameras || 1
       },
       profile: profileResult.rows[0] || null,
       token

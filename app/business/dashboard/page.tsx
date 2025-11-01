@@ -287,6 +287,26 @@ export default function BusinessDashboard() {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
+            {/* Membership Badge */}
+            {businessUser && (
+              <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                businessUser.membership_type === 'enterprise' 
+                  ? 'bg-purple-100 text-purple-700' 
+                  : businessUser.membership_type === 'premium'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-gray-100 text-gray-700'
+              }`}>
+                {businessUser.membership_type === 'enterprise' ? '⭐ Enterprise' : 
+                 businessUser.membership_type === 'premium' ? '💎 Premium' : 
+                 '🆓 Free'}
+                {businessUser.membership_expiry_date && (
+                  <span className="ml-1 opacity-70">
+                    ({new Date(businessUser.membership_expiry_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' })})
+                  </span>
+                )}
+              </div>
+            )}
+            
             <button className="p-2 hover:bg-gray-100 rounded-lg relative">
               <Bell className="w-5 h-5 text-gray-600" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>

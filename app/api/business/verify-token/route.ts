@@ -27,9 +27,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Kullanıcının hala aktif olup olmadığını kontrol et
+    // Kullanıcının hala aktif olup olmadığını kontrol et (membership bilgileriyle birlikte)
     const userResult = await sql`
-      SELECT id, email, full_name, phone, is_active 
+      SELECT id, email, full_name, phone, is_active, 
+             membership_type, membership_expiry_date, max_cameras
       FROM business_users 
       WHERE id = ${decoded.userId}
     `;
@@ -43,6 +44,23 @@ export async function POST(request: Request) {
 
     const user = userResult.rows[0];
 
+    // Membership süresi dolmuş mu kontrol et
+    if (user.membership_expiry_date) {
+      const expiryDate = new Date(user.membership_expiry_date);
+      const now = new Date();
+      if (expiryDate < now) {
+        console.log('⚠️ Membership süresi dolmuş, free\'e düşürülüyor');
+        // Üyeliği free'e düşür
+        await sql`
+          UPDATE business_users 
+          SET membership_type = 'free', max_cameras = 1
+          WHERE id = ${user.id}
+        `;
+        user.membership_type = 'free';
+        user.max_cameras = 1;
+      }
+    }
+
     // Business profilini getir
     const profileResult = await sql`
       SELECT * FROM business_profiles WHERE user_id = ${user.id}
@@ -54,7 +72,10 @@ export async function POST(request: Request) {
         id: user.id,
         email: user.email,
         fullName: user.full_name,
-        phone: user.phone
+        phone: user.phone,
+        membership_type: user.membership_type || 'free',
+        membership_expiry_date: user.membership_expiry_date,
+        max_cameras: user.max_cameras || 1
       },
       profile: profileResult.rows[0] || null
     });
