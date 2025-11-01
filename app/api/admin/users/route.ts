@@ -5,31 +5,46 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📋 Tüm kullanıcılar getiriliyor...');
     
-    // Tüm kullanıcıları getir (yeni eklenenden eskiye)
-    const result = await sql`
+    // Normal users tablosundan kullanıcıları çek
+    const normalUsers = await sql`
       SELECT 
         id,
         email,
-        name,
+        name as full_name,
         google_id,
         profile_picture,
         membership_tier,
         ai_credits,
         is_active,
         join_date,
-        last_login,
+        last_login as last_sign_in_at,
         created_at,
-        updated_at
+        updated_at,
+        'normal' as user_type
       FROM users
       ORDER BY created_at DESC
+      LIMIT 100
     `;
+
+    // Normal kullanıcıları formatla
+    const formattedUsers = normalUsers.rows.map((user: any) => ({
+      id: `normal-${user.id}`, // Unique key için prefix ekle
+      original_id: user.id,
+      email: user.email,
+      name: user.full_name || 'İsimsiz Kullanıcı',
+      membership: user.membership_tier || 'free',
+      created_at: user.created_at,
+      last_activity: user.last_sign_in_at,
+      user_type: 'normal',
+      is_active: user.last_sign_in_at ? new Date(user.last_sign_in_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) : false
+    }));
     
-    console.log(`✅ ${result.rows.length} kullanıcı bulundu`);
+    console.log(`✅ ${formattedUsers.length} normal kullanıcı bulundu`);
     
     return NextResponse.json({
       success: true,
-      users: result.rows,
-      count: result.rows.length
+      users: formattedUsers,
+      count: formattedUsers.length
     });
     
   } catch (error) {
@@ -138,27 +153,54 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    console.log(`🗑️ Kullanıcı siliniyor: ${userId}`);
+    // "normal-123" formatında gelirse ID'yi çıkar
+    const cleanUserId = userId.startsWith('normal-') ? userId.replace('normal-', '') : userId;
     
-    const result = await sql`
-      DELETE FROM users
-      WHERE id = ${userId}
-      RETURNING email
-    `;
+    console.log(`🗑️ Kullanıcı siliniyor: ${cleanUserId}`);
     
-    if (result.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Kullanıcı bulunamadı' },
-        { status: 404 }
-      );
+    // Transaction başlat - güvenli silme için
+    await sql`BEGIN`;
+    
+    try {
+      // 1. Kullanıcının yorumlarını sil
+      await sql`DELETE FROM location_reviews WHERE user_id = ${cleanUserId}`;
+      console.log(`🗑️ User ${cleanUserId} reviews deleted`);
+      
+      // 2. Kullanıcının raporlarını sil (eğer cascade değilse)
+      await sql`DELETE FROM crowd_reports WHERE reported_by = ${cleanUserId}`;
+      console.log(`🗑️ User ${cleanUserId} reports deleted`);
+      
+      // 3. Kullanıcının favorilerini sil (ON DELETE CASCADE olsa bile explicit)
+      await sql`DELETE FROM user_favorites WHERE user_id = ${cleanUserId}`;
+      console.log(`🗑️ User ${cleanUserId} favorites deleted`);
+      
+      // 4. Kullanıcıyı sil
+      const result = await sql`
+        DELETE FROM users
+        WHERE id = ${cleanUserId}
+        RETURNING email
+      `;
+      
+      if (result.rows.length === 0) {
+        await sql`ROLLBACK`;
+        return NextResponse.json(
+          { error: 'Kullanıcı bulunamadı' },
+          { status: 404 }
+        );
+      }
+      
+      await sql`COMMIT`;
+      console.log('✅ Kullanıcı ve tüm ilişkili kayıtlar silindi:', result.rows[0].email);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Kullanıcı ve ilişkili tüm veriler silindi'
+      });
+      
+    } catch (error) {
+      await sql`ROLLBACK`;
+      throw error;
     }
-    
-    console.log('✅ Kullanıcı silindi:', result.rows[0].email);
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Kullanıcı silindi'
-    });
     
   } catch (error) {
     console.error('❌ Kullanıcı silme hatası:', error);

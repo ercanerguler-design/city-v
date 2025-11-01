@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const bounds = searchParams.get('bounds'); // "lat1,lng1,lat2,lng2"
     const category = searchParams.get('category'); // "restaurant", "cafe", "retail" vb.
 
-    // SQL query oluştur
+    // SQL query oluştur - SADECE ADMIN TARAFINDAN EKLENMİŞ AKTİF BUSINESS'LARI GÖSTERcode
     let sqlQuery = `
       SELECT 
         bp.id as business_id,
@@ -44,10 +44,15 @@ export async function GET(req: NextRequest) {
         bp.working_hours,
         bp.logo_url,
         bp.photos,
-        bp.social_media
+        bp.social_media,
+        bu.membership_type,
+        bu.is_active
       FROM business_profiles bp
+      INNER JOIN business_users bu ON bp.user_id = bu.id
       WHERE bp.latitude IS NOT NULL 
         AND bp.longitude IS NOT NULL
+        AND bu.added_by_admin = true
+        AND bu.is_active = true
     `;
 
     const params: any[] = [];

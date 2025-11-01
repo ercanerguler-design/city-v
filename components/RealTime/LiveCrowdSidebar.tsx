@@ -45,6 +45,59 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // 📡 Business IoT canlı verilerini yükle
+  const [businessIoTData, setBusinessIoTData] = useState<any[]>([]);
+  const [iotLoading, setIotLoading] = useState(false);
+  
+  const loadBusinessIoTData = async () => {
+    try {
+      setIotLoading(true);
+      console.log('📡 Business IoT verileri yükleniyor...');
+      console.log('👤 User durumu:', { 
+        isAuthenticated, 
+        hasUser: !!user, 
+        membershipTier: user?.membershipTier,
+        userId: user?.id 
+      });
+      
+      // İlk başta tüm business'ları çek (onlyWithData=false)
+      const response = await fetch('/api/business/live-iot-data');
+      
+      console.log('📡 API Response Status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API HTTP hatası:', response.status, errorText);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log('📦 API Response Data:', data);
+      
+      if (data.success) {
+        setBusinessIoTData(data.businesses || []);
+        console.log('✅ Business IoT verileri yüklendi:', data.businesses?.length || 0);
+        
+        if (data.businesses && data.businesses.length > 0) {
+          console.log('📊 İlk business örneği:', {
+            name: data.businesses[0].name,
+            cameras: data.businesses[0].cameras?.length,
+            hasData: data.businesses[0].summary?.hasRealtimeData
+          });
+        } else {
+          console.log('ℹ️ Hiç business IoT verisi bulunamadı');
+        }
+      } else {
+        console.error('❌ API başarısız:', data.error);
+        console.error('📋 Detaylar:', data.details);
+      }
+    } catch (error) {
+      console.error('❌ Business IoT veri yükleme hatası:', error);
+    } finally {
+      setIotLoading(false);
+    }
+  };
+
   // Gerçek business locations ile analiz (mock data YOK)
   useEffect(() => {
     if (isOpen && locations && locations.length > 0) {
@@ -54,10 +107,14 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
       // İlk analizi hemen başlat - gerçek business locations ile
       analyzeOpenLocations(locations);
       
+      // Business IoT verilerini de yükle
+      loadBusinessIoTData();
+      
       // Her 30 saniyede bir güncelle (API ile senkronize)
       const interval = setInterval(() => {
         console.log('🔄 Crowd analizi güncelleniyor...');
         analyzeOpenLocations(locations);
+        loadBusinessIoTData();
       }, 30000);
       
       return () => {
@@ -327,9 +384,13 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
             )}
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            {activeCrowdCount > 0 ? (
+            {businessIoTData.length > 0 ? (
               <>
-                {activeCrowdCount} işletme canlı IoT ile izleniyor
+                {businessIoTData.length} işletme canlı IoT ile izleniyor
+              </>
+            ) : activeCrowdCount > 0 ? (
+              <>
+                {activeCrowdCount} konum aktif takipte
               </>
             ) : (
               <>
@@ -341,7 +402,88 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
 
         {/* Content */}
         <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-3' : 'p-2'}`}>
-          {crowdData.size === 0 ? (
+          {/* Business IoT Verileri (Herkese Açık) */}
+          {businessIoTData.length > 0 && (
+            <>
+              <div className="mb-3 px-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <h4 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                    IoT Kameralar ({businessIoTData.length})
+                  </h4>
+                </div>
+              </div>
+              
+              <div className={`${isMobile ? 'space-y-3' : 'space-y-2'} mb-4`}>
+                {businessIoTData.map((business) => (
+                  <div
+                    key={business.id}
+                    className={`${isMobile ? 'p-4' : 'p-3'} bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-800 hover:shadow-md transition-all`}
+                  >
+                    <div className={`flex justify-between items-start ${isMobile ? 'mb-3' : 'mb-2'}`}>
+                      <div className="flex-1">
+                        <h4 className={`font-semibold ${isMobile ? 'text-base' : 'text-sm'} text-gray-900 dark:text-white mb-1`}>
+                          {business.name}
+                        </h4>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {business.district}, {business.city}
+                        </p>
+                      </div>
+                      <div className="ml-2">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          business.summary.crowdLevel === 'high' || business.summary.crowdLevel === 'overcrowded' 
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+                            : business.summary.crowdLevel === 'medium'
+                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        }`}>
+                          {business.summary.crowdLevel === 'high' ? '🔴 Yoğun' :
+                           business.summary.crowdLevel === 'medium' ? '🟡 Orta' :
+                           business.summary.crowdLevel === 'overcrowded' ? '🔴 Çok Yoğun' : '🟢 Sakin'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className={`grid grid-cols-3 gap-2 ${isMobile ? 'mb-3' : 'mb-2'}`}>
+                      <div className="text-center">
+                        <div className={`${isMobile ? 'text-lg' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
+                          {business.summary.totalPeople}
+                        </div>
+                        <div className="text-xs text-gray-500">Kişi</div>
+                      </div>
+                      <div className="text-center">
+                        <div className={`${isMobile ? 'text-lg' : 'text-base'} font-bold text-blue-600 dark:text-blue-400`}>
+                          {business.summary.activeCameras}
+                        </div>
+                        <div className="text-xs text-gray-500">Kamera</div>
+                      </div>
+                      <div className="text-center">
+                        <div className={`${isMobile ? 'text-lg' : 'text-base'} font-bold text-purple-600 dark:text-purple-400`}>
+                          %{business.summary.avgOccupancy}
+                        </div>
+                        <div className="text-xs text-gray-500">Doluluk</div>
+                      </div>
+                    </div>
+                    
+                    {business.summary.lastUpdate && (
+                      <div className="flex items-center justify-between text-xs text-gray-400">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{new Date(business.summary.lastUpdate).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <span className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full text-xs">
+                          ● Canlı
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          
+          {/* Normal Crowd Analysis Verileri */}
+          {businessIoTData.length === 0 && crowdData.size === 0 ? (
             <div className="text-center text-gray-500 py-8 px-4">
               <Users className="w-8 h-8 mx-auto mb-3 opacity-50" />
               <p className="text-sm font-medium mb-1">Henüz Canlı Veri Yok</p>
@@ -349,7 +491,7 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
                 İşletmeler IoT kamera sistemi kurduktan sonra burada canlı kalabalık verileri görünecek
               </p>
             </div>
-          ) : (
+          ) : crowdData.size > 0 && (
             <div className={`${isMobile ? 'space-y-3' : 'space-y-2'}`}>
               {Array.from(crowdData.values()).map((data) => (
                 <div
@@ -403,10 +545,12 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
           <div className={`flex items-center justify-center gap-2 ${isMobile ? 'text-sm' : 'text-xs'} text-gray-500`}>
             <div className={`${isMobile ? 'w-2 h-2' : 'w-1.5 h-1.5'} bg-green-500 rounded-full animate-pulse`}></div>
             <span>Otomatik güncelleme aktif</span>
-            {isMobile && (
+            {isMobile && (businessIoTData.length > 0 || activeCrowdCount > 0) && (
               <div className="ml-2 flex items-center gap-1">
                 <span className="text-xs">•</span>
-                <span className="text-xs">{activeCrowdCount} konum</span>
+                <span className="text-xs">
+                  {businessIoTData.length > 0 ? `${businessIoTData.length} IoT` : `${activeCrowdCount} konum`}
+                </span>
               </div>
             )}
           </div>

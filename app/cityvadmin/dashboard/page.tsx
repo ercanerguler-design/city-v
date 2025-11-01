@@ -16,22 +16,104 @@ import toast from 'react-hot-toast';
 
 export default function CityVAdminDashboard() {
   const router = useRouter();
-  const { isAdmin, stats, refreshStats, logout } = useAdminStore();
+  const { isAdmin, stats: localStats, refreshStats, logout } = useAdminStore();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'locations' | 'revenue' | 'business'>('overview');
   const [showBusinessForm, setShowBusinessForm] = useState(false);
+  const [showEditBusinessModal, setShowEditBusinessModal] = useState(false);
+  const [selectedBusiness, setSelectedBusiness] = useState<any>(null);
   const [businessMembers, setBusinessMembers] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [realStats, setRealStats] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Gerçek istatistikleri yükle
+  const loadRealStats = async () => {
+    try {
+      const response = await fetch('/api/admin/stats');
+      const data = await response.json();
+      if (data.success) {
+        setRealStats(data.stats);
+        console.log('✅ Gerçek istatistikler yüklendi');
+      }
+    } catch (error) {
+      console.error('❌ Stats load error:', error);
+    }
+  };
+
+  // Kullanıcıları yükle
+  const loadUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/users');
+      const data = await response.json();
+      if (data.success) {
+        setUsers(data.users);
+        console.log('✅ Kullanıcılar yüklendi:', data.users.length);
+      }
+    } catch (error) {
+      console.error('❌ Users load error:', error);
+    }
+  };
+
+  // Mekanları yükle
+  const loadLocations = async () => {
+    try {
+      const response = await fetch('/api/admin/locations');
+      const data = await response.json();
+      if (data.success) {
+        setLocations(data.locations);
+        console.log('✅ Mekanlar yüklendi:', data.locations.length);
+      }
+    } catch (error) {
+      console.error('❌ Locations load error:', error);
+    }
+  };
 
   // Admin değilse login sayfasına yönlendir
   useEffect(() => {
     if (!isAdmin) {
       console.log('⚠️ Admin değil, login sayfasına yönlendiriliyor...');
       router.push('/cityvadmin');
+    } else {
+      // Admin ise gerçek verileri yükle
+      loadRealStats();
     }
   }, [isAdmin, router]);
 
+  // Prevent navigation without logout
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      if (!confirm('Çıkış yapmadan sayfadan ayrılmak istediğinize emin misiniz?')) {
+        window.history.pushState(null, '', window.location.href);
+      }
+    };
+
+    // Add history state
+    window.history.pushState(null, '', window.location.href);
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isAdmin]);
+
   const handleRefresh = () => {
     setIsRefreshing(true);
+    loadRealStats();
+    if (activeTab === 'users') loadUsers();
+    if (activeTab === 'locations') loadLocations();
+    if (activeTab === 'business') loadBusinessMembers();
     refreshStats();
     setTimeout(() => setIsRefreshing(false), 1000);
     toast.success('📊 İstatistikler güncellendi');
@@ -59,17 +141,23 @@ export default function CityVAdminDashboard() {
     }
   };
 
-  // Business tab açıldığında üyeleri yükle
+  // Tab değiştiğinde ilgili verileri yükle
   useEffect(() => {
-    if (isAdmin && activeTab === 'business') {
+    if (!isAdmin) return;
+    
+    if (activeTab === 'business') {
       loadBusinessMembers();
+    } else if (activeTab === 'users') {
+      loadUsers();
+    } else if (activeTab === 'locations') {
+      loadLocations();
     }
   }, [isAdmin, activeTab]);
 
   // Tab içerikleri
   const tabs = [
     { id: 'overview', label: 'Genel Bakış', icon: BarChart3 },
-    { id: 'users', label: 'Kullanıcılar', icon: Users },
+    { id: 'users', label: 'CityV Üyeleri', icon: Users },
     { id: 'business', label: 'Business Üyeler', icon: Building2 },
     { id: 'locations', label: 'Mekanlar', icon: MapPin },
     { id: 'revenue', label: 'Gelir', icon: DollarSign },
@@ -215,38 +303,38 @@ export default function CityVAdminDashboard() {
               <StatCard
                 icon={Users}
                 label="Toplam Kullanıcı"
-                value={stats.totalUsers.toLocaleString()}
-                change={`+${stats.userGrowth.month} bu ay`}
+                value={(realStats?.totalUsers || localStats.totalUsers).toLocaleString()}
+                change={`+${realStats?.userGrowth.month || localStats.userGrowth.month} bu ay`}
                 gradient="bg-gradient-to-br from-blue-500 to-blue-600"
               />
               <StatCard
                 icon={Activity}
                 label="Aktif Kullanıcı"
-                value={stats.activeUsers.toLocaleString()}
-                change={`+${stats.userGrowth.week} bu hafta`}
+                value={(realStats?.activeUsers || localStats.activeUsers).toLocaleString()}
+                change={`+${realStats?.userGrowth.week || localStats.userGrowth.week} bu hafta`}
                 gradient="bg-gradient-to-br from-green-500 to-green-600"
               />
               <StatCard
                 icon={Crown}
                 label="Premium Üye"
-                value={stats.premiumUsers.toLocaleString()}
+                value={(realStats?.premiumUsers || localStats.premiumUsers).toLocaleString()}
                 gradient="bg-gradient-to-br from-yellow-500 to-orange-500"
               />
               <StatCard
                 icon={DollarSign}
                 label="Aylık Gelir"
-                value={`₺${stats.revenue.monthly.toLocaleString()}`}
-                change={`₺${stats.revenue.yearly.toLocaleString()} yıllık`}
+                value={`₺${(realStats?.revenue.monthly || localStats.revenue.monthly).toLocaleString()}`}
+                change={`₺${(realStats?.revenue.yearly || localStats.revenue.yearly).toLocaleString()} yıllık`}
                 gradient="bg-gradient-to-br from-purple-500 to-pink-500"
               />
             </div>
 
             {/* Secondary Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <MiniStatCard icon={AlertCircle} label="Raporlar" value={stats.totalReports} />
-              <MiniStatCard icon={MapPin} label="Check-inler" value={stats.totalCheckIns} />
-              <MiniStatCard icon={Heart} label="Favoriler" value={stats.totalFavorites} />
-              <MiniStatCard icon={Star} label="Takip Edilenler" value={stats.totalTrackedLocations} />
+              <MiniStatCard icon={Building2} label="Business Üye" value={realStats?.totalBusinessMembers || 0} />
+              <MiniStatCard icon={MapPin} label="Mekanlar" value={realStats?.totalLocations || localStats.totalLocations} />
+              <MiniStatCard icon={Camera} label="IoT Cihaz" value={realStats?.totalDevices || 0} />
+              <MiniStatCard icon={Activity} label="Crowd Analiz" value={realStats?.totalCrowdAnalysis || 0} />
             </div>
 
             {/* Popular Locations & Recent Activities */}
@@ -262,7 +350,7 @@ export default function CityVAdminDashboard() {
                   Popüler Mekanlar
                 </h3>
                 <div className="space-y-3">
-                  {stats.popularLocations.map((location, index) => (
+                  {(realStats?.popularLocations || localStats.popularLocations).slice(0, 5).map((location: any, index: number) => (
                     <div
                       key={location.id}
                       className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
@@ -278,6 +366,9 @@ export default function CityVAdminDashboard() {
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">{location.name}</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">{location.category}</p>
+                          {location.location && (
+                            <p className="text-xs text-gray-400 dark:text-gray-500">{location.location}</p>
+                          )}
                         </div>
                       </div>
                       <div className="text-right">
@@ -301,7 +392,7 @@ export default function CityVAdminDashboard() {
                   Son Aktiviteler
                 </h3>
                 <div className="space-y-3">
-                  {stats.recentActivities.map((activity) => (
+                  {(realStats?.recentActivities || localStats.recentActivities).map((activity: any) => (
                     <div
                       key={activity.id}
                       className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-700 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
@@ -337,19 +428,19 @@ export default function CityVAdminDashboard() {
               <StatCard
                 icon={Users}
                 label="Bugün Katılan"
-                value={stats.userGrowth.today}
+                value={realStats?.userGrowth.today || localStats.userGrowth.today}
                 gradient="bg-gradient-to-br from-green-500 to-green-600"
               />
               <StatCard
                 icon={TrendingUp}
                 label="Bu Hafta"
-                value={stats.userGrowth.week}
+                value={realStats?.userGrowth.week || localStats.userGrowth.week}
                 gradient="bg-gradient-to-br from-blue-500 to-blue-600"
               />
               <StatCard
                 icon={Activity}
                 label="Bu Ay"
-                value={stats.userGrowth.month}
+                value={realStats?.userGrowth.month || localStats.userGrowth.month}
                 gradient="bg-gradient-to-br from-purple-500 to-purple-600"
               />
             </div>
@@ -358,17 +449,10 @@ export default function CityVAdminDashboard() {
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Tüm Kullanıcılar
+                  CityV Normal Üyeleri
                 </h3>
                 <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded-full text-sm font-medium">
-                  {(() => {
-                    try {
-                      const allUsers = getAllUsers();
-                      return allUsers.length;
-                    } catch {
-                      return stats.totalUsers;
-                    }
-                  })()} Kullanıcı
+                  {users.length} Normal Üye
                 </span>
               </div>
               
@@ -377,279 +461,83 @@ export default function CityVAdminDashboard() {
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
-                        Kullanıcı
+                        Kullanıcı Adı
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
                         E-posta
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
-                        Üyelik
+                        Üyelik Tipi
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
                         Kayıt Tarihi
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
-                        İşlemler
+                        Son Aktivite
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(() => {
-                      try {
-                        const allUsers = getAllUsers();
-                        return allUsers.length > 0 ? (
-                          allUsers.map((user) => (
-                            <tr 
-                              key={user.id}
-                              className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                            >
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                                    {user.name.charAt(0).toUpperCase()}
-                                  </div>
-                                  <div>
-                                    <p className="font-medium text-gray-900 dark:text-white">
-                                      {user.name}
-                                    </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                                      ID: {user.id}
-                                    </p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
-                                {user.email}
-                              </td>
-                              <td className="py-3 px-4">
-                                <select
-                                  value={user.membershipTier || (user.premium ? 'premium' : 'free')}
-                                  onChange={async (e) => {
-                                    const newTier = e.target.value;
-                                    
-                                    // Business ve Enterprise için uyarı göster
-                                    if (newTier === 'business' || newTier === 'enterprise') {
-                                      toast.error('⚠️ Business/Enterprise üyeleri için "Business Üyeler" tab\'ını kullanın!');
-                                      e.target.value = user.membershipTier || (user.premium ? 'premium' : 'free');
-                                      return;
-                                    }
-                                    
-                                    try {
-                                      const response = await fetch('/api/admin/update-membership', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ userId: user.id, membershipTier: newTier })
-                                      });
-                                      const data = await response.json();
-                                      if (data.success) {
-                                        toast.success(`✅ ${user.name} üyeliği ${newTier} olarak güncellendi`);
-                                        refreshStats();
-                                      } else {
-                                        toast.error(`❌ Hata: ${data.error}`);
-                                        e.target.value = user.membershipTier || (user.premium ? 'premium' : 'free');
-                                      }
-                                    } catch (error: any) {
-                                      toast.error(`❌ Hata: ${error.message}`);
-                                      e.target.value = user.membershipTier || (user.premium ? 'premium' : 'free');
-                                    }
-                                  }}
-                                  className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                                >
-                                  <option value="free">🆓 Free</option>
-                                  <option value="premium">💎 Premium</option>
-                                  <option value="business" disabled className="text-gray-400">🏢 Business (Ayrı Tab)</option>
-                                  <option value="enterprise" disabled className="text-gray-400">⭐ Enterprise (Ayrı Tab)</option>
-                                </select>
-                              </td>
-                              <td className="py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">
-                                {formatTime(user.createdAt)}
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  {/* Free/Premium Butonları */}
-                                  <button
-                                    onClick={async () => {
-                                      const currentTier = user.membershipTier || (user.premium ? 'premium' : 'free');
-                                      
-                                      if (currentTier === 'free') {
-                                        try {
-                                          const response = await fetch('/api/admin/update-membership', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ userId: user.id, membershipTier: 'premium' })
-                                          });
-                                          const data = await response.json();
-                                          if (data.success) {
-                                            toast.success(`⬆️ ${user.name} Premium üye oldu`);
-                                            refreshStats();
-                                          } else {
-                                            toast.error(`❌ Hata: ${data.error}`);
-                                          }
-                                        } catch (error: any) {
-                                          toast.error(`❌ Hata: ${error.message}`);
-                                        }
-                                      } else {
-                                        toast('ℹ️ Kullanıcı zaten Premium veya üstü');
-                                      }
-                                    }}
-                                    className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-medium transition-colors"
-                                    title="Free → Premium"
-                                  >
-                                    ⬆️ Premium
-                                  </button>
-                                  <button
-                                    onClick={async () => {
-                                      const currentTier = user.membershipTier || (user.premium ? 'premium' : 'free');
-                                      
-                                      if (currentTier === 'premium') {
-                                        try {
-                                          const response = await fetch('/api/admin/update-membership', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ userId: user.id, membershipTier: 'free' })
-                                          });
-                                          const data = await response.json();
-                                          if (data.success) {
-                                            toast.success(`⬇️ ${user.name} Free üye oldu`);
-                                            refreshStats();
-                                          } else {
-                                            toast.error(`❌ Hata: ${data.error}`);
-                                          }
-                                        } catch (error: any) {
-                                          toast.error(`❌ Hata: ${error.message}`);
-                                        }
-                                      } else {
-                                        toast('ℹ️ Kullanıcı zaten Free veya Business üye');
-                                      }
-                                    }}
-                                    className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-medium transition-colors"
-                                    title="Premium → Free"
-                                  >
-                                    ⬇️ Free
-                                  </button>
-
-                                  {/* Business/Enterprise Butonları */}
-                                  <button
-                                    onClick={async () => {
-                                      const currentTier = user.membershipTier || (user.premium ? 'premium' : 'free');
-                                      
-                                      if (currentTier === 'business' || currentTier === 'enterprise') {
-                                        toast('⚠️ Kullanıcı zaten Business/Enterprise. Business Üyeler sekmesinden yönetin.');
-                                        return;
-                                      }
-
-                                      const companyName = prompt('Firma Adı:');
-                                      if (!companyName) return;
-
-                                      const authorizedPerson = prompt('Yetkili Kişi:', user.name || user.email);
-                                      if (!authorizedPerson) return;
-
-                                      const startDate = new Date().toISOString().split('T')[0];
-                                      const endDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-                                      try {
-                                        const response = await fetch('/api/admin/business-members', {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({
-                                            email: user.email,
-                                            name: user.name || authorizedPerson,
-                                            companyName,
-                                            companyType: 'Diğer',
-                                            authorizedPerson,
-                                            subscriptionPlan: 'premium',
-                                            startDate,
-                                            endDate,
-                                            maxUsers: 10
-                                          })
-                                        });
-                                        const data = await response.json();
-                                        if (data.success) {
-                                          toast.success(`🏢 ${user.name} Business üye oldu`);
-                                          refreshStats();
-                                        } else {
-                                          toast.error(`❌ Hata: ${data.error}`);
-                                        }
-                                      } catch (error: any) {
-                                        toast.error(`❌ Hata: ${error.message}`);
-                                      }
-                                    }}
-                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors"
-                                    title="Business üye yap"
-                                  >
-                                    🏢 Business
-                                  </button>
-                                  <button
-                                    onClick={async () => {
-                                      const currentTier = user.membershipTier || (user.premium ? 'premium' : 'free');
-                                      
-                                      if (currentTier === 'business' || currentTier === 'enterprise') {
-                                        toast('⚠️ Kullanıcı zaten Business/Enterprise. Business Üyeler sekmesinden yönetin.');
-                                        return;
-                                      }
-
-                                      const companyName = prompt('Firma Adı:');
-                                      if (!companyName) return;
-
-                                      const authorizedPerson = prompt('Yetkili Kişi:', user.name || user.email);
-                                      if (!authorizedPerson) return;
-
-                                      const startDate = new Date().toISOString().split('T')[0];
-                                      const endDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-                                      try {
-                                        const response = await fetch('/api/admin/business-members', {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({
-                                            email: user.email,
-                                            name: user.name || authorizedPerson,
-                                            companyName,
-                                            companyType: 'Diğer',
-                                            authorizedPerson,
-                                            subscriptionPlan: 'enterprise',
-                                            startDate,
-                                            endDate,
-                                            maxUsers: 50
-                                          })
-                                        });
-                                        const data = await response.json();
-                                        if (data.success) {
-                                          toast.success(`🏆 ${user.name} Enterprise üye oldu`);
-                                          refreshStats();
-                                        } else {
-                                          toast.error(`❌ Hata: ${data.error}`);
-                                        }
-                                      } catch (error: any) {
-                                        toast.error(`❌ Hata: ${error.message}`);
-                                      }
-                                    }}
-                                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium transition-colors"
-                                    title="Enterprise üye yap"
-                                  >
-                                    🏆 Enterprise
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={5} className="py-8 text-center text-gray-500 dark:text-gray-400">
-                              Henüz kayıtlı kullanıcı bulunmuyor
-                            </td>
-                          </tr>
-                        );
-                      } catch (error) {
-                        return (
-                          <tr>
-                            <td colSpan={5} className="py-8 text-center text-red-500">
-                              Kullanıcılar yüklenirken bir hata oluştu
-                            </td>
-                          </tr>
-                        );
-                      }
-                    })()}
+                    {users.length > 0 ? (
+                      users.map((user: any) => (
+                        <tr 
+                          key={user.id}
+                          className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                        >
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                                {user.name?.charAt(0)?.toUpperCase() || '?'}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-white">
+                                  {user.name}
+                                </p>
+                                {user.company && (
+                                  <p className="text-xs text-indigo-600 dark:text-indigo-400">
+                                    🏢 {user.company}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  ID: {user.id}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                            {user.email}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              user.membership === 'enterprise' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                              user.membership === 'premium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                              'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                            }`}>
+                              {user.membership === 'enterprise' ? '⭐ Enterprise' :
+                               user.membership === 'premium' ? '💎 Premium' : ' Free'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">
+                            {user.created_at ? new Date(user.created_at).toLocaleDateString('tr-TR') : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">
+                            {user.last_activity ? new Date(user.last_activity).toLocaleDateString('tr-TR', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) : '❌ Hiç giriş yapmadı'}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-gray-500 dark:text-gray-400">
+                          Henüz normal üye yok
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -800,42 +688,51 @@ export default function CityVAdminDashboard() {
                               )}
                             </td>
                             <td className="px-6 py-4">
-                              <button
-                                onClick={async () => {
-                                  if (!confirm(`${member.company_name} firmasının business üyeliğini iptal etmek istediğinize emin misiniz?\n\nKullanıcı normal üyeliğe (free) dönecek.`)) {
-                                    return;
-                                  }
-
-                                  try {
-                                    // Business subscription'ı deaktif et
-                                    const response = await fetch('/api/admin/business-members', {
-                                      method: 'DELETE',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ userId: member.id })
-                                    });
-
-                                    const data = await response.json();
-                                    if (data.success) {
-                                      toast.success(`✓ ${member.company_name} business üyelikten çıkarıldı`);
-                                      // Business members listesini yenile
-                                      const membersRes = await fetch('/api/admin/business-members');
-                                      const membersData = await membersRes.json();
-                                      if (membersData.success) {
-                                        setBusinessMembers(membersData.members);
-                                      }
-                                      refreshStats();
-                                    } else {
-                                      toast.error(`❌ Hata: ${data.error}`);
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedBusiness(member);
+                                    setShowEditBusinessModal(true);
+                                  }}
+                                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium transition-colors"
+                                >
+                                  ✏️ Düzenle
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`${member.company_name} firmasının business üyeliğini iptal etmek istediğinize emin misiniz?\n\nTüm veriler backup'lanacak ve haritadan kaldırılacak.`)) {
+                                      return;
                                     }
-                                  } catch (error: any) {
-                                    toast.error(`❌ Hata: ${error.message}`);
-                                  }
-                                }}
-                                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-medium transition-colors"
-                                title="Business üyelikten çıkar"
-                              >
-                                🗑️ Üyelikten Çıkar
-                              </button>
+
+                                    try {
+                                      // Business subscription'ı deaktif et
+                                      const response = await fetch(`/api/admin/business-members?id=${member.id}`, {
+                                        method: 'DELETE'
+                                      });
+
+                                      const data = await response.json();
+                                      if (data.success) {
+                                        toast.success(data.message);
+                                        // Business members listesini yenile
+                                        const membersRes = await fetch('/api/admin/business-members');
+                                        const membersData = await membersRes.json();
+                                        if (membersData.success) {
+                                          setBusinessMembers(membersData.members);
+                                        }
+                                        refreshStats();
+                                      } else {
+                                        toast.error(`❌ Hata: ${data.error}`);
+                                      }
+                                    } catch (error: any) {
+                                      toast.error(`❌ Hata: ${error.message}`);
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-medium transition-colors"
+                                  title="Business üyelikten çıkar"
+                                >
+                                  🗑️ Üyelikten Çıkar
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -855,27 +752,121 @@ export default function CityVAdminDashboard() {
               <StatCard
                 icon={MapPin}
                 label="Toplam Mekan"
-                value={stats.totalLocations}
+                value={realStats?.totalLocations || localStats.totalLocations}
                 gradient="bg-gradient-to-br from-indigo-500 to-indigo-600"
               />
               <StatCard
-                icon={MessageSquare}
-                label="Yorumlar"
-                value={stats.totalComments}
+                icon={Building2}
+                label="Business Mekanları"
+                value={locations.length}
                 gradient="bg-gradient-to-br from-blue-500 to-blue-600"
               />
               <StatCard
                 icon={Camera}
-                label="Fotoğraflar"
-                value={stats.totalPhotos}
+                label="IoT Cihazlar"
+                value={realStats?.totalDevices || 0}
                 gradient="bg-gradient-to-br from-pink-500 to-pink-600"
               />
               <StatCard
-                icon={Heart}
-                label="Beğeniler"
-                value={stats.totalFavorites + stats.totalTrackedLocations}
+                icon={Activity}
+                label="Crowd Analiz"
+                value={realStats?.totalCrowdAnalysis || 0}
                 gradient="bg-gradient-to-br from-red-500 to-red-600"
               />
+            </div>
+
+            {/* Locations List */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Business Mekanları
+                </h3>
+                <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded-full text-sm font-medium">
+                  {locations.length} Mekan
+                </span>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                        Mekan Adı
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                        Tür
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                        Lokasyon
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                        İletişim
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                        Cihaz
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                        Kayıt Tarihi
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {locations.length > 0 ? (
+                      locations.map((location: any) => (
+                        <tr 
+                          key={location.id}
+                          className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                        >
+                          <td className="py-3 px-4">
+                            <div className="font-medium text-gray-900 dark:text-white">
+                              {location.business_name || 'İsimsiz Mekan'}
+                            </div>
+                            {location.owner_company && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {location.owner_company}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                              {location.business_type || 'Diğer'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">
+                            {location.location_string || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">
+                            {location.phone && <div>{location.phone}</div>}
+                            {location.email && <div className="text-xs">{location.email}</div>}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <Camera className="w-4 h-4 text-gray-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {location.device_count}
+                              </span>
+                            </div>
+                            {location.analysis_count > 0 && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {location.analysis_count} analiz
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">
+                            {location.created_at ? new Date(location.created_at).toLocaleDateString('tr-TR') : '-'}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-gray-500 dark:text-gray-400">
+                          Henüz mekan yok
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -887,19 +878,19 @@ export default function CityVAdminDashboard() {
               <StatCard
                 icon={DollarSign}
                 label="Aylık Gelir"
-                value={`₺${stats.revenue.monthly.toLocaleString()}`}
+                value={`₺${(realStats?.revenue.monthly || localStats.revenue.monthly).toLocaleString()}`}
                 gradient="bg-gradient-to-br from-green-500 to-green-600"
               />
               <StatCard
                 icon={TrendingUp}
                 label="Yıllık Gelir"
-                value={`₺${stats.revenue.yearly.toLocaleString()}`}
+                value={`₺${(realStats?.revenue.yearly || localStats.revenue.yearly).toLocaleString()}`}
                 gradient="bg-gradient-to-br from-blue-500 to-blue-600"
               />
               <StatCard
                 icon={Crown}
                 label="Toplam Gelir"
-                value={`₺${stats.revenue.total.toLocaleString()}`}
+                value={`₺${(realStats?.revenue.total || localStats.revenue.total).toLocaleString()}`}
                 gradient="bg-gradient-to-br from-purple-500 to-purple-600"
               />
             </div>
@@ -916,11 +907,11 @@ export default function CityVAdminDashboard() {
                     <Crown className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">Premium Üyeler</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{stats.premiumUsers} aktif üye</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{realStats?.premiumUsers || localStats.premiumUsers} aktif üye</p>
                     </div>
                   </div>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    ₺{stats.revenue.monthly.toLocaleString()}
+                    ₺{(realStats?.revenue.monthly || localStats.revenue.monthly).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -939,6 +930,168 @@ export default function CityVAdminDashboard() {
             toast.success('✅ Business üye eklendi');
           }}
         />
+      )}
+
+      {/* Edit Business Member Modal */}
+      {showEditBusinessModal && selectedBusiness && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Business Üye Düzenle
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {selectedBusiness.company_name} - {selectedBusiness.full_name}
+              </p>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+
+                try {
+                  const response = await fetch('/api/admin/business-members', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      userId: selectedBusiness.id,
+                      updateData: {
+                        membership: {
+                          membershipType: formData.get('membershipType'),
+                          expiryDate: formData.get('expiryDate'),
+                          maxCameras: parseInt(formData.get('maxCameras') as string)
+                        },
+                        user: {
+                          isActive: formData.get('isActive') === 'true',
+                          adminNotes: formData.get('adminNotes')
+                        }
+                      }
+                    })
+                  });
+
+                  const data = await response.json();
+                  if (data.success) {
+                    toast.success('✅ Business üye güncellendi');
+                    loadBusinessMembers();
+                    setShowEditBusinessModal(false);
+                    setSelectedBusiness(null);
+                  } else {
+                    toast.error(`❌ ${data.error}`);
+                  }
+                } catch (error: any) {
+                  toast.error(`❌ ${error.message}`);
+                }
+              }}
+              className="p-6 space-y-6"
+            >
+              {/* Membership Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Üyelik Tipi
+                </label>
+                <select
+                  name="membershipType"
+                  defaultValue={selectedBusiness.plan_type}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                  required
+                >
+                  <option value="premium">💎 Premium (10 Kamera)</option>
+                  <option value="enterprise">⭐ Enterprise (50 Kamera)</option>
+                </select>
+              </div>
+
+              {/* Expiry Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Üyelik Bitiş Tarihi
+                </label>
+                <input
+                  type="date"
+                  name="expiryDate"
+                  defaultValue={selectedBusiness.end_date ? new Date(selectedBusiness.end_date).toISOString().split('T')[0] : ''}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                  required
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Mevcut: {selectedBusiness.end_date ? new Date(selectedBusiness.end_date).toLocaleDateString('tr-TR') : 'Belirtilmemiş'}
+                </p>
+              </div>
+
+              {/* Max Cameras */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Maksimum Kamera Sayısı
+                </label>
+                <input
+                  type="number"
+                  name="maxCameras"
+                  defaultValue={selectedBusiness?.max_cameras ?? 10}
+                  min="1"
+                  max="100"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                  required
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Mevcut: {selectedBusiness?.max_cameras ?? 'Belirtilmemiş'}
+                </p>
+              </div>
+
+              {/* Active Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Durum
+                </label>
+                <select
+                  name="isActive"
+                  defaultValue={selectedBusiness.is_active ? 'true' : 'false'}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                >
+                  <option value="true">✓ Aktif</option>
+                  <option value="false">✕ Pasif</option>
+                </select>
+              </div>
+
+              {/* Admin Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Admin Notları
+                </label>
+                <textarea
+                  name="adminNotes"
+                  defaultValue={selectedBusiness.admin_notes || ''}
+                  rows={3}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                  placeholder="Özel notlar..."
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditBusinessModal(false);
+                    setSelectedBusiness(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                >
+                  Güncelle
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
       )}
     </div>
   );

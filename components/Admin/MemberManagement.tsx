@@ -104,24 +104,25 @@ export default function MemberManagement({ onClose }: MemberManagementProps) {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) return;
+    if (!confirm('Bu kullanıcıyı ve tüm ilişkili verilerini (yorumlar, raporlar, favoriler) silmek istediğinizden emin misiniz?')) return;
     
     try {
-      const response = await fetch('/api/admin/delete-user', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
+      const response = await fetch(`/api/admin/users?id=${userId}`, {
+        method: 'DELETE'
       });
 
       const data = await response.json();
       
       if (data.success) {
         setUsers(prev => prev.filter(user => user.id !== userId));
+        toast.success('✅ Kullanıcı ve ilişkili tüm veriler silindi');
         console.log(`🗑️ Kullanıcı silindi: ${userId}`);
       } else {
+        toast.error(`❌ Kullanıcı silinemedi: ${data.error || 'Bilinmeyen hata'}`);
         console.error('Kullanıcı silinemedi:', data.error);
       }
-    } catch (error) {
+    } catch (error: any) {
+      toast.error(`❌ Kullanıcı silinemedi: ${error.message || 'Bağlantı hatası'}`);
       console.error('Kullanıcı silme hatası:', error);
     }
   };

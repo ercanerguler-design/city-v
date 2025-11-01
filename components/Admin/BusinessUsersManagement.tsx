@@ -106,7 +106,7 @@ export default function BusinessUsersManagement() {
   };
 
   const handleDeleteUser = async (userId: number) => {
-    if (!confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) return;
+    if (!confirm('Bu kullanıcıyı ve tüm ilişkili kayıtlarını (kameralar, abonelik, profil) silmek istediğinizden emin misiniz?')) return;
 
     try {
       const response = await fetch(`/api/admin/business-users?id=${userId}`, {
@@ -116,14 +116,17 @@ export default function BusinessUsersManagement() {
         }
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Kullanıcı silinemedi');
+        throw new Error(data.error || 'Kullanıcı silinemedi');
       }
 
-      toast.success('Kullanıcı silindi');
+      toast.success('✅ Kullanıcı ve ilişkili tüm kayıtlar silindi');
       loadUsers();
-    } catch (error) {
-      toast.error('Silme işlemi başarısız');
+    } catch (error: any) {
+      console.error('❌ Silme hatası:', error);
+      toast.error('❌ ' + (error.message || 'Silme işlemi başarısız'));
     }
   };
 

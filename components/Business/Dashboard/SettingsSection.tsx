@@ -422,6 +422,119 @@ export default function SettingsSection({ businessProfile, onUpdate }: { busines
         </div>
       </div>
 
+      {/* Şifre Değiştirme */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <h2 className="text-xl font-bold text-gray-900 mb-6">🔐 Şifre Değiştirme</h2>
+        
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            const currentPassword = formData.get('currentPassword') as string;
+            const newPassword = formData.get('newPassword') as string;
+            const confirmPassword = formData.get('confirmPassword') as string;
+
+            // Validasyon
+            if (!currentPassword || !newPassword || !confirmPassword) {
+              toast.error('Tüm alanları doldurun');
+              return;
+            }
+
+            if (newPassword !== confirmPassword) {
+              toast.error('Yeni şifreler eşleşmiyor');
+              return;
+            }
+
+            if (newPassword.length < 8) {
+              toast.error('Yeni şifre en az 8 karakter olmalı');
+              return;
+            }
+
+            try {
+              // Business user ID'yi localStorage'dan al
+              const businessUser = localStorage.getItem('business_user');
+              if (!businessUser) {
+                toast.error('Kullanıcı bilgisi bulunamadı');
+                return;
+              }
+
+              const user = JSON.parse(businessUser);
+
+              const response = await fetch('/api/business/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: user.id,
+                  currentPassword,
+                  newPassword
+                })
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                toast.success('✅ Şifreniz başarıyla değiştirildi');
+                e.currentTarget.reset();
+              } else {
+                toast.error(`❌ ${data.error}`);
+              }
+            } catch (error) {
+              console.error('❌ Şifre değiştirme hatası:', error);
+              toast.error('Bağlantı hatası');
+            }
+          }}
+          className="space-y-4 max-w-md"
+        >
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Mevcut Şifre
+            </label>
+            <input
+              type="password"
+              name="currentPassword"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              placeholder="Mevcut şifrenizi girin"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Yeni Şifre
+            </label>
+            <input
+              type="password"
+              name="newPassword"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              placeholder="En az 8 karakter"
+              minLength={8}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Yeni Şifre (Tekrar)
+            </label>
+            <input
+              type="password"
+              name="confirmPassword"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              placeholder="Yeni şifrenizi tekrar girin"
+              minLength={8}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+          >
+            Şifreyi Değiştir
+          </button>
+        </form>
+      </div>
+
       {/* Kaydet Butonu */}
       <div className="flex justify-end">
         <button

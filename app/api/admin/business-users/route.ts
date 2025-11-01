@@ -218,17 +218,59 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await query('DELETE FROM business_users WHERE id = $1', [userId]);
+    // Transaction başlat - ilişkili kayıtları doğru sırayla sil
+    await query('BEGIN');
+    
+    try {
+      console.log(`🗑️ Siliniyor: User ID ${userId}`);
+      
+      // 1. Önce business_profiles'dan ID'leri al (diğer tablolar buna bağlı)
+      const profiles = await query('SELECT id FROM business_profiles WHERE user_id = $1', [userId]);
+      const profileIds = profiles.rows.map(p => p.id);
+      
+      if (profileIds.length > 0) {
+        console.log(`📋 Business profile IDs: ${profileIds.join(', ')}`);
+        
+        // 2. Business profiles'a bağlı tabloları sil
+        await query('DELETE FROM business_campaigns WHERE business_id = ANY($1)', [profileIds]);
+        console.log(`🗑️ Campaigns deleted`);
+        
+        await query('DELETE FROM business_cameras WHERE business_id = ANY($1)', [profileIds]);
+        console.log(`🗑️ Cameras (via business_id) deleted`);
+      }
+      
+      // 3. Business_user_id ile doğrudan bağlı kameraları sil (business-cameras.sql schema)
+      await query('DELETE FROM business_cameras WHERE business_user_id = $1', [userId]);
+      console.log(`🗑️ Cameras (via business_user_id) deleted`);
+      
+      // 4. Business subscriptions'ı sil (user_id'ye bağlı)
+      await query('DELETE FROM business_subscriptions WHERE user_id = $1', [userId]);
+      console.log(`🗑️ Subscriptions deleted`);
+      
+      // 5. Business profiles'ı sil (user_id'ye bağlı)
+      await query('DELETE FROM business_profiles WHERE user_id = $1', [userId]);
+      console.log(`🗑️ Profiles deleted`);
+      
+      // 6. Son olarak business_users'ı sil
+      await query('DELETE FROM business_users WHERE id = $1', [userId]);
+      console.log(`✅ User ${userId} deleted successfully`);
+      
+      await query('COMMIT');
 
-    return NextResponse.json({
-      success: true,
-      message: 'Kullanıcı silindi'
-    });
+      return NextResponse.json({
+        success: true,
+        message: 'Kullanıcı ve tüm ilişkili kayıtlar silindi'
+      });
+      
+    } catch (error) {
+      await query('ROLLBACK');
+      throw error;
+    }
 
   } catch (error: any) {
     console.error('❌ Business user delete error:', error);
     return NextResponse.json(
-      { error: 'Kullanıcı silinemedi' },
+      { error: 'Kullanıcı silinemedi: ' + error.message },
       { status: 500 }
     );
   }
