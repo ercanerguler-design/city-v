@@ -57,24 +57,62 @@ export default function BusinessDashboard() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Auth kontrolü
+  // Auth kontrolü - Token doğrulama
   useEffect(() => {
-    const token = localStorage.getItem('business_token');
-    const userStr = localStorage.getItem('business_user');
+    const verifyToken = async () => {
+      const token = localStorage.getItem('business_token');
 
-    if (!token || !userStr) {
-      router.push('/business/login');
-      return;
-    }
+      if (!token) {
+        console.log('❌ Token bulunamadı, login sayfasına yönlendiriliyor...');
+        router.push('/business/login');
+        return;
+      }
 
-    try {
-      const user = JSON.parse(userStr);
-      setBusinessUser(user);
-      loadBusinessProfile(user.id);
-    } catch (error) {
-      console.error('Auth error:', error);
-      router.push('/business/login');
-    }
+      try {
+        // Token'ı backend'de doğrula
+        const response = await fetch('/api/business/verify-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ token }),
+        });
+
+        const data = await response.json();
+
+        if (data.valid) {
+          console.log('✅ Token geçerli, kullanıcı yüklendi');
+          setBusinessUser(data.user);
+          
+          // Profile'ı localStorage'a kaydet
+          localStorage.setItem('business_user', JSON.stringify(data.user));
+          
+          if (data.profile) {
+            const profileWithUserId = {
+              ...data.profile,
+              user_id: data.user.id
+            };
+            setBusinessProfile(profileWithUserId);
+          }
+          
+          setLoading(false);
+        } else {
+          console.log('❌ Token geçersiz:', data.error);
+          localStorage.removeItem('business_token');
+          localStorage.removeItem('business_user');
+          toast.error('Oturumunuz sonlanmış. Lütfen tekrar giriş yapın.');
+          router.push('/business/login');
+        }
+      } catch (error) {
+        console.error('❌ Token doğrulama hatası:', error);
+        localStorage.removeItem('business_token');
+        localStorage.removeItem('business_user');
+        toast.error('Bağlantı hatası. Lütfen tekrar giriş yapın.');
+        router.push('/business/login');
+      }
+    };
+
+    verifyToken();
   }, [router]);
 
   // Quick Actions navigation listener
