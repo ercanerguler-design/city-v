@@ -55,11 +55,11 @@ export async function POST(request: Request) {
       SELECT * FROM business_profiles WHERE user_id = ${user.id}
     `;
 
-    // JWT token oluştur
+    // JWT token oluştur (8 saat - günlük session)
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: '8h' }
     );
 
     return NextResponse.json({

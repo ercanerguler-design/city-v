@@ -13,7 +13,7 @@ function generateLicenseKey(): string {
   return `CITYV-${segments.join('-')}`;
 }
 
-// GET - Business üyeleri listele
+// GET - Business üyeleri listele (YENİ SİSTEM)
 export async function GET(request: NextRequest) {
   try {
     const result = await query(`
@@ -29,17 +29,15 @@ export async function GET(request: NextRequest) {
         bu.created_at,
         bu.last_login,
         bu.is_active,
-        bs.plan_type,
-        bs.start_date,
-        bs.end_date,
-        bs.is_active as subscription_active,
-        bs.monthly_price,
-        bs.license_key,
-        bs.max_users,
-        bs.is_trial,
-        bs.features
+        bu.membership_type as plan_type,
+        bu.membership_expiry_date as end_date,
+        bu.max_cameras,
+        CASE 
+          WHEN bu.membership_expiry_date IS NULL THEN true
+          WHEN bu.membership_expiry_date > NOW() THEN true
+          ELSE false
+        END as subscription_active
       FROM business_users bu
-      LEFT JOIN business_subscriptions bs ON bu.id = bs.user_id
       WHERE bu.added_by_admin = true
       ORDER BY bu.created_at DESC
     `);
@@ -127,7 +125,7 @@ export async function POST(request: NextRequest) {
     // Lisans anahtarı oluştur
     const licenseKey = generateLicenseKey();
 
-    // 1. Business user oluştur
+    // 1. Business user oluştur (YENİ SİSTEM: membership_type ile)
     const userResult = await query(`
       INSERT INTO business_users (
         email,
@@ -145,8 +143,11 @@ export async function POST(request: NextRequest) {
         added_by_admin,
         admin_notes,
         is_active,
-        email_verified
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true, $13, true, true)
+        email_verified,
+        membership_type,
+        membership_expiry_date,
+        max_cameras
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true, $13, true, true, $14, $15, $16)
       RETURNING id
     `, [
       email,
@@ -161,7 +162,10 @@ export async function POST(request: NextRequest) {
       taxNumber,
       taxOffice,
       authorizedPerson,
-      adminNotes
+      adminNotes,
+      actualPlanType, // membership_type
+      endDate, // membership_expiry_date
+      actualMaxUsers // max_cameras (premium=10, enterprise=50)
     ]);
 
     const userId = userResult.rows[0].id;

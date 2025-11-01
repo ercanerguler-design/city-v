@@ -123,29 +123,6 @@ export default function CityVAdminLoginPage() {
             </motion.div>
           </div>
 
-          {/* Demo Credentials Info */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl"
-          >
-            <div className="flex items-start gap-3">
-              <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                  Demo Giriş Bilgileri
-                </p>
-                <p className="text-blue-800 dark:text-blue-200 font-mono text-xs">
-                  📧 admin@cityview.com
-                </p>
-                <p className="text-blue-800 dark:text-blue-200 font-mono text-xs">
-                  🔑 admin123
-                </p>
-              </div>
-            </div>
-          </motion.div>
-
           {/* Form */}
           <motion.form
             initial={{ opacity: 0, y: 10 }}
