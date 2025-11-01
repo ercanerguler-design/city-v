@@ -247,9 +247,11 @@ export default function DemoPage() {
                   <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl shadow-lg">
                     <Users className="w-6 h-6 text-white" />
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold border-2 ${getOccupancyColor(data.current.occupancy)}`}>
-                    {getOccupancyText(data.current.occupancy)}
-                  </span>
+                  {mounted && (
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold border-2 ${getOccupancyColor(data.current.occupancy)}`}>
+                      {getOccupancyText(data.current.occupancy)}
+                    </span>
+                  )}
                 </div>
                 <div className="mb-3">
                   <div className="text-4xl font-black text-gray-900 mb-1">
@@ -706,7 +708,7 @@ export default function DemoPage() {
                   <div>
                     <div className="text-sm text-gray-600 mb-1">City-V'de Görünen Durum:</div>
                     <div className="text-2xl font-bold text-gray-900">
-                      {getOccupancyText(data.current.occupancy)}
+                      {mounted ? getOccupancyText(data.current.occupancy) : '--'}
                     </div>
                   </div>
                   <div className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold shadow-lg">
