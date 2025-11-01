@@ -226,6 +226,21 @@ export default function ProHeader({
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full" />
               </motion.button>
 
+              {/* CityV Demo - Herkes için açık, cityvdemo sayfasına yönlendirme */}
+              <motion.button
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => window.open('/cityvdemo', '_blank')}
+                className="group relative px-4 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl border border-white/20 transition-all shadow-lg"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-300 group-hover:animate-pulse" />
+                  <span className="font-semibold text-sm">CityV Demo</span>
+                </div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-400 rounded-full animate-ping" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-400 rounded-full" />
+              </motion.button>
+
               {/* Theme Toggle */}
               <div className="p-0.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20">
                 <ThemeToggle />
@@ -409,6 +424,40 @@ export default function ProHeader({
               className="lg:hidden border-t border-white/10 bg-white/5 backdrop-blur-xl"
             >
               <div className="container mx-auto px-4 py-4 space-y-2">
+                {/* Demo Buttons - Herkes için görünür */}
+                <div className="space-y-2 pb-4 border-b border-white/10">
+                  <button 
+                    onClick={() => {
+                      window.open('/transport', '_blank');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full px-4 py-3 bg-blue-500/20 hover:bg-blue-500/30 rounded-xl text-left font-medium transition-all flex items-center gap-2"
+                  >
+                    <Activity className="w-5 h-5 text-blue-300" />
+                    <span>Transport Demo</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      window.open('/business-box/demo', '_blank');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full px-4 py-3 bg-emerald-500/20 hover:bg-emerald-500/30 rounded-xl text-left font-medium transition-all flex items-center gap-2"
+                  >
+                    <Activity className="w-5 h-5 text-emerald-300" />
+                    <span>Business Demo</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      window.open('/cityvdemo', '_blank');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full px-4 py-3 bg-purple-500/20 hover:bg-purple-500/30 rounded-xl text-left font-medium transition-all flex items-center gap-2"
+                  >
+                    <Sparkles className="w-5 h-5 text-purple-300" />
+                    <span>CityV Demo</span>
+                  </button>
+                </div>
+
                 {isAuthenticated && user ? (
                   <>
                     <div className="flex items-center gap-3 p-4 bg-white/10 rounded-xl border border-white/20">
