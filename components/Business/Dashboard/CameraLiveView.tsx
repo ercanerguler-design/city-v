@@ -37,9 +37,6 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
           const [, username, password, hostPath] = match;
           // HTTP URL'e çevir - ESP32-CAM için genelde /stream endpoint'i
           url = `http://${hostPath}`;
-          
-          // IMPORTANT: Direk stream kullan, proxy kaliteyi düşürüyor
-          // Credentials varsa URL'e ekle (ama artık proxy kullanma)
         }
       } catch (e) {
         console.error('RTSP URL parse error:', e);
@@ -48,12 +45,40 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
       }
     }
     
-    // Direkt stream URL döndür (192.168.1.2:80/stream gibi)
     return url;
   };
   
+  // Remote access kontrolü - Local network dışından mı bağlanılıyor?
+  const isRemoteAccess = () => {
+    // Kamera IP'si local ağda mı kontrol et
+    const cameraIp = camera.ip_address;
+    const localPatterns = [
+      /^192\.168\./,
+      /^10\./,
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+      /^127\./,
+      /^localhost$/
+    ];
+    
+    const isLocal = localPatterns.some(pattern => pattern.test(cameraIp));
+    
+    // Eğer kamera local ama biz production'daysa (vercel domain) = remote access
+    const isProductionDomain = typeof window !== 'undefined' && 
+      (window.location.hostname.includes('vercel.app') || 
+       window.location.hostname.includes('cityv.app'));
+    
+    return isLocal && isProductionDomain;
+  };
+  
   const streamUrl = getHttpStreamUrl();
-  const finalStreamUrl = `${streamUrl}${streamUrl.includes('?') ? '&' : '?'}t=${refreshKey}`;
+  
+  // Remote access ise proxy kullan
+  const finalStreamUrl = isRemoteAccess() 
+    ? `/api/business/cameras/stream-proxy?url=${encodeURIComponent(streamUrl)}&t=${refreshKey}`
+    : `${streamUrl}${streamUrl.includes('?') ? '&' : '?'}t=${refreshKey}`;
+  
+  console.log('📹 Stream mode:', isRemoteAccess() ? 'REMOTE (via proxy)' : 'LOCAL (direct)');
+  console.log('📹 Final URL:', finalStreamUrl);
 
   // Otomatik refresh (her 5 saniyede bir) - Gereksiz çünkü /stream zaten canlı MJPEG
   // useEffect(() => {
