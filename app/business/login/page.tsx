@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Building2, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
@@ -13,7 +13,51 @@ export default function BusinessLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   const [error, setError] = useState('');
+
+  // Zaten login olmuş mu kontrol et
+  useEffect(() => {
+    const checkExistingAuth = async () => {
+      console.log('🔍 Checking existing auth...');
+      const token = authStorage.getToken();
+      
+      if (!token) {
+        console.log('❌ No existing token, showing login form');
+        setIsChecking(false);
+        return;
+      }
+
+      console.log('📋 Token found, verifying...');
+      
+      try {
+        // Token'ı verify et
+        const response = await fetch('/api/business/verify-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+
+        const data = await response.json();
+
+        if (data.valid) {
+          console.log('✅ Valid token, redirecting to dashboard...');
+          toast.success('Zaten giriş yapmışsınız! Yönlendiriliyorsunuz...');
+          window.location.href = '/business/dashboard';
+        } else {
+          console.log('❌ Invalid token, clearing and showing login');
+          authStorage.clear();
+          setIsChecking(false);
+        }
+      } catch (error) {
+        console.error('❌ Token check error:', error);
+        authStorage.clear();
+        setIsChecking(false);
+      }
+    };
+
+    checkExistingAuth();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +122,18 @@ export default function BusinessLoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Checking existing auth
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white font-medium">Oturum kontrol ediliyor...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
