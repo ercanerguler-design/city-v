@@ -11,9 +11,11 @@ import AddCameraModal from './AddCameraModal';
 import CalibrationModalPro from './CalibrationModalPro';
 import ZoneDrawingModalPro from './ZoneDrawingModalPro';
 import CameraLiveView from './CameraLiveView';
+import RemoteCameraViewer from './RemoteCameraViewer';
 
 interface Camera {
   id: number;
+  device_id: string;
   camera_name: string;
   ip_address: string;
   port: number;
@@ -34,6 +36,7 @@ interface Camera {
   current_occupancy: number;
   max_capacity: number;
   stream_url?: string;
+  location?: string;
 }
 
 export default function CamerasSection({ businessProfile }: { businessProfile: any }) {
@@ -562,7 +565,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
         )}
 
         {showLiveView && selectedCamera && (
-          <CameraLiveView
+          <RemoteCameraViewer
             camera={selectedCamera}
             onClose={() => {
               setShowLiveView(false);
