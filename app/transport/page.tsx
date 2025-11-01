@@ -394,7 +394,7 @@ export default function TransportDemo() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {/* IoT Dashboard */}
             <motion.button
               whileHover={{ scale: 1.05, y: -5 }}
@@ -417,31 +417,6 @@ export default function TransportDemo() {
                 <div className="flex items-center gap-2 text-sm">
                   <BarChart3 className="h-4 w-4" />
                   <span>192+ analiz</span>
-                </div>
-              </div>
-            </motion.button>
-
-            {/* ESP32 Live Monitor */}
-            <motion.button
-              whileHover={{ scale: 1.05, y: -5 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => window.open('/esp32', '_blank')}
-              className="group relative bg-gradient-to-br from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white rounded-2xl p-6 shadow-xl transition-all duration-300 overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-              
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <Camera className="h-8 w-8 group-hover:animate-bounce" />
-                  <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse" />
-                </div>
-                <h4 className="text-xl font-bold mb-2">ESP32 Live</h4>
-                <p className="text-purple-100 text-sm mb-4">
-                  Canlı kamera akışı • AI analiz
-                </p>
-                <div className="flex items-center gap-2 text-sm">
-                  <Eye className="h-4 w-4" />
-                  <span>%87 doğruluk</span>
                 </div>
               </div>
             </motion.button>
