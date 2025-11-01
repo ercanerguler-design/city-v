@@ -249,30 +249,32 @@ export async function POST(request: NextRequest) {
       licenseKey
     });
 
-    // Email gönder (asenkron - hata verse bile devam et)
+    // Email gönder (YENİ SİSTEM - membership bilgileriyle)
     if (process.env.RESEND_API_KEY) {
+      console.log('📧 Hoşgeldin email\'i gönderiliyor:', email);
+      
       sendBusinessWelcomeEmail({
         companyName,
         email,
         authorizedPerson,
         password, // Admin'in belirlediği şifre
         licenseKey,
-        planType: actualPlanType,
-        startDate,
-        endDate,
-        monthlyPrice,
-        maxUsers: actualMaxUsers
+        planType: actualPlanType, // 'premium' veya 'enterprise'
+        startDate: new Date().toLocaleDateString('tr-TR'),
+        endDate: endDate ? new Date(endDate).toLocaleDateString('tr-TR') : 'Süresiz',
+        monthlyPrice: actualPlanType === 'enterprise' ? 999 : 499, // Enterprise: 999₺, Premium: 499₺
+        maxUsers: actualMaxUsers // Kamera limiti (premium=10, enterprise=50)
       }).then((result) => {
         if (result.success) {
-          console.log('✅ Welcome email sent to:', email);
+          console.log('✅ Hoşgeldin email\'i gönderildi:', email);
         } else {
-          console.error('⚠️ Email send failed:', result.error);
+          console.error('⚠️ Email gönderilemedi:', result.error);
         }
       }).catch((err) => {
-        console.error('⚠️ Email send error:', err);
+        console.error('⚠️ Email hatası:', err);
       });
     } else {
-      console.log('⚠️ RESEND_API_KEY not found, skipping email');
+      console.warn('⚠️ RESEND_API_KEY tanımlı değil, email gönderilmedi');
     }
 
     return NextResponse.json({
