@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import RealTimeCrowdTracker from '@/components/RealTime/RealTimeCrowdTracker';
-import VideoAccessGuard from '@/components/Auth/VideoAccessGuard';
 
 interface City {
   id: number;
@@ -374,14 +373,13 @@ export default function TransportDemo() {
           ))}
         </motion.div>
 
-        {/* 🚀 IoT & Camera Control Panel */}
-        <VideoAccessGuard deviceType="transport-iot" deviceId="TRANSPORT-IOT-001">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-            className="mb-12 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-3xl p-8 shadow-2xl border border-purple-500/20"
-          >
+        {/* 🚀 IoT & Camera Control Panel - Demo: Şifre koruması kaldırıldı */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="mb-12 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-3xl p-8 shadow-2xl border border-purple-500/20"
+        >
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-2xl mb-4">
               <Camera className="h-6 w-6 animate-pulse" />
@@ -538,7 +536,6 @@ export default function TransportDemo() {
             </div>
           </div>
         </motion.div>
-        </VideoAccessGuard>
 
         {/* City Selection */}
         <motion.div
