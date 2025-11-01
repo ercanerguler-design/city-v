@@ -25,14 +25,10 @@ export default function CityVAdminDashboard() {
   // Admin değilse login sayfasına yönlendir
   useEffect(() => {
     if (!isAdmin) {
+      console.log('⚠️ Admin değil, login sayfasına yönlendiriliyor...');
       router.push('/cityvadmin');
     }
   }, [isAdmin, router]);
-
-  // Admin değilse hiçbir şey gösterme
-  if (!isAdmin) {
-    return null;
-  }
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -49,25 +45,25 @@ export default function CityVAdminDashboard() {
     }, 500);
   };
 
-  // Business üyeleri yükle (her zaman useEffect çağrılır, içinde conditional)
-  useEffect(() => {
-    const loadBusinessMembers = async () => {
-      if (!isAdmin || activeTab !== 'business') {
-        return; // Early return - hook order değişmez
+  // Business üyeleri yükle fonksiyonu (tekrar kullanılabilir)
+  const loadBusinessMembers = async () => {
+    try {
+      const response = await fetch('/api/admin/business-members');
+      const data = await response.json();
+      if (data.success) {
+        setBusinessMembers(data.members);
+        console.log('✅ Business members yüklendi:', data.members.length);
       }
-      
-      try {
-        const response = await fetch('/api/admin/business-members');
-        const data = await response.json();
-        if (data.success) {
-          setBusinessMembers(data.members);
-        }
-      } catch (error) {
-        console.error('Business members load error:', error);
-      }
-    };
+    } catch (error) {
+      console.error('❌ Business members load error:', error);
+    }
+  };
 
-    loadBusinessMembers();
+  // Business tab açıldığında üyeleri yükle
+  useEffect(() => {
+    if (isAdmin && activeTab === 'business') {
+      loadBusinessMembers();
+    }
   }, [isAdmin, activeTab]);
 
   // Tab içerikleri
@@ -127,6 +123,18 @@ export default function CityVAdminDashboard() {
       </div>
     </div>
   );
+
+  // Admin değilse loading göster (yönlendirme yapılırken)
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Yönlendiriliyor...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
@@ -926,8 +934,9 @@ export default function CityVAdminDashboard() {
         <BusinessMemberForm
           onClose={() => setShowBusinessForm(false)}
           onSuccess={() => {
-            loadBusinessMembers();
+            loadBusinessMembers(); // Business members listesini yenile
             setShowBusinessForm(false);
+            toast.success('✅ Business üye eklendi');
           }}
         />
       )}
