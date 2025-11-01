@@ -15,9 +15,10 @@ const trajectories = new Map<string, TrajectoryPoint[]>();
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { cameraId: string } }
+  context: { params: Promise<{ cameraId: string }> }
 ) {
   try {
+    const params = await context.params;
     const cameraId = params.cameraId;
     const body = await request.json();
     const { detections } = body; // person detection'lar (bbox: {x, y, width, height})
@@ -144,24 +145,22 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { cameraId: string } }
+  context: { params: Promise<{ cameraId: string }> }
 ) {
   try {
+    const params = await context.params;
     const cameraId = params.cameraId;
 
     // Son sayım verilerini al
     const result = await query(
       `SELECT 
-        ica.total_entries,
-        ica.total_exits,
         ica.current_occupancy,
         ica.timestamp,
-        id.calibration_line,
-        id.entry_direction,
-        id.max_capacity
+        bc.calibration_line,
+        bc.entry_direction
        FROM iot_crowd_analysis ica
-       JOIN iot_devices id ON ica.device_id = id.device_id
-       WHERE ica.device_id = $1
+       JOIN business_cameras bc ON ica.device_id = bc.id::text
+       WHERE bc.id = $1
        ORDER BY ica.timestamp DESC
        LIMIT 1`,
       [cameraId]

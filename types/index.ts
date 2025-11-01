@@ -21,6 +21,8 @@ export interface Location {
   lastWorkingHoursUpdate?: number; // Son güncelleme timestamp'i
   // Distance from user
   distance?: number; // km cinsinden mesafe
+  // Business view tracking için
+  businessId?: number; // Business profiles ID
   // Business sistemine özel veriler
   businessData?: {
     businessId: string;

@@ -15,6 +15,7 @@ interface User {
   name: string;
   email: string;
   membershipTier: MembershipTier;
+  premiumSubscriptionType?: 'monthly' | 'yearly';
   createdAt: string;
   lastLogin?: string;
   isActive: boolean;
@@ -54,6 +55,7 @@ export default function MemberManagement({ onClose }: MemberManagementProps) {
           name: user.name,
           email: user.email,
           membershipTier: user.membership_tier || 'free',
+          premiumSubscriptionType: user.premium_subscription_type || 'monthly',
           createdAt: user.created_at || user.join_date,
           lastLogin: user.last_login,
           isActive: user.is_active !== false,
@@ -78,6 +80,8 @@ export default function MemberManagement({ onClose }: MemberManagementProps) {
 
   const handleUpdateMembership = async (userId: string, newTier: MembershipTier) => {
     try {
+      console.log('🔄 Updating membership:', { userId, newTier });
+      
       const response = await fetch('/api/admin/update-membership', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,15 +91,54 @@ export default function MemberManagement({ onClose }: MemberManagementProps) {
       const data = await response.json();
       
       if (data.success) {
+        // Update local state
         setUsers(prev => prev.map(user => 
           user.id === userId ? { ...user, membershipTier: newTier } : user
         ));
         
         toast.success(`✅ Üyelik ${newTier.toUpperCase()} olarak güncellendi!`);
         console.log(`✅ ${userId} kullanıcısının üyeliği ${newTier} olarak güncellendi`);
+        
+        // Force refresh from API after a delay
+        setTimeout(() => {
+          console.log('🔄 Refreshing user list...');
+          fetchUsers();
+        }, 500);
       } else {
         toast.error(`❌ Premium üyelik verilemedi: ${data.error || 'Bilinmeyen hata'}`);
         console.error('Üyelik güncellenemedi:', data.error);
+      }
+    } catch (error) {
+      toast.error('❌ Premium üyelik verilemedi: Bağlantı hatası');
+      console.error('Üyelik güncelleme hatası:', error);
+    }
+  };
+
+  const handleUpdateSubscriptionType = async (userId: string, subscriptionType: 'monthly' | 'yearly') => {
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId, 
+          updates: { premium_subscription_type: subscriptionType }
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setUsers(prev => prev.map(user => 
+          user.id === userId ? { ...user, premiumSubscriptionType: subscriptionType } : user
+        ));
+        
+        toast.success(`✅ Abonelik ${subscriptionType === 'monthly' ? 'Aylık (49.99₺)' : 'Yıllık (399.99₺)'} olarak güncellendi!`);
+        
+        setTimeout(() => {
+          fetchUsers();
+        }, 500);
+      } else {
+        toast.error(`❌ ${data.error || 'Abonelik güncellenemedi'}`);
       }
     } catch (error) {
       toast.error('❌ Premium üyelik verilemedi: Bağlantı hatası');
@@ -331,10 +374,17 @@ export default function MemberManagement({ onClose }: MemberManagementProps) {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getTierColor(user.membershipTier)}`}>
-                      {getTierIcon(user.membershipTier)}
-                      {user.membershipTier.toUpperCase()}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getTierColor(user.membershipTier)}`}>
+                        {getTierIcon(user.membershipTier)}
+                        {user.membershipTier.toUpperCase()}
+                      </span>
+                      {user.membershipTier === 'premium' && (
+                        <span className="text-xs text-gray-500">
+                          {user.premiumSubscriptionType === 'yearly' ? '🗓️ Yıllık (399.99₺)' : '📅 Aylık (49.99₺)'}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {new Date(user.createdAt).toLocaleDateString('tr-TR')}
@@ -351,7 +401,7 @@ export default function MemberManagement({ onClose }: MemberManagementProps) {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-2">
                       {/* Membership Update Dropdown */}
                       <select
                         value={user.membershipTier}
@@ -363,6 +413,18 @@ export default function MemberManagement({ onClose }: MemberManagementProps) {
                         <option value="business">Business</option>
                         <option value="enterprise">Enterprise</option>
                       </select>
+                      
+                      {/* Subscription Type Dropdown - Only for Premium */}
+                      {user.membershipTier === 'premium' && (
+                        <select
+                          value={user.premiumSubscriptionType || 'monthly'}
+                          onChange={(e) => handleUpdateSubscriptionType(user.id, e.target.value as 'monthly' | 'yearly')}
+                          className="text-xs px-2 py-1 border border-indigo-300 rounded bg-indigo-50"
+                        >
+                          <option value="monthly">Aylık (49.99₺)</option>
+                          <option value="yearly">Yıllık (399.99₺)</option>
+                        </select>
+                      )}
                       
                       {/* Toggle Active Status */}
                       <button

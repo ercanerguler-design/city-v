@@ -9,6 +9,7 @@ import { useFavoritesStore } from '@/lib/stores/favoritesStore';
 import { useGamificationStore } from '@/lib/stores/gamificationStore';
 import { useSocialStore } from '@/lib/stores/socialStore';
 import { useTrackedStore } from '@/lib/stores/trackedStore';
+import { useAuthStore } from '@/store/authStore';
 import { motion } from 'framer-motion';
 import { cn, formatTime } from '@/lib/utils';
 import WorkingHoursBadge from './WorkingHoursBadge';
@@ -47,6 +48,7 @@ const getCrowdLevelText = (level: CrowdLevel): string => {
 
 export default function LocationCard({ location, onReportClick, onLocationClick, onSocialClick, distance }: LocationCardProps) {
   const { toggleFavorite, isFavorite } = useFavoritesStore();
+  const { user } = useAuthStore();
   const { favoriteAdded } = useGamificationStore();
   const { getLocationComments, getLocationPhotos, getLocationRating } = useSocialStore();
   const { trackLocation, untrackLocation, isTracked } = useTrackedStore();
@@ -136,7 +138,35 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
         <div className="flex items-start justify-between mb-4">
           <div
             className="flex-1 cursor-pointer"
-            onClick={() => onLocationClick?.(location)}
+            onClick={async () => {
+              // Track view for business dashboard
+              try {
+                const businessUser = localStorage.getItem('business_user');
+                if (businessUser) {
+                  const user = JSON.parse(businessUser);
+                  const businessId = user.id;
+                  
+                  // Track view
+                  await fetch('/api/business/track-view', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      businessId: businessId,
+                      location: {
+                        id: location.id,
+                        name: location.name,
+                        category: location.category
+                      },
+                      source: 'map' 
+                    })
+                  });
+                  console.log('👁️ View tracked for business:', location.name);
+                }
+              } catch (error) {
+                console.error('❌ Failed to track view:', error);
+              }
+              onLocationClick?.(location);
+            }}
           >
             <div className="flex items-center gap-2 mb-2">
               <span className="text-2xl">{getCategoryIcon(location.category)}</span>
@@ -151,9 +181,44 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
           </div>
 
           <button
-            onClick={() => {
-              toggleFavorite(location.id);
-              if (!isLocationFavorite) {
+            onClick={async () => {
+              const wasFavorite = isLocationFavorite;
+              
+              // Toggle favorite with userId if logged in
+              await toggleFavorite(location.id, user?.id);
+              
+              // Track for business dashboard
+              try {
+                // Check if there's a business user logged in
+                const businessUser = localStorage.getItem('business_user');
+                if (businessUser) {
+                  const businessUserData = JSON.parse(businessUser);
+                  const businessId = businessUserData.id;
+                  
+                  // Send to business favorites API
+                  await fetch('/api/business/favorites', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      businessId: businessId,
+                      location: {
+                        id: location.id,
+                        name: location.name,
+                        category: location.category,
+                        address: location.address,
+                        coordinates: location.coordinates
+                      },
+                      action: wasFavorite ? 'remove' : 'add',
+                      source: 'map'
+                    })
+                  });
+                  console.log(`⭐ Business favorite ${wasFavorite ? 'removed' : 'added'} for:`, location.name);
+                }
+              } catch (error) {
+                console.error('❌ Failed to track business favorite:', error);
+              }
+              
+              if (!wasFavorite) {
                 // Gamification: Favori ekleme
                 favoriteAdded();
                 

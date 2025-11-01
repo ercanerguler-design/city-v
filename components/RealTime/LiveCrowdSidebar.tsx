@@ -4,9 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import useCrowdStore from '@/store/crowdStore';
 import { useAuthStore } from '@/store/authStore';
 import { useLocationStore } from '@/store/locationStore';
+import { useFavoritesStore } from '@/lib/stores/favoritesStore';
 import { isLocationOpen } from '@/lib/workingHours';
 import { updateLocationWorkingHours, updateAllLocationsWorkingHours } from '@/lib/googlePlacesAPI';
-import { Users, Clock, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, Crown, Lock } from 'lucide-react';
+import { Users, Clock, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, Crown, Lock, Heart, Receipt } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { cn } from '@/lib/utils';
+import BusinessMenuModal from '@/components/Business/BusinessMenuModal';
 
 interface LiveCrowdSidebarProps {
   isOpen?: boolean;
@@ -18,6 +22,7 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
   const { crowdData, analyzeOpenLocations } = useCrowdStore();
   const { isAuthenticated, user } = useAuthStore();
   const { locations: storeLocations, updateLocation } = useLocationStore();
+  const { toggleFavorite, isFavorite } = useFavoritesStore();
   
   // Prop'tan gelen locations'ı öncelikle kullan, yoksa store'dan al
   // Prop'tan gelen locations'ı öncelikle kullan, yoksa store'dan al
@@ -48,6 +53,11 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
   // 📡 Business IoT canlı verilerini yükle
   const [businessIoTData, setBusinessIoTData] = useState<any[]>([]);
   const [iotLoading, setIotLoading] = useState(false);
+  
+  // 💰 Fiyat listesi modal state
+  const [menuModalOpen, setMenuModalOpen] = useState(false);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<number | null>(null);
+  const [selectedBusinessName, setSelectedBusinessName] = useState('');
   
   const loadBusinessIoTData = async () => {
     try {
@@ -422,14 +432,88 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
                   >
                     <div className={`flex justify-between items-start ${isMobile ? 'mb-3' : 'mb-2'}`}>
                       <div className="flex-1">
-                        <h4 className={`font-semibold ${isMobile ? 'text-base' : 'text-sm'} text-gray-900 dark:text-white mb-1`}>
-                          {business.name}
-                        </h4>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className={`font-semibold ${isMobile ? 'text-base' : 'text-sm'} text-gray-900 dark:text-white`}>
+                            {business.name}
+                          </h4>
+                          {/* Açık/Kapalı Badge */}
+                          {(() => {
+                            const businessLocation = {
+                              workingHours: business.workingHours || null,
+                              category: business.type
+                            };
+                            const { isOpen: isBusinessOpen } = isLocationOpen(businessLocation);
+                            return (
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                isBusinessOpen 
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                              }`}>
+                                {isBusinessOpen ? '🟢 Açık' : '🔴 Kapalı'}
+                              </span>
+                            );
+                          })()}
+                        </div>
                         <p className="text-xs text-gray-600 dark:text-gray-400">
                           {business.district}, {business.city}
                         </p>
                       </div>
-                      <div className="ml-2">
+                      <div className="ml-2 flex items-center gap-2">
+                        {/* Favori Butonu */}
+                        <button
+                          onClick={async () => {
+                            const businessLocationId = `business-${business.id}`;
+                            const wasFavorite = isFavorite(businessLocationId);
+                            
+                            // Toggle with userId if logged in
+                            await toggleFavorite(businessLocationId, user?.id);
+                            
+                            // Track for business dashboard
+                            try {
+                              const businessUser = localStorage.getItem('business_user');
+                              if (businessUser) {
+                                const user = JSON.parse(businessUser);
+                                await fetch('/api/business/favorites', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    businessId: user.id,
+                                    location: {
+                                      id: businessLocationId,
+                                      name: business.name,
+                                      category: business.type || 'business',
+                                      address: `${business.district}, ${business.city}`,
+                                      coordinates: [business.latitude, business.longitude]
+                                    },
+                                    action: wasFavorite ? 'remove' : 'add',
+                                    source: 'map'
+                                  })
+                                });
+                              }
+                            } catch (error) {
+                              console.error('❌ Failed to track business favorite:', error);
+                            }
+                            
+                            if (!wasFavorite) {
+                              toast.success(`❤️ ${business.name} favorilere eklendi!`, {
+                                icon: '⭐',
+                                style: { borderRadius: '12px', background: '#10b981', color: '#fff' }
+                              });
+                            } else {
+                              toast(`💔 ${business.name} favorilerden çıkarıldı`, { icon: '➖' });
+                            }
+                          }}
+                          className={cn(
+                            'p-1.5 rounded-full transition-all',
+                            isFavorite(`business-${business.id}`)
+                              ? 'bg-red-100 dark:bg-red-900/30 text-red-500'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-red-50 hover:text-red-400'
+                          )}
+                        >
+                          <Heart className={cn('w-4 h-4', isFavorite(`business-${business.id}`) && 'fill-current')} />
+                        </button>
+                        
+                        {/* Yoğunluk Badge */}
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           business.summary.crowdLevel === 'high' || business.summary.crowdLevel === 'overcrowded' 
                             ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
@@ -465,8 +549,21 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
                       </div>
                     </div>
                     
+                    {/* Fiyatları Gör Butonu */}
+                    <button
+                      onClick={() => {
+                        setSelectedBusinessId(business.id);
+                        setSelectedBusinessName(business.name);
+                        setMenuModalOpen(true);
+                      }}
+                      className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all font-medium shadow-sm hover:shadow-md"
+                    >
+                      <Receipt className="w-4 h-4" />
+                      <span>Fiyatları Gör</span>
+                    </button>
+                    
                     {business.summary.lastUpdate && (
-                      <div className="flex items-center justify-between text-xs text-gray-400">
+                      <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
                         <div className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           <span>{new Date(business.summary.lastUpdate).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -563,6 +660,20 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
         <div 
           className="fixed inset-0 bg-black/50 z-30"
           onClick={handleToggle}
+        />
+      )}
+
+      {/* Fiyat Listesi Modal */}
+      {menuModalOpen && selectedBusinessId && (
+        <BusinessMenuModal
+          isOpen={menuModalOpen}
+          onClose={() => {
+            setMenuModalOpen(false);
+            setSelectedBusinessId(null);
+            setSelectedBusinessName('');
+          }}
+          businessId={selectedBusinessId}
+          businessName={selectedBusinessName}
         />
       )}
     </>

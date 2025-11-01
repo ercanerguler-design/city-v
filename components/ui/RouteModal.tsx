@@ -70,6 +70,15 @@ export default function RouteModal({ location, userLocation, isOpen, onClose, on
   const openInGoogleMaps = () => {
     const origin = `${userLocation[0]},${userLocation[1]}`;
     const destination = `${location.coordinates[0]},${location.coordinates[1]}`;
+    
+    console.log('🚗 Google Maps açılıyor:', {
+      locationName: location.name,
+      userLocation,
+      locationCoordinates: location.coordinates,
+      origin,
+      destination
+    });
+    
     const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${selectedMode}`;
     window.open(url, '_blank');
     toast.success('🗺️ Google Maps açılıyor...');

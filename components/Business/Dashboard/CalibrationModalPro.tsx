@@ -41,7 +41,7 @@ export default function CalibrationModalPro({ camera, onClose, onSave }: Calibra
       setEntryDirection(camera.entry_direction || 'up_to_down');
     }
 
-    // Canvas'ı hazırla
+    // Canvas'ı hazırla ve video stream başlat
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -51,25 +51,50 @@ export default function CalibrationModalPro({ camera, onClose, onSave }: Calibra
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
 
-    const img = new Image();
-    // CORS hatası için crossOrigin kaldırıldı (local network için gerekli değil)
-    // img.crossOrigin = 'anonymous';
-    img.src = streamUrl + '?t=' + Date.now();
+    // Video element oluştur (gizli)
+    const video = document.createElement('video');
+    video.style.display = 'none';
+    video.autoplay = true;
+    video.muted = true;
+    video.playsInline = true;
     
-    img.onload = () => {
-      console.log('✅ Kalibrasyon görüntüsü yüklendi');
-      ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      setImageLoaded(true);
-      
-      // Mevcut çizimi göster
-      if (camera.calibration_line) {
-        drawCalibrationLine(ctx, camera.calibration_line, camera.entry_direction || 'up_to_down');
+    // MJPEG stream için img element kullan (daha basit)
+    const img = new Image();
+    img.style.display = 'none';
+    img.src = streamUrl;
+    document.body.appendChild(img);
+    
+    let animationFrameId: number;
+    let frameCount = 0;
+
+    const drawFrame = () => {
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        
+        // İlk frame'de loaded işaretle
+        if (frameCount === 0) {
+          console.log('✅ Kalibrasyon stream başladı:', streamUrl);
+          setImageLoaded(true);
+          
+          // Mevcut çizimi göster
+          if (camera.calibration_line) {
+            drawCalibrationLine(ctx, camera.calibration_line, camera.entry_direction || 'up_to_down');
+          }
+        }
+        frameCount++;
       }
+      
+      animationFrameId = requestAnimationFrame(drawFrame);
+    };
+
+    img.onload = () => {
+      console.log('✅ Stream bağlantısı kuruldu');
+      drawFrame();
     };
 
     img.onerror = (err) => {
-      console.error('❌ Kamera görüntüsü yüklenemedi:', streamUrl);
-      toast.error('Kamera görüntüsü yüklenemedi. Kamera bağlantısını kontrol edin.');
+      console.error('❌ Kamera stream\'i yüklenemedi:', streamUrl);
+      toast.error('Kamera stream bağlantısı kurulamadı. IP ve port\'u kontrol edin.');
       setImageLoaded(true);
       
       // Fallback görsel
@@ -78,7 +103,19 @@ export default function CalibrationModalPro({ camera, onClose, onSave }: Calibra
       ctx.fillStyle = '#9CA3AF';
       ctx.font = 'bold 24px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('Kamera Bağlantısı Yok', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+      ctx.fillText('🚫 Kamera Bağlantısı Yok', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+      ctx.font = '16px Arial';
+      ctx.fillText(streamUrl, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
+    };
+
+    // Cleanup
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      if (img.parentNode) {
+        document.body.removeChild(img);
+      }
     };
   }, [camera]);
 
@@ -163,15 +200,31 @@ export default function CalibrationModalPro({ camera, onClose, onSave }: Calibra
     return labels[dir] || dir;
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Unified handler for both mouse and touch
+  const handlePointerDown = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!imageLoaded) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * CANVAS_WIDTH;
-    const y = ((e.clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
+    
+    // Get coordinates from either mouse or touch event
+    let clientX: number, clientY: number;
+    if ('touches' in e) {
+      // Touch event
+      e.preventDefault(); // Prevent scrolling
+      const touch = e.touches[0];
+      clientX = touch.clientX;
+      clientY = touch.clientY;
+    } else {
+      // Mouse event
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const x = ((clientX - rect.left) / rect.width) * CANVAS_WIDTH;
+    const y = ((clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
 
     if (!drawing) {
       // İlk nokta - Giriş
@@ -210,7 +263,7 @@ export default function CalibrationModalPro({ camera, onClose, onSave }: Calibra
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!drawing || !startPoint || !imageLoaded) return;
 
     const canvas = canvasRef.current;
@@ -220,32 +273,47 @@ export default function CalibrationModalPro({ camera, onClose, onSave }: Calibra
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * CANVAS_WIDTH;
-    const y = ((e.clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
+    
+    // Get coordinates from either mouse or touch event
+    let clientX: number, clientY: number;
+    if ('touches' in e) {
+      if (e.touches.length === 0) return;
+      const touch = e.touches[0];
+      clientX = touch.clientX;
+      clientY = touch.clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
 
-    // Görüntüyü yeniden çiz
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = streamUrl + '?t=' + Date.now();
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      
-      // Geçici çizgi
-      ctx.strokeStyle = '#3B82F6';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([5, 5]);
-      ctx.beginPath();
-      ctx.moveTo(startPoint.x, startPoint.y);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      ctx.setLineDash([]);
+    const x = ((clientX - rect.left) / rect.width) * CANVAS_WIDTH;
+    const y = ((clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
 
-      // Başlangıç noktası
-      ctx.fillStyle = '#10B981';
-      ctx.beginPath();
-      ctx.arc(startPoint.x, startPoint.y, 10, 0, Math.PI * 2);
-      ctx.fill();
-    };
+    // Stream frame'i zaten döngüde çiziliyor, sadece overlay ekle
+    // Geçici çizgi (mavi, kesik)
+    ctx.strokeStyle = '#3B82F6';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(startPoint.x, startPoint.y);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Başlangıç noktası (yeşil)
+    ctx.fillStyle = '#10B981';
+    ctx.beginPath();
+    ctx.arc(startPoint.x, startPoint.y, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Mouse pozisyonu (şeffaf kırmızı)
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.5)';
+    ctx.beginPath();
+    ctx.arc(x, y, 10, 0, Math.PI * 2);
+    ctx.fill();
   };
 
   const handleReset = () => {
@@ -333,14 +401,16 @@ export default function CalibrationModalPro({ camera, onClose, onSave }: Calibra
           </div>
 
           {/* Canvas Area */}
-          <div className="flex-1 overflow-auto p-6 bg-gray-50">
-            <div className="bg-white rounded-xl shadow-lg p-6 max-w-fit mx-auto">
+          <div className="flex-1 overflow-auto p-3 sm:p-6 bg-gray-50">
+            <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6 max-w-fit mx-auto">
               <canvas
                 ref={canvasRef}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                className="border-4 border-gray-200 rounded-lg cursor-crosshair max-w-full h-auto"
-                style={{ maxHeight: '60vh' }}
+                onMouseDown={handlePointerDown}
+                onMouseMove={handlePointerMove}
+                onTouchStart={handlePointerDown}
+                onTouchMove={handlePointerMove}
+                className="border-2 sm:border-4 border-gray-200 rounded-lg cursor-crosshair touch-none max-w-full h-auto"
+                style={{ maxHeight: '60vh', touchAction: 'none' }}
               />
             </div>
           </div>

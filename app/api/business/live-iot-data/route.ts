@@ -48,8 +48,7 @@ export async function GET(request: NextRequest) {
       INNER JOIN business_users bu ON bp.user_id = bu.id
       LEFT JOIN business_cameras bc ON bu.id = bc.business_user_id
       
-      WHERE bu.added_by_admin = true 
-        AND bu.is_active = true
+      WHERE bu.is_active = true
         AND bc.id IS NOT NULL
         AND (bc.status = 'active' OR bc.is_active = true)
       

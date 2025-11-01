@@ -12,6 +12,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Clean userId - remove prefix if exists
+    const cleanUserId = typeof userId === 'string' 
+      ? userId.replace(/^(normal-|business-)/, '')
+      : userId;
+    
+    console.log('🔍 Update membership:', { rawUserId: userId, cleanUserId, membershipTier });
+
     // Validate membership tier
     const validTiers = ['free', 'premium', 'business', 'enterprise'];
     if (!validTiers.includes(membershipTier)) {
@@ -24,7 +31,7 @@ export async function POST(req: NextRequest) {
     // Update user membership in database
     const result = await query(
       'UPDATE users SET membership_tier = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-      [membershipTier, userId]
+      [membershipTier, cleanUserId]
     );
 
     if (result.rows.length === 0) {
@@ -37,13 +44,13 @@ export async function POST(req: NextRequest) {
     const updatedUser = result.rows[0];
 
     // Log admin action
-    console.log(`🔄 Admin action: User ${userId} membership updated to ${membershipTier}`);
+    console.log(`🔄 Admin action: User ${cleanUserId} membership updated to ${membershipTier}`);
 
     // Log to admin activity (optional table)
     try {
       await query(
         'INSERT INTO admin_logs (action_type, target_user_id, action_data, created_at) VALUES ($1, $2, $3, NOW())',
-        ['membership_update', userId, JSON.stringify({ oldTier: 'unknown', newTier: membershipTier })]
+        ['membership_update', cleanUserId, JSON.stringify({ oldTier: 'unknown', newTier: membershipTier })]
       );
     } catch (logError) {
       console.warn('Admin log failed:', logError);

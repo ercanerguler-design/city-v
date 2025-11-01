@@ -56,6 +56,58 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
     loadCameraImage();
   }, [camera]);
 
+  // Şu an çizilen zone'u render et
+  const drawCurrentZone = (ctx: CanvasRenderingContext2D) => {
+    if (currentZone.length === 0) return;
+
+    const color = ZONE_TYPES.find(t => t.value === selectedZoneType)?.color || '#3B82F6';
+    
+    // Çizgiler (kesikli)
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.setLineDash([10, 5]);
+    ctx.beginPath();
+    ctx.moveTo(currentZone[0].x, currentZone[0].y);
+    
+    for (let i = 1; i < currentZone.length; i++) {
+      ctx.lineTo(currentZone[i].x, currentZone[i].y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Noktalar
+    currentZone.forEach((point, index) => {
+      if (index === 0) {
+        // İlk nokta (yeşil)
+        ctx.fillStyle = '#10B981';
+      } else if (index === currentZone.length - 1) {
+        // Son nokta (turuncu)
+        ctx.fillStyle = '#F59E0B';
+      } else {
+        ctx.fillStyle = color;
+      }
+      
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    });
+
+    // Polygon'u tamamlamak için son noktadan ilk noktaya kesikli çizgi
+    if (currentZone.length >= 2) {
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(currentZone[currentZone.length - 1].x, currentZone[currentZone.length - 1].y);
+      ctx.lineTo(currentZone[0].x, currentZone[0].y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  };
+
   const loadCameraImage = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -63,25 +115,69 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+
+    // MJPEG stream için img element kullan
     const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = streamUrl + '?t=' + Date.now();
+    img.style.display = 'none';
+    img.src = streamUrl;
+    document.body.appendChild(img);
+    
+    let animationFrameId: number;
+    let frameCount = 0;
+
+    const drawFrame = () => {
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        
+        // Mevcut bölgeleri overlay olarak çiz
+        if (zones.length > 0) {
+          zones.forEach((zone: Zone) => drawZone(ctx, zone, false));
+        }
+        
+        // Çizilmekte olan polygon'u çiz
+        if (isDrawing && currentZone.length > 0) {
+          drawCurrentZone(ctx);
+        }
+        
+        if (frameCount === 0) {
+          console.log('✅ Zone çizim stream başladı');
+          setImageLoaded(true);
+        }
+        frameCount++;
+      }
+      
+      animationFrameId = requestAnimationFrame(drawFrame);
+    };
 
     img.onload = () => {
-      canvas.width = CANVAS_WIDTH;
-      canvas.height = CANVAS_HEIGHT;
-      ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      setImageLoaded(true);
-
-      // Mevcut bölgeleri çiz
-      if (camera.zones && camera.zones.length > 0) {
-        camera.zones.forEach((zone: Zone) => drawZone(ctx, zone, false));
-      }
+      console.log('✅ Zone stream bağlantısı kuruldu');
+      drawFrame();
     };
 
     img.onerror = () => {
-      toast.error('Kamera görüntüsü yüklenemedi');
+      console.error('❌ Kamera stream yüklenemedi:', streamUrl);
+      toast.error('Kamera stream bağlantısı kurulamadı');
       setImageLoaded(true);
+      
+      // Fallback
+      ctx.fillStyle = '#1F2937';
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      ctx.fillStyle = '#9CA3AF';
+      ctx.font = 'bold 24px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('🚫 Kamera Bağlantısı Yok', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+    };
+
+    // Cleanup
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      if (img.parentNode) {
+        document.body.removeChild(img);
+      }
     };
   };
 
@@ -187,15 +283,28 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
     }
   };
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!imageLoaded) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * CANVAS_WIDTH;
-    const y = ((e.clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
+    
+    // Get coordinates from either mouse or touch event
+    let clientX: number, clientY: number;
+    if ('touches' in e) {
+      e.preventDefault();
+      const touch = e.touches[0] || e.changedTouches[0];
+      clientX = touch.clientX;
+      clientY = touch.clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const x = ((clientX - rect.left) / rect.width) * CANVAS_WIDTH;
+    const y = ((clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
 
     const newPoint: Point = { x, y };
     const newZone = [...currentZone, newPoint];
@@ -318,12 +427,13 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
 
             {/* Canvas */}
             <div className="flex-1 overflow-auto p-6 bg-gray-50">
-              <div className="bg-white rounded-xl shadow-lg p-4">
+              <div className="bg-white rounded-xl shadow-lg p-3 sm:p-4">
                 <canvas
                   ref={canvasRef}
                   onClick={handleCanvasClick}
-                  className="border-4 border-gray-200 rounded-lg cursor-crosshair w-full h-auto"
-                  style={{ maxHeight: '60vh' }}
+                  onTouchEnd={handleCanvasClick}
+                  className="border-2 sm:border-4 border-gray-200 rounded-lg cursor-crosshair touch-none w-full h-auto"
+                  style={{ maxHeight: '60vh', touchAction: 'none' }}
                 />
               </div>
             </div>

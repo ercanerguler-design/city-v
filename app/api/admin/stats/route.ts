@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { sql } from '@vercel/postgres';
 
 export async function GET() {
   try {
@@ -70,18 +71,29 @@ export async function GET() {
       LIMIT 5
     `);
 
-    // 9. Gelir hesaplama (business members'tan)
-    const revenueResult = await query(`
+    // 9. Gelir hesaplama (business members)
+    const revenueResult = await sql`
       SELECT 
-        SUM(CASE 
+        COALESCE(SUM(CASE 
           WHEN membership_type = 'premium' THEN 499
           WHEN membership_type = 'enterprise' THEN 999
           ELSE 0
-        END) as monthly_revenue
+        END), 0) as business_revenue
       FROM business_users
       WHERE added_by_admin = true 
         AND membership_expiry_date > NOW()
-    `);
+    `;
+
+    // Normal kullanıcılardan premium geliri (aylık + yıllık)
+    const normalPremiumRevenue = await sql`
+      SELECT 
+        COUNT(*) FILTER (WHERE premium_subscription_type = 'monthly') as monthly_count,
+        COUNT(*) FILTER (WHERE premium_subscription_type = 'yearly') as yearly_count,
+        COALESCE(SUM(CASE WHEN premium_subscription_type = 'monthly' THEN 49.99 ELSE 0 END), 0) as monthly_revenue,
+        COALESCE(SUM(CASE WHEN premium_subscription_type = 'yearly' THEN 399.99 ELSE 0 END), 0) as yearly_revenue
+      FROM users
+      WHERE membership_tier = 'premium'
+    `;
 
     const stats = usersResult.rows[0];
     const business = businessResult.rows[0];
@@ -92,8 +104,32 @@ export async function GET() {
     const campaigns = campaignsResult.rows[0];
     const popularLocations = popularLocationsResult.rows;
     const revenue = revenueResult.rows[0];
+    const normalRevenue = normalPremiumRevenue.rows[0];
 
-    const monthlyRevenue = parseInt(revenue.monthly_revenue || 0);
+    console.log('💰 Revenue Data:', {
+      business: revenue.business_revenue,
+      monthlyCount: normalRevenue.monthly_count,
+      yearlyCount: normalRevenue.yearly_count,
+      monthlyRevenue: normalRevenue.monthly_revenue,
+      yearlyRevenue: normalRevenue.yearly_revenue
+    });
+
+    const businessMonthlyRevenue = parseFloat(revenue.business_revenue || 0);
+    
+    // Premium gelir hesaplaması (toplam fiyatlar)
+    const monthlyPremiumRevenue = parseFloat(normalRevenue.monthly_revenue || 0);
+    const yearlyPremiumRevenue = parseFloat(normalRevenue.yearly_revenue || 0);
+    const normalTotalRevenue = monthlyPremiumRevenue + yearlyPremiumRevenue;
+    
+    const totalRevenue = businessMonthlyRevenue + normalTotalRevenue;
+    
+    console.log('💰 Calculated Revenue:', {
+      businessMonthly: businessMonthlyRevenue,
+      monthlyPremium: monthlyPremiumRevenue,
+      yearlyPremium: yearlyPremiumRevenue,
+      normalTotal: normalTotalRevenue,
+      grandTotal: totalRevenue
+    });
 
     return NextResponse.json({
       success: true,
@@ -117,9 +153,23 @@ export async function GET() {
         totalComments: 0,
         totalPhotos: 0,
         revenue: {
-          monthly: monthlyRevenue,
-          yearly: monthlyRevenue * 12,
-          total: monthlyRevenue * 12, // Basitleştirilmiş hesaplama
+          monthly: businessMonthlyRevenue, // Sadece aylık business geliri
+          yearly: totalRevenue, // Toplam gelir (business aylık + tüm premium)
+          total: totalRevenue,
+          businessRevenue: businessMonthlyRevenue,
+          normalPremiumRevenue: normalTotalRevenue,
+          premiumBreakdown: {
+            monthly: {
+              count: parseInt(normalRevenue.monthly_count || 0),
+              revenue: monthlyPremiumRevenue,
+              price: 49.99
+            },
+            yearly: {
+              count: parseInt(normalRevenue.yearly_count || 0),
+              revenue: yearlyPremiumRevenue,
+              price: 399.99
+            }
+          }
         },
         userGrowth: {
           today: parseInt(stats.today_signups),

@@ -60,7 +60,15 @@ export default function LocationGrid({
   const openRoute = (location: Location) => {
     if (!userLocation) return;
     
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${location.coordinates[1]},${location.coordinates[0]}&travelmode=driving`;
+    console.log('🚗 LocationGrid - Rota açılıyor:', {
+      locationName: location.name,
+      userLocation,
+      locationCoordinates: location.coordinates,
+      origin: `${userLocation.lat},${userLocation.lng}`,
+      destination: `${location.coordinates[0]},${location.coordinates[1]}`
+    });
+    
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${location.coordinates[0]},${location.coordinates[1]}&travelmode=driving`;
     window.open(url, '_blank');
   };
 

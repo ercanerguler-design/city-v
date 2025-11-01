@@ -72,7 +72,7 @@ export default function AddCameraModal({ onClose, onSubmit }: AddCameraModalProp
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">Yeni Kamera Ekle</h2>
-              <p className="text-sm text-gray-500">ESP32-CAM veya IP kamera bağlayın</p>
+              <p className="text-sm text-gray-500">IoT kamera veya IP kamera bağlayın</p>
             </div>
           </div>
           <button
@@ -144,7 +144,7 @@ export default function AddCameraModal({ onClose, onSubmit }: AddCameraModalProp
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
             />
             <p className="mt-1 text-xs text-gray-500">
-              ESP32-CAM için genelde: /stream veya /cam-hi.jpg
+              IoT kameralar için genelde: /stream veya /cam-hi.jpg
             </p>
           </div>
 

@@ -6,18 +6,19 @@ import { query } from '@/lib/db';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { cameraId: string } }
+  context: { params: Promise<{ cameraId: string }> }
 ) {
   try {
+    const params = await context.params;
     const cameraId = params.cameraId;
     const body = await request.json();
     const { zones } = body;
 
-    // Zones'ı kaydet (iot_devices tablosuna JSONB)
+    // Zones'ı kaydet (business_cameras tablosuna JSONB)
     await query(
-      `UPDATE iot_devices 
+      `UPDATE business_cameras 
        SET zones = $1 
-       WHERE device_id = $2`,
+       WHERE id = $2`,
       [JSON.stringify(zones), cameraId]
     );
 
@@ -37,14 +38,15 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { cameraId: string } }
+  context: { params: Promise<{ cameraId: string }> }
 ) {
   try {
+    const params = await context.params;
     const cameraId = params.cameraId;
 
     // Kamera bilgilerini ve zones'ları al
     const cameraResult = await query(
-      'SELECT zones FROM iot_devices WHERE device_id = $1',
+      'SELECT zones FROM business_cameras WHERE id = $1',
       [cameraId]
     );
 

@@ -3,10 +3,11 @@ import { query } from '@/lib/db';
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { cameraId: string } }
+  context: { params: Promise<{ cameraId: string }> }
 ) {
   try {
     const { calibrationLine } = await req.json();
+    const params = await context.params;
     const cameraId = params.cameraId;
 
     // Kalibrasyon çizgisini güncelle
@@ -33,9 +34,10 @@ export async function POST(
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { cameraId: string } }
+  context: { params: Promise<{ cameraId: string }> }
 ) {
   try {
+    const params = await context.params;
     const cameraId = params.cameraId;
 
     const result = await query(

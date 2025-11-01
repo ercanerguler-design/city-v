@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, Camera, MapPin, Menu as MenuIcon, 
   Settings, LogOut, Users, TrendingUp, Activity,
-  Bell, Search, ChevronDown
+  Bell, Search, ChevronDown, UserCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -14,6 +14,7 @@ import OverviewSection from '@/components/Business/Dashboard/OverviewSection';
 import CamerasSection from '@/components/Business/Dashboard/CamerasSection';
 import LocationSection from '@/components/Business/Dashboard/LocationSection';
 import MenuSection from '@/components/Business/Dashboard/MenuSection';
+import PersonelSection from '@/components/Business/Dashboard/PersonelSection';
 import AnalyticsSection from '@/components/Business/Dashboard/AnalyticsSection';
 import SettingsSection from '@/components/Business/Dashboard/SettingsSection';
 
@@ -28,6 +29,7 @@ const navItems: NavItem[] = [
   { id: 'cameras', label: 'Kameralar', icon: Camera },
   { id: 'location', label: 'Konum Yönetimi', icon: MapPin },
   { id: 'menu', label: 'Menü & Fiyatlar', icon: MenuIcon },
+  { id: 'personel', label: 'Personel Yönetimi', icon: UserCheck },
   { id: 'analytics', label: 'Analitik', icon: TrendingUp },
   { id: 'settings', label: 'Ayarlar', icon: Settings },
 ];
@@ -325,6 +327,7 @@ export default function BusinessDashboard() {
           {activeSection === 'cameras' && <CamerasSection businessProfile={businessProfile} />}
           {activeSection === 'location' && <LocationSection businessProfile={businessProfile} />}
           {activeSection === 'menu' && <MenuSection businessProfile={businessProfile} />}
+          {activeSection === 'personel' && <PersonelSection businessProfile={businessProfile} />}
           {activeSection === 'analytics' && <AnalyticsSection businessProfile={businessProfile} />}
           {activeSection === 'settings' && <SettingsSection businessProfile={businessProfile} onUpdate={() => loadBusinessProfile(businessUser.id)} />}
         </main>

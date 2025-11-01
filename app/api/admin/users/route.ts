@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
         google_id,
         profile_picture,
         membership_tier,
+        premium_subscription_type,
         ai_credits,
         is_active,
         join_date,
@@ -33,8 +34,11 @@ export async function GET(request: NextRequest) {
       email: user.email,
       name: user.full_name || 'İsimsiz Kullanıcı',
       membership: user.membership_tier || 'free',
+      membership_tier: user.membership_tier || 'free', // Both formats for compatibility
+      premium_subscription_type: user.premium_subscription_type || 'monthly',
       created_at: user.created_at,
       last_activity: user.last_sign_in_at,
+      last_login: user.last_sign_in_at,
       user_type: 'normal',
       is_active: user.last_sign_in_at ? new Date(user.last_sign_in_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) : false
     }));
@@ -64,6 +68,8 @@ export async function PATCH(request: NextRequest) {
   try {
     const { userId, updates } = await request.json();
     
+    console.log('🔧 PATCH Request alındı:', { userId, updates, userIdType: typeof userId });
+    
     if (!userId) {
       return NextResponse.json(
         { error: 'User ID gerekli' },
@@ -71,26 +77,37 @@ export async function PATCH(request: NextRequest) {
       );
     }
     
-    console.log(`🔧 Kullanıcı güncelleniyor: ${userId}`, updates);
+    // "normal-123" formatında gelirse ID'yi çıkar
+    const cleanUserId = typeof userId === 'string' && userId.startsWith('normal-') 
+      ? userId.replace('normal-', '') 
+      : userId;
+    
+    console.log(`🔧 Kullanıcı güncelleniyor: ${cleanUserId} (original: ${userId})`, updates);
     
     // Dinamik update query oluştur
     const updateFields: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
     
-    if (updates.membershipTier !== undefined) {
+    // Her iki format da desteklensin (camelCase ve snake_case)
+    if (updates.membershipTier !== undefined || updates.membership_tier !== undefined) {
       updateFields.push(`membership_tier = $${paramIndex++}`);
-      values.push(updates.membershipTier);
+      values.push(updates.membershipTier || updates.membership_tier);
     }
     
-    if (updates.aiCredits !== undefined) {
+    if (updates.premiumSubscriptionType !== undefined || updates.premium_subscription_type !== undefined) {
+      updateFields.push(`premium_subscription_type = $${paramIndex++}`);
+      values.push(updates.premiumSubscriptionType || updates.premium_subscription_type);
+    }
+    
+    if (updates.aiCredits !== undefined || updates.ai_credits !== undefined) {
       updateFields.push(`ai_credits = $${paramIndex++}`);
-      values.push(updates.aiCredits);
+      values.push(updates.aiCredits || updates.ai_credits);
     }
     
-    if (updates.isActive !== undefined) {
+    if (updates.isActive !== undefined || updates.is_active !== undefined) {
       updateFields.push(`is_active = $${paramIndex++}`);
-      values.push(updates.isActive);
+      values.push(updates.isActive || updates.is_active);
     }
     
     // updated_at her zaman güncelle
@@ -103,7 +120,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
     
-    values.push(userId);
+    values.push(cleanUserId);
     
     const query = `
       UPDATE users 
@@ -111,6 +128,9 @@ export async function PATCH(request: NextRequest) {
       WHERE id = $${paramIndex}
       RETURNING *
     `;
+    
+    console.log('📝 SQL Query:', query);
+    console.log('📝 SQL Values:', values);
     
     const result = await sql.query(query, values);
     
@@ -162,17 +182,29 @@ export async function DELETE(request: NextRequest) {
     await sql`BEGIN`;
     
     try {
-      // 1. Kullanıcının yorumlarını sil
-      await sql`DELETE FROM location_reviews WHERE user_id = ${cleanUserId}`;
-      console.log(`🗑️ User ${cleanUserId} reviews deleted`);
+      // 1. Kullanıcının yorumlarını sil (tablo yoksa hata almayalım)
+      try {
+        await sql`DELETE FROM location_reviews WHERE user_id = ${cleanUserId}`;
+        console.log(`🗑️ User ${cleanUserId} reviews deleted`);
+      } catch (e) {
+        console.log(`⚠️ location_reviews tablosu yok veya hata: ${e instanceof Error ? e.message : ''}`);
+      }
       
-      // 2. Kullanıcının raporlarını sil (eğer cascade değilse)
-      await sql`DELETE FROM crowd_reports WHERE reported_by = ${cleanUserId}`;
-      console.log(`🗑️ User ${cleanUserId} reports deleted`);
+      // 2. Kullanıcının raporlarını sil (tablo yoksa hata almayalım)
+      try {
+        await sql`DELETE FROM crowd_reports WHERE reported_by = ${cleanUserId}`;
+        console.log(`🗑️ User ${cleanUserId} reports deleted`);
+      } catch (e) {
+        console.log(`⚠️ crowd_reports tablosu yok veya hata: ${e instanceof Error ? e.message : ''}`);
+      }
       
-      // 3. Kullanıcının favorilerini sil (ON DELETE CASCADE olsa bile explicit)
-      await sql`DELETE FROM user_favorites WHERE user_id = ${cleanUserId}`;
-      console.log(`🗑️ User ${cleanUserId} favorites deleted`);
+      // 3. Kullanıcının favorilerini sil (tablo yoksa hata almayalım)
+      try {
+        await sql`DELETE FROM user_favorites WHERE user_id = ${cleanUserId}`;
+        console.log(`🗑️ User ${cleanUserId} favorites deleted`);
+      } catch (e) {
+        console.log(`⚠️ user_favorites tablosu yok veya hata: ${e instanceof Error ? e.message : ''}`);
+      }
       
       // 4. Kullanıcıyı sil
       const result = await sql`

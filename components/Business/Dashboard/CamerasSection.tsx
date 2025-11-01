@@ -345,7 +345,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
             Henüz kamera eklenmemiş
           </h3>
           <p className="text-gray-500 mb-6">
-            ESP32-CAM cihazlarınızı bağlayarak AI destekli analiz yapın
+            Akıllı kameralarınızı bağlayarak AI destekli analiz yapın
           </p>
           <button
             onClick={() => setShowAddModal(true)}

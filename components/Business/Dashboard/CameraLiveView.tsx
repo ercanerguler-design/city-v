@@ -35,7 +35,7 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
         
         if (match) {
           const [, username, password, hostPath] = match;
-          // HTTP URL'e çevir - ESP32-CAM için genelde /stream endpoint'i
+          // HTTP URL'e çevir - IoT kameralar için genelde /stream endpoint'i
           url = `http://${hostPath}`;
         }
       } catch (e) {

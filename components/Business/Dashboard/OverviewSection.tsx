@@ -145,6 +145,66 @@ export default function OverviewSection({ businessProfile }: { businessProfile: 
         })}
       </div>
 
+      {/* AI Features */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-blue-600 rounded-lg">
+              <Activity className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-blue-900">AI Destekli Yoğunluk Takibi</h3>
+          </div>
+          <p className="text-blue-700 mb-3">Gerçek zamanlı müşteri sayısı ve yoğunluk analizi</p>
+          <div className="flex items-center gap-2 text-sm text-blue-600">
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+            <span>Aktif</span>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-purple-600 rounded-lg">
+              <TrendingUp className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-purple-900">Akıllı İstatistikler</h3>
+          </div>
+          <p className="text-purple-700 mb-3">Saatlik, günlük, haftalık detaylı raporlar</p>
+          <div className="flex items-center gap-2 text-sm text-purple-600">
+            <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse"></div>
+            <span>Güncelleniyor</span>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-green-600 rounded-lg">
+              <Eye className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-green-900">Performans Öngörüleri</h3>
+          </div>
+          <p className="text-green-700 mb-3">Gelecek saatler için tahmin ve öneriler</p>
+          <div className="flex items-center gap-2 text-sm text-green-600">
+            <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
+            <span>Analiz ediliyor</span>
+          </div>
+        </motion.div>
+      </div>
+
       {/* Quick Actions */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Hızlı İşlemler</h2>

@@ -30,11 +30,13 @@ export default function CityVAdminDashboard() {
   // Gerçek istatistikleri yükle
   const loadRealStats = async () => {
     try {
+      console.log('📊 Stats yükleniyor...');
       const response = await fetch('/api/admin/stats');
       const data = await response.json();
+      console.log('📊 Stats API Response:', data);
       if (data.success) {
         setRealStats(data.stats);
-        console.log('✅ Gerçek istatistikler yüklendi');
+        console.log('✅ Gerçek istatistikler yüklendi:', data.stats.revenue);
       }
     } catch (error) {
       console.error('❌ Stats load error:', error);
@@ -49,6 +51,7 @@ export default function CityVAdminDashboard() {
       if (data.success) {
         setUsers(data.users);
         console.log('✅ Kullanıcılar yüklendi:', data.users.length);
+        console.log('📋 İlk kullanıcı örneği:', data.users[0]);
       }
     } catch (error) {
       console.error('❌ Users load error:', error);
@@ -71,12 +74,17 @@ export default function CityVAdminDashboard() {
 
   // Admin değilse login sayfasına yönlendir
   useEffect(() => {
+    console.log('🔍 useEffect çalıştı - isAdmin:', isAdmin);
     if (!isAdmin) {
       console.log('⚠️ Admin değil, login sayfasına yönlendiriliyor...');
       router.push('/cityvadmin');
     } else {
       // Admin ise gerçek verileri yükle
+      console.log('✅ Admin onaylandı, stats yükleniyor...');
       loadRealStats();
+      loadUsers();
+      loadLocations();
+      loadBusinessMembers();
     }
   }, [isAdmin, router]);
 
@@ -138,6 +146,68 @@ export default function CityVAdminDashboard() {
       }
     } catch (error) {
       console.error('❌ Business members load error:', error);
+    }
+  };
+
+  // Normal kullanıcı premium yapma
+  const handleTogglePremium = async (user: any) => {
+    const newMembership = user.membership === 'premium' ? 'free' : 'premium';
+    const confirm = window.confirm(`${user.name} kullanıcısını ${newMembership === 'premium' ? 'Premium' : 'Free'} yapmak istediğinize emin misiniz?`);
+    
+    if (!confirm) return;
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.original_id,
+          updates: { membership_tier: newMembership }
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(`✅ ${user.name} ${newMembership === 'premium' ? 'Premium üye yapıldı' : 'Free üye yapıldı'}`);
+        
+        // Force refresh with delay
+        setTimeout(async () => {
+          await loadUsers();
+          await loadRealStats();
+        }, 500);
+      } else {
+        toast.error(`❌ ${data.error || 'Üyelik güncellenemedi'}`);
+      }
+    } catch (error) {
+      console.error('❌ Membership update error:', error);
+      toast.error('❌ Üyelik güncellenemedi');
+    }
+  };
+
+  // Normal kullanıcı silme
+  const handleDeleteUser = async (user: any) => {
+    const confirm = window.confirm(`${user.name} (${user.email}) kullanıcısını silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`);
+    
+    if (!confirm) return;
+
+    try {
+      const response = await fetch(`/api/admin/users?id=${user.original_id}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(`✅ ${user.name} silindi`);
+        loadUsers(); // Listeyi yenile
+        loadRealStats(); // Stats'ı güncelle
+      } else {
+        toast.error(`❌ ${data.error || 'Kullanıcı silinemedi'}`);
+      }
+    } catch (error) {
+      console.error('❌ User delete error:', error);
+      toast.error('❌ Kullanıcı silinemedi');
     }
   };
 
@@ -329,6 +399,57 @@ export default function CityVAdminDashboard() {
               />
             </div>
 
+            {/* Premium Subscription Breakdown */}
+            {realStats?.revenue?.premiumBreakdown && (
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-6 shadow-lg">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">💎 Premium Abonelik Detayları</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="bg-white dark:bg-slate-700 rounded-xl p-4">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">📅 Aylık Abonelik</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                      {realStats.revenue.premiumBreakdown.monthly?.count || 0} üye
+                    </div>
+                    <div className="text-lg font-bold text-green-600 dark:text-green-400 mt-2">
+                      ₺{(realStats.revenue.premiumBreakdown.monthly?.revenue || 0).toFixed(2)}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {realStats.revenue.premiumBreakdown.monthly?.count || 0} × ₺49.99/ay
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-slate-700 rounded-xl p-4">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">🗓️ Yıllık Abonelik</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                      {realStats.revenue.premiumBreakdown.yearly?.count || 0} üye
+                    </div>
+                    <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-2">
+                      ₺{(realStats.revenue.premiumBreakdown.yearly?.revenue || 0).toFixed(2)}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {realStats.revenue.premiumBreakdown.yearly?.count || 0} × ₺399.99/yıl
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Total Summary */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-slate-700 dark:to-slate-600 rounded-xl p-4 border-2 border-green-200 dark:border-green-600">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">💰 Toplam Gelir</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Business ({realStats.totalBusinessMembers || 0}) + Normal Premium ({realStats.premiumUsers || 0})
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        ₺{(realStats.revenue?.total || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">toplam</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Secondary Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <MiniStatCard icon={Building2} label="Business Üye" value={realStats?.totalBusinessMembers || 0} />
@@ -475,6 +596,9 @@ export default function CityVAdminDashboard() {
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
                         Son Aktivite
                       </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                        İşlemler
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -529,11 +653,31 @@ export default function CityVAdminDashboard() {
                               minute: '2-digit'
                             }) : '❌ Hiç giriş yapmadı'}
                           </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleTogglePremium(user)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                                  user.membership === 'premium'
+                                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                                    : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-200 dark:hover:bg-yellow-800'
+                                }`}
+                              >
+                                {user.membership === 'premium' ? '⬇️ Free Yap' : '💎 Premium Yap'}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(user)}
+                                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 transition"
+                              >
+                                🗑️ Sil
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-gray-500 dark:text-gray-400">
+                        <td colSpan={6} className="py-8 text-center text-gray-500 dark:text-gray-400">
                           Henüz normal üye yok
                         </td>
                       </tr>

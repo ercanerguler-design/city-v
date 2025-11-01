@@ -47,23 +47,39 @@ export default function ProHeader({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [campaignNotifications, setCampaignNotifications] = useState<any[]>([]);
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
+  const [lastShownCampaignId, setLastShownCampaignId] = useState<string | null>(null);
 
-  // Listen for campaign notifications from business
+  // Gerçek kampanyaları API'den çek (sadece CityV anasayfası için)
   useEffect(() => {
-    const handleCampaignNotification = (event: any) => {
-      const campaign = event.detail;
-      setCampaignNotifications(prev => [campaign, ...prev].slice(0, 5));
-      setShowNotificationPopup(true);
-      
-      setTimeout(() => setShowNotificationPopup(false), 5000);
+    const loadActiveCampaigns = async () => {
+      try {
+        const response = await fetch('/api/campaigns/active');
+        const data = await response.json();
+        
+        if (data.success && data.campaigns.length > 0) {
+          setCampaignNotifications(data.campaigns);
+          
+          // Yeni bir kampanya varsa popup göster
+          const latestCampaign = data.campaigns[0];
+          if (latestCampaign.id !== lastShownCampaignId) {
+            setShowNotificationPopup(true);
+            setLastShownCampaignId(latestCampaign.id);
+            setTimeout(() => setShowNotificationPopup(false), 5000);
+          }
+        }
+      } catch (error) {
+        console.error('Kampanyalar yüklenemedi:', error);
+      }
     };
 
-    window.addEventListener('cityv:campaign-notification', handleCampaignNotification);
+    // İlk yükleme
+    loadActiveCampaigns();
     
-    return () => {
-      window.removeEventListener('cityv:campaign-notification', handleCampaignNotification);
-    };
-  }, []);
+    // Her 5 dakikada bir güncelle
+    const interval = setInterval(loadActiveCampaigns, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [lastShownCampaignId]);
 
   // Listen for crowd updates
   const [crowdUpdates, setCrowdUpdates] = useState<Map<string, any>>(new Map());

@@ -22,9 +22,10 @@ interface DetectedObject {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { cameraId: string } }
+  context: { params: Promise<{ cameraId: string }> }
 ) {
   try {
+    const params = await context.params;
     const cameraId = params.cameraId;
     const body = await request.json();
     const { frame_base64, timestamp } = body;
@@ -95,9 +96,10 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { cameraId: string } }
+  context: { params: Promise<{ cameraId: string }> }
 ) {
   try {
+    const params = await context.params;
     const cameraId = params.cameraId;
 
     // Son detection sonuçlarını al

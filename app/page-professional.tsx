@@ -57,6 +57,7 @@ import { useRecommendationStore } from '@/lib/stores/recommendationStore';
 import { usePremiumStore } from '@/lib/stores/premiumStore';
 import { useTrackedStore } from '@/lib/stores/trackedStore';
 import { useCameraStore } from '@/store/cameraStore';
+import { useFavoritesStore } from '@/lib/stores/favoritesStore';
 
 // Data & Types
 import { Location, CrowdLevel } from '@/types';
@@ -123,6 +124,7 @@ export default function ProfessionalHome() {
   const { addVisitToHistory } = useRecommendationStore();
   const { checkSubscriptionStatus } = usePremiumStore();
   const { isQRScannerActive } = useCameraStore();
+  const { loadFavorites, isLoaded } = useFavoritesStore();
 
   // Keyboard shortcuts
   useKeyboardShortcuts([
@@ -194,6 +196,14 @@ export default function ProfessionalHome() {
     }
   }, [userLocation]);
 
+  // Kullanıcı login olduğunda favorileri veritabanından yükle
+  useEffect(() => {
+    if (isAuthenticated && user?.id && !isLoaded) {
+      console.log('👤 Kullanıcı favorileri yükleniyor...');
+      loadFavorites(user.id);
+    }
+  }, [isAuthenticated, user?.id, isLoaded, loadFavorites]);
+
   // Business locations'ları çek ve haritaya ekle (SADECE GERÇEK VERİ)
   useEffect(() => {
     const fetchBusinessLocations = async () => {
@@ -226,11 +236,11 @@ export default function ProfessionalHome() {
           
           // Business locations'ı Location formatına dönüştür
           const businessLocations: Location[] = data.locations.map((business: any) => {
-            // API'den [lng, lat] geliyor, Leaflet için [lat, lng] çevirelim
-            const lng = typeof business.coordinates[0] === 'number' 
+            // API'den [lat, lng] geliyor, direkt kullan
+            const lat = typeof business.coordinates[0] === 'number' 
               ? business.coordinates[0] 
               : parseFloat(business.coordinates[0]);
-            const lat = typeof business.coordinates[1] === 'number'
+            const lng = typeof business.coordinates[1] === 'number'
               ? business.coordinates[1]
               : parseFloat(business.coordinates[1]);
             
@@ -238,7 +248,7 @@ export default function ProfessionalHome() {
               id: `business-${business.businessId}`, // Business prefix ile unique ID
               name: business.name,
               category: business.category || 'restaurant',
-              coordinates: [lat, lng], // Leaflet için [lat, lng] formatı
+              coordinates: [lat, lng], // [lat, lng] formatı - API'den doğru geliyor
               address: business.address,
               description: business.description,
               currentCrowdLevel: business.crowdLevel || 'orta',
@@ -488,11 +498,13 @@ export default function ProfessionalHome() {
     console.log('📊 Filtrelenmiş yer sayısı:', filteredLocations.length);
     
     if (!userLocation) {
-      console.log('⚠️ Kullanıcı konumu yok, sıralama yapılmıyor');
+      console.log('⚠️ Kullanıcı konumu yok, işletme gösterilmeyecek');
       console.log('📏 ============================================\n');
-      return filteredLocations;
+      return [];
     }
 
+    const MAX_DISTANCE_KM = 7;
+    
     const sorted = [...filteredLocations]
       .map((loc) => ({
         ...loc,
@@ -503,16 +515,19 @@ export default function ProfessionalHome() {
           loc.coordinates[1]
         ),
       }))
+      .filter((loc) => loc.distance <= MAX_DISTANCE_KM)
       .sort((a, b) => a.distance - b.distance);
     
     console.log('\n✅ SIRALAMA TAMAMLANDI');
-    console.log('📊 Toplam:', sorted.length, 'yer');
+    console.log(`📊 ${MAX_DISTANCE_KM}km içinde:`, sorted.length, 'işletme');
     
     if (sorted.length > 0) {
       console.log('🎯 En yakın 3 yer:');
       sorted.slice(0, 3).forEach((loc, i) => {
         console.log(`   ${i+1}. ${loc.name} (${loc.category}) - ${loc.distance.toFixed(2)} km`);
       });
+    } else {
+      console.log('⚠️ 7km içinde işletme bulunamadı');
     }
     console.log('📏 ============================================\n');
     

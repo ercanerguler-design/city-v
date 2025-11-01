@@ -26,11 +26,29 @@ export default function AdminPage() {
   const [allUsers, setAllUsers] = useState<StoredUser[]>([]);
   const [mounted, setMounted] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [realStats, setRealStats] = useState<any>(null);
 
   // Client-side mount kontrolü (hydration hatası önleme)
   useEffect(() => {
     setMounted(true);
+    loadRealStats(); // Stats'ı hemen yükle
   }, []);
+
+  // Gerçek stats'ı API'den yükle
+  const loadRealStats = async () => {
+    try {
+      console.log('📊 Stats API çağrılıyor...');
+      const response = await fetch('/api/admin/stats');
+      const data = await response.json();
+      console.log('📊 Stats yanıtı:', data);
+      if (data.success) {
+        setRealStats(data.stats);
+        console.log('✅ Gerçek stats yüklendi:', data.stats.revenue);
+      }
+    } catch (error) {
+      console.error('❌ Stats yükleme hatası:', error);
+    }
+  };
 
   // Kullanıcıları yükle (Postgres'ten)
   useEffect(() => {
@@ -613,22 +631,109 @@ export default function AdminPage() {
               <StatCard
                 icon={DollarSign}
                 label="Aylık Gelir"
-                value={`₺${stats.revenue.monthly.toLocaleString()}`}
+                value={`₺${(realStats?.revenue?.monthly || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 gradient="bg-gradient-to-br from-green-500 to-green-600"
               />
               <StatCard
                 icon={TrendingUp}
                 label="Yıllık Gelir"
-                value={`₺${stats.revenue.yearly.toLocaleString()}`}
+                value={`₺${(realStats?.revenue?.yearly || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 gradient="bg-gradient-to-br from-blue-500 to-blue-600"
               />
               <StatCard
                 icon={Crown}
                 label="Toplam Gelir"
-                value={`₺${stats.revenue.total.toLocaleString()}`}
+                value={`₺${(realStats?.revenue?.total || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 gradient="bg-gradient-to-br from-purple-500 to-purple-600"
               />
             </div>
+
+            {/* Premium Subscription Breakdown */}
+            {realStats?.revenue?.premiumBreakdown && (
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-6 shadow-lg">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">💎 Premium Abonelik Detayları</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="bg-white dark:bg-slate-700 rounded-xl p-4">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">📅 Aylık Abonelik</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                      {realStats.revenue.premiumBreakdown.monthly.count} üye
+                    </div>
+                    <div className="text-lg font-bold text-green-600 dark:text-green-400 mt-2">
+                      ₺{realStats.revenue.premiumBreakdown.monthly.revenue.toFixed(2)}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {realStats.revenue.premiumBreakdown.monthly.count} × ₺49.99/ay
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-slate-700 rounded-xl p-4">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">🗓️ Yıllık Abonelik</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                      {realStats.revenue.premiumBreakdown.yearly.count} üye
+                    </div>
+                    <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-2">
+                      ₺{realStats.revenue.premiumBreakdown.yearly.revenue.toFixed(2)}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {realStats.revenue.premiumBreakdown.yearly.count} × ₺399.99/yıl
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Total Summary */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-slate-700 dark:to-slate-600 rounded-xl p-4 border-2 border-green-200 dark:border-green-600">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">💰 Normal Premium Gelir (Toplam)</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {realStats.revenue.premiumBreakdown.monthly.count} aylık + {realStats.revenue.premiumBreakdown.yearly.count} yıllık
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        ₺{realStats.revenue.normalPremiumRevenue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        ₺{realStats.revenue.premiumBreakdown.monthly.revenue.toFixed(2)} + ₺{realStats.revenue.premiumBreakdown.yearly.revenue.toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Business Revenue */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 rounded-xl p-4 border-2 border-blue-200 dark:border-blue-600">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">🏢 Business Gelir (Aylık)</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {realStats.totalBusinessMembers || 0} business üye
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        ₺{realStats.revenue.businessRevenue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Grand Total */}
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-slate-700 dark:to-slate-600 rounded-xl p-4 border-2 border-purple-200 dark:border-purple-600">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">💎 Genel Toplam</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Business + Normal Premium
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                        ₺{realStats.revenue.total.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -642,11 +747,11 @@ export default function AdminPage() {
                     <Crown className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">Premium Üyeler</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{stats.premiumUsers} aktif üye</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{realStats?.premiumUsers || 0} aktif üye</p>
                     </div>
                   </div>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    ₺{stats.revenue.monthly.toLocaleString()}
+                    ₺{(realStats?.revenue?.normalPremiumRevenue || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>

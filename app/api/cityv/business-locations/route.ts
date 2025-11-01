@@ -143,9 +143,9 @@ export async function GET(req: NextRequest) {
           name: business.business_name,
           category: business.business_type || 'other',
           coordinates: [
-            parseFloat(business.longitude), 
-            parseFloat(business.latitude)
-          ], // String'den number'a çevir
+            parseFloat(business.latitude),
+            parseFloat(business.longitude)
+          ], // [lat, lng] formatı - Leaflet ve Google Maps için
           address: business.address,
           city: business.city,
           district: business.district,
