@@ -362,21 +362,19 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 1. Business subscription'ı deaktif et
-    await query(`
-      UPDATE business_subscriptions
-      SET is_active = false, end_date = NOW()
-      WHERE user_id = $1
-    `, [userId]);
-
-    // 2. Business user'ı deaktif et
+    // 1. Business user'ı free'e düşür (YENİ SİSTEM)
     await query(`
       UPDATE business_users
-      SET is_active = false
+      SET 
+        membership_type = 'free',
+        max_cameras = 1,
+        membership_expiry_date = NULL
       WHERE id = $1
     `, [userId]);
 
-    // 3. Normal users tablosunda varsa membership'i free yap
+    console.log(`✅ Business user ${userId} reverted to free membership`);
+
+    // 2. Normal users tablosunda varsa membership'i free yap
     const userEmail = await query(
       'SELECT email FROM business_users WHERE id = $1',
       [userId]
@@ -392,14 +390,14 @@ export async function DELETE(request: NextRequest) {
       );
 
       if (normalUser.rows.length > 0) {
-        // Kullanıcıyı free üyeliğe dönüştür (users tablosunda membership_tier var, premium kolonu yok)
+        // Kullanıcıyı free üyeliğe dönüştür
         await query(`
           UPDATE users
           SET membership_tier = 'free'
           WHERE email = $1
         `, [email]);
         
-        console.log(`✅ User ${email} reverted to free tier`);
+        console.log(`✅ Normal user ${email} also reverted to free tier`);
       }
     }
 

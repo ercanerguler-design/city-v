@@ -801,7 +801,7 @@ export default function CityVAdminDashboard() {
                                     const response = await fetch('/api/admin/business-members', {
                                       method: 'DELETE',
                                       headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ userId: member.user_id })
+                                      body: JSON.stringify({ userId: member.id })
                                     });
 
                                     const data = await response.json();
