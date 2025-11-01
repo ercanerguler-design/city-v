@@ -7,6 +7,21 @@ import { query } from '@/lib/db';
  */
 export async function GET(req: NextRequest) {
   try {
+    console.log('🏢 Business locations API çağrıldı');
+    
+    // Database URL kontrolü
+    if (!process.env.DATABASE_URL) {
+      console.error('❌ DATABASE_URL not configured!');
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Database not configured',
+          locations: []
+        },
+        { status: 500 }
+      );
+    }
+    
     const { searchParams } = new URL(req.url);
     const bounds = searchParams.get('bounds'); // "lat1,lng1,lat2,lng2"
     const category = searchParams.get('category'); // "restaurant", "cafe", "retail" vb.
@@ -56,7 +71,9 @@ export async function GET(req: NextRequest) {
 
     sqlQuery += ` ORDER BY bp.created_at DESC LIMIT 100`;
 
+    console.log('📊 SQL Query çalıştırılıyor...');
     const businessesResult = await query(sqlQuery, params);
+    console.log('✅ Business profiles bulundu:', businessesResult.rows.length);
 
     // Her işletme için gerçek zamanlı verileri ekle
     const businessesWithData = await Promise.all(
@@ -165,8 +182,16 @@ export async function GET(req: NextRequest) {
 
   } catch (error) {
     console.error('❌ Business locations API error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('❌ Error details:', errorMessage);
+    
     return NextResponse.json(
-      { success: false, error: 'Server error' },
+      { 
+        success: false, 
+        error: 'Server error',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+        locations: [] // Boş array döndür, frontend'de hata vermesin
+      },
       { status: 500 }
     );
   }

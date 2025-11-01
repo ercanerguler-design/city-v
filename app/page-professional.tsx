@@ -199,12 +199,30 @@ export default function ProfessionalHome() {
     const fetchBusinessLocations = async () => {
       try {
         console.log('🏢 Business locations çekiliyor...');
-        const response = await fetch('/api/cityv/business-locations');
-        const data = await response.json();
         
-        if (data.success && data.locations) {
+        const response = await fetch('/api/cityv/business-locations', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('📦 API Response:', data);
+        
+        if (data.success && data.locations && Array.isArray(data.locations)) {
           console.log('✅ Business locations alındı:', data.locations.length);
-          console.log('📍 Locations detay:', data.locations);
+          
+          if (data.locations.length === 0) {
+            console.warn('⚠️ Business location bulunamadı');
+            setLocations([]);
+            setIsLoadingPlaces(false);
+            return;
+          }
           
           // Business locations'ı Location formatına dönüştür
           const businessLocations: Location[] = data.locations.map((business: any) => {
@@ -215,11 +233,6 @@ export default function ProfessionalHome() {
             const lat = typeof business.coordinates[1] === 'number'
               ? business.coordinates[1]
               : parseFloat(business.coordinates[1]);
-            
-            console.log(`🏪 ${business.name}:`);
-            console.log(`   Raw coordinates:`, business.coordinates);
-            console.log(`   Parsed: [${lat}, ${lng}] (lat, lng)`);
-            console.log(`   Types: lat=${typeof lat}, lng=${typeof lng}`);
             
             return {
               id: `business-${business.businessId}`, // Business prefix ile unique ID
@@ -253,12 +266,14 @@ export default function ProfessionalHome() {
           
           console.log('✅ Business locations haritaya eklendi');
         } else {
-          console.warn('⚠️ Business location bulunamadı');
+          console.warn('⚠️ API yanıtı başarısız veya veri yok:', data);
           setLocations([]);
           setIsLoadingPlaces(false);
         }
       } catch (error) {
-        console.error('❌ Business locations çekilemedi:', error);
+        console.error('❌ Business locations fetch hatası:', error);
+        console.error('❌ Hata detayı:', error instanceof Error ? error.message : 'Bilinmeyen hata');
+        // Hata durumunda boş array set et, kullanıcı deneyimini bozmayalım
         setLocations([]);
         setIsLoadingPlaces(false);
       }
