@@ -49,23 +49,25 @@ export default function CityVAdminDashboard() {
     }, 500);
   };
 
-  // Business üyeleri yükle
-  const loadBusinessMembers = async () => {
-    try {
-      const response = await fetch('/api/admin/business-members');
-      const data = await response.json();
-      if (data.success) {
-        setBusinessMembers(data.members);
-      }
-    } catch (error) {
-      console.error('Business members load error:', error);
-    }
-  };
-
+  // Business üyeleri yükle (her zaman useEffect çağrılır, içinde conditional)
   useEffect(() => {
-    if (isAdmin && activeTab === 'business') {
-      loadBusinessMembers();
-    }
+    const loadBusinessMembers = async () => {
+      if (!isAdmin || activeTab !== 'business') {
+        return; // Early return - hook order değişmez
+      }
+      
+      try {
+        const response = await fetch('/api/admin/business-members');
+        const data = await response.json();
+        if (data.success) {
+          setBusinessMembers(data.members);
+        }
+      } catch (error) {
+        console.error('Business members load error:', error);
+      }
+    };
+
+    loadBusinessMembers();
   }, [isAdmin, activeTab]);
 
   // Tab içerikleri
