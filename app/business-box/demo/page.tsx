@@ -253,7 +253,7 @@ export default function DemoPage() {
                 </div>
                 <div className="mb-3">
                   <div className="text-4xl font-black text-gray-900 mb-1">
-                    {data.current.count}
+                    {mounted ? data.current.count : '--'}
                   </div>
                   <div className="text-sm text-gray-500 font-medium">
                     / {data.current.capacity} kişi kapasiteli
@@ -268,7 +268,7 @@ export default function DemoPage() {
                   <span className={`text-sm font-bold ${
                     data.current.trend === 'up' ? 'text-red-600' : 'text-green-600'
                   }`}>
-                    {data.current.change} kişi (son 5dk)
+                    {mounted ? data.current.change : '--'} kişi (son 5dk)
                   </span>
                 </div>
                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -300,7 +300,7 @@ export default function DemoPage() {
                 </div>
                 <div className="mb-3">
                   <div className="text-4xl font-black text-gray-900 mb-1">
-                    ₺{data.revenue.today.toLocaleString()}
+                    ₺{mounted ? data.revenue.today.toLocaleString() : '--'}
                   </div>
                   <div className="text-sm text-gray-500 font-medium">
                     Bugünkü ciro
@@ -309,11 +309,11 @@ export default function DemoPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Dün:</span>
-                    <span className="font-bold text-gray-900">₺{data.revenue.yesterday.toLocaleString()}</span>
+                    <span className="font-bold text-gray-900">₺{mounted ? data.revenue.yesterday.toLocaleString() : '--'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Kişi başı ort:</span>
-                    <span className="font-bold text-gray-900">₺{data.revenue.avgPerCustomer}</span>
+                    <span className="font-bold text-gray-900">₺{mounted ? data.revenue.avgPerCustomer : '--'}</span>
                   </div>
                 </div>
               </div>
@@ -330,7 +330,7 @@ export default function DemoPage() {
                 </div>
                 <div className="mb-3">
                   <div className="text-4xl font-black text-gray-900 mb-1">
-                    {data.staff.current}→{data.staff.recommended}
+                    {mounted ? `${data.staff.current}→${data.staff.recommended}` : '--→--'}
                   </div>
                   <div className="text-sm text-gray-500 font-medium">
                     Şu an → Öneri
@@ -339,15 +339,15 @@ export default function DemoPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Mevcut:</span>
-                    <span className="font-bold text-gray-900">₺{data.staff.cost}</span>
+                    <span className="font-bold text-gray-900">₺{mounted ? data.staff.cost : '--'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Optimize:</span>
-                    <span className="font-bold text-green-600">₺{data.staff.optimized}</span>
+                    <span className="font-bold text-green-600">₺{mounted ? data.staff.optimized : '--'}</span>
                   </div>
                   <div className="pt-2 border-t border-gray-100">
                     <span className="text-xs text-green-600 font-bold">
-                      💰 Aylık ₺{(data.staff.cost - data.staff.optimized) * 30} tasarruf
+                      💰 Aylık ₺{mounted ? ((data.staff.cost - data.staff.optimized) * 30).toLocaleString() : '--'} tasarruf
                     </span>
                   </div>
                 </div>
@@ -365,7 +365,7 @@ export default function DemoPage() {
                 </div>
                 <div className="mb-3">
                   <div className="text-4xl font-black text-gray-900 mb-1">
-                    {data.cityv.profileViews}
+                    {mounted ? data.cityv.profileViews : '--'}
                   </div>
                   <div className="text-sm text-gray-500 font-medium">
                     Bu ay görüntüleme
@@ -376,13 +376,13 @@ export default function DemoPage() {
                     <span className="text-gray-600 flex items-center gap-1">
                       <Heart className="w-3 h-3" /> Favoriler:
                     </span>
-                    <span className="font-bold text-gray-900">{data.cityv.favorites}</span>
+                    <span className="font-bold text-gray-900">{mounted ? data.cityv.favorites : '--'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 flex items-center gap-1">
                       <MapPin className="w-3 h-3" /> Check-in:
                     </span>
-                    <span className="font-bold text-gray-900">{data.cityv.checkIns}</span>
+                    <span className="font-bold text-gray-900">{mounted ? data.cityv.checkIns : '--'}</span>
                   </div>
                 </div>
               </div>
@@ -677,7 +677,7 @@ export default function DemoPage() {
                     <Eye className="w-5 h-5 text-blue-600" />
                     <span className="text-sm text-gray-600">Profil Görüntüleme</span>
                   </div>
-                  <div className="text-3xl font-black text-blue-600">{data.cityv.profileViews}</div>
+                  <div className="text-3xl font-black text-blue-600">{mounted ? data.cityv.profileViews : '--'}</div>
                   <div className="text-xs text-gray-500 mt-1">Bu ay</div>
                 </div>
 
@@ -686,7 +686,7 @@ export default function DemoPage() {
                     <Heart className="w-5 h-5 text-pink-600" />
                     <span className="text-sm text-gray-600">Favorilere Ekleme</span>
                   </div>
-                  <div className="text-3xl font-black text-pink-600">{data.cityv.favorites}</div>
+                  <div className="text-3xl font-black text-pink-600">{mounted ? data.cityv.favorites : '--'}</div>
                   <div className="text-xs text-gray-500 mt-1">Toplam</div>
                 </div>
 
@@ -695,8 +695,8 @@ export default function DemoPage() {
                     <Star className="w-5 h-5 text-yellow-600" />
                     <span className="text-sm text-gray-600">Değerlendirme</span>
                   </div>
-                  <div className="text-3xl font-black text-yellow-600">{data.cityv.rating} / 5.0</div>
-                  <div className="text-xs text-gray-500 mt-1">{data.cityv.reviews} yorum</div>
+                  <div className="text-3xl font-black text-yellow-600">{mounted ? data.cityv.rating : '--'} / 5.0</div>
+                  <div className="text-xs text-gray-500 mt-1">{mounted ? data.cityv.reviews : '--'} yorum</div>
                 </div>
               </div>
 
