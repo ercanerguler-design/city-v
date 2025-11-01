@@ -4,14 +4,13 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  MapPin, Users, TrendingUp, Star, Heart, Clock,
+  MapPin, Users, TrendingUp, TrendingDown, Star, Heart, Clock,
   Search, Filter, Crown, Zap, Target, Award,
   Coffee, ShoppingBag, Utensils, Building2,
   Activity, Eye, Bell, Sparkles, ChevronRight,
   Camera, Radio, BarChart3, Wifi, Signal, Battery
 } from 'lucide-react';
 import ProHeader from '@/components/Layout/ProHeader';
-import LiveCrowdSidebar from '@/components/RealTime/LiveCrowdSidebar';
 
 // Dynamic import for map
 const MapViewEnhanced = dynamic(() => import('@/components/Map/MapViewEnhanced'), {
@@ -42,6 +41,8 @@ const DEMO_LOCATIONS = [
     openingHours: '24 Saat Açık',
     tags: ['Merkez', 'Alışveriş', 'Ulaşım'],
     waitTime: 5,
+    averageWaitTime: 5,
+    lastUpdated: new Date(),
     trend: 'up',
     change: 12,
   },
@@ -59,6 +60,8 @@ const DEMO_LOCATIONS = [
     openingHours: '09:00 - 23:00',
     tags: ['Cafe', 'Restoran', 'Butik'],
     waitTime: 3,
+    averageWaitTime: 3,
+    lastUpdated: new Date(),
     trend: 'stable',
     change: 0,
   },
@@ -76,6 +79,8 @@ const DEMO_LOCATIONS = [
     openingHours: '10:00 - 22:00',
     tags: ['Alışveriş', 'Sinema', 'Yemek'],
     waitTime: 2,
+    averageWaitTime: 2,
+    lastUpdated: new Date(),
     trend: 'down',
     change: -8,
   },
@@ -93,6 +98,8 @@ const DEMO_LOCATIONS = [
     openingHours: '09:00 - 17:00',
     tags: ['Tarihi', 'Müze', 'Park'],
     waitTime: 0,
+    averageWaitTime: 0,
+    lastUpdated: new Date(),
     trend: 'stable',
     change: 0,
   },
@@ -110,6 +117,8 @@ const DEMO_LOCATIONS = [
     openingHours: '08:00 - 20:00',
     tags: ['Park', 'Piknik', 'Doğa'],
     waitTime: 1,
+    averageWaitTime: 1,
+    lastUpdated: new Date(),
     trend: 'up',
     change: 5,
   },
@@ -127,6 +136,8 @@ const DEMO_LOCATIONS = [
     openingHours: '10:00 - 22:00',
     tags: ['Lüks', 'Restoran', 'Marka'],
     waitTime: 4,
+    averageWaitTime: 4,
+    lastUpdated: new Date(),
     trend: 'up',
     change: 15,
   },
@@ -144,6 +155,8 @@ const DEMO_LOCATIONS = [
     openingHours: '24 Saat Açık',
     tags: ['Park', 'Gölet', 'Yürüyüş'],
     waitTime: 0,
+    averageWaitTime: 0,
+    lastUpdated: new Date(),
     trend: 'stable',
     change: 0,
   },
@@ -161,6 +174,8 @@ const DEMO_LOCATIONS = [
     openingHours: '08:00 - 19:00',
     tags: ['Kale', 'Manzara', 'Fotoğraf'],
     waitTime: 1,
+    averageWaitTime: 1,
+    lastUpdated: new Date(),
     trend: 'up',
     change: 7,
   },
@@ -183,7 +198,8 @@ const updateCrowdData = (locations: any[]) => {
     return {
       ...loc,
       currentPeople: newPeople,
-      currentCrowdLevel: newCrowdLevel as const,
+      currentCrowdLevel: newCrowdLevel,
+      lastUpdated: new Date(),
       change,
       trend: change > 0 ? 'up' : change < 0 ? 'down' : 'stable',
     };
@@ -195,7 +211,6 @@ export default function CityVDemo() {
   const [locations, setLocations] = useState(DEMO_LOCATIONS);
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [isCrowdSidebarOpen, setIsCrowdSidebarOpen] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [liveUpdateCount, setLiveUpdateCount] = useState(0);
@@ -371,20 +386,79 @@ export default function CityVDemo() {
       <div className="absolute inset-0">
         <MapViewEnhanced
           locations={filteredLocations}
-          onLocationSelect={setSelectedLocation}
-          selectedLocation={selectedLocation}
-          userLocation={{ latitude: 39.9208, longitude: 32.8541 }}
+          center={[39.9208, 32.8541] as [number, number]}
+          zoom={13}
+          onLocationClick={(loc: any) => setSelectedLocation(loc)}
+          userLocation={[39.9208, 32.8541]}
         />
       </div>
 
-      {/* Live Crowd Sidebar */}
-      <div className="absolute top-20 right-0 z-40">
-        <LiveCrowdSidebar
-          isOpen={isCrowdSidebarOpen}
-          onToggle={() => setIsCrowdSidebarOpen(!isCrowdSidebarOpen)}
-          locations={locations}
-        />
-      </div>
+      {/* Demo Live Crowd Panel */}
+      <motion.div
+        initial={{ x: 100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="absolute top-20 right-4 z-40 bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl p-6 w-80 border border-gray-200"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-600" />
+            Canlı Kalabalık
+          </h3>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-xs text-gray-500">Canlı</span>
+          </div>
+        </div>
+        
+        <div className="space-y-3 max-h-[400px] overflow-y-auto">
+          {locations.slice(0, 5).map((loc) => (
+            <div 
+              key={loc.id} 
+              className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-3 border border-blue-100 hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => setSelectedLocation(loc)}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-sm text-gray-900 mb-1">{loc.name}</h4>
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <MapPin className="w-3 h-3" />
+                    <span>{loc.category}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className={`font-bold text-sm ${
+                    loc.currentCrowdLevel === 'very_high' ? 'text-red-600' :
+                    loc.currentCrowdLevel === 'high' ? 'text-orange-600' :
+                    loc.currentCrowdLevel === 'moderate' ? 'text-yellow-600' :
+                    'text-green-600'
+                  }`}>
+                    {mounted ? loc.currentPeople : '--'}
+                  </div>
+                  <div className="text-xs text-gray-500">kişi</div>
+                </div>
+              </div>
+              <div className="mt-2 flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  {loc.trend === 'up' && <TrendingUp className="w-3 h-3 text-red-500" />}
+                  {loc.trend === 'down' && <TrendingDown className="w-3 h-3 text-green-500" />}
+                  <span className={`text-xs font-medium ${
+                    loc.trend === 'up' ? 'text-red-600' : 
+                    loc.trend === 'down' ? 'text-green-600' : 
+                    'text-gray-600'
+                  }`}>
+                    {loc.change > 0 ? '+' : ''}{loc.change}%
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <Clock className="w-3 h-3" />
+                  {loc.waitTime}dk
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
 
       {/* IoT Status */}
       <motion.div
