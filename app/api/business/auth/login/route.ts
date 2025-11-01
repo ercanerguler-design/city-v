@@ -74,35 +74,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Subscription bilgilerini ayrı sorgu ile al
-    let subscriptionData = null;
+    // Membership bilgilerini YENİ SİSTEMden al (business_users tablosundan)
+    let membershipData = null;
     try {
-      const subscriptionResult = await query(
-        `SELECT plan_type, max_cameras, monthly_price, start_date, end_date, is_active
-         FROM business_subscriptions
-         WHERE user_id = $1 AND is_active = true
-         ORDER BY created_at DESC LIMIT 1`,
+      const membershipResult = await query(
+        `SELECT membership_type, max_cameras, membership_expiry_date
+         FROM business_users
+         WHERE id = $1`,
         [user.id]
       );
       
-      if (subscriptionResult.rows.length > 0) {
-        subscriptionData = subscriptionResult.rows[0];
+      if (membershipResult.rows.length > 0) {
+        membershipData = membershipResult.rows[0];
+        console.log('📋 Membership data:', membershipData);
       }
     } catch (err) {
-      console.log('⚠️ Subscription query failed, continuing without subscription data');
+      console.log('⚠️ Membership query failed:', err);
     }
 
-    // JWT token oluştur
+    // JWT token oluştur (8 saat - günlük session)
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
-        role: 'business_user', // Default role
-        planType: subscriptionData?.plan_type || 'premium',
-        maxCameras: subscriptionData?.max_cameras || 10
+        role: 'business_user',
+        planType: membershipData?.membership_type || 'free',
+        maxCameras: membershipData?.max_cameras || 1
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '8h' }
     );
 
     // Last login güncelle
@@ -111,18 +111,19 @@ export async function POST(request: NextRequest) {
       [user.id]
     );
 
-    // Kullanıcı bilgilerini döndür (şifre hariç)
+    // Kullanıcı bilgilerini döndür (şifre hariç) - YENİ SİSTEM
     const userData = {
       id: user.id,
       email: user.email,
       fullName: user.full_name,
       phone: user.phone,
-      role: 'business_user', // Default role
-      planType: subscriptionData?.plan_type || 'premium',
-      maxCameras: subscriptionData?.max_cameras || 10,
-      monthlyPrice: subscriptionData?.monthly_price || 249,
-      subscriptionStart: subscriptionData?.start_date || null,
-      subscriptionEnd: subscriptionData?.end_date || null
+      role: 'business_user',
+      membership_type: membershipData?.membership_type || 'free',
+      membership_expiry_date: membershipData?.membership_expiry_date || null,
+      max_cameras: membershipData?.max_cameras || 1,
+      // Backward compatibility için eski alanlar
+      planType: membershipData?.membership_type || 'free',
+      maxCameras: membershipData?.max_cameras || 1
     };
 
     return NextResponse.json({
