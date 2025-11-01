@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Camera, TrendingUp, Clock, Activity, Eye } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Users, Camera, TrendingUp, Clock, Activity, Eye, Megaphone } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
+
+const CampaignCreationModal = dynamic(() => import('./CampaignCreationModal'), { ssr: false });
 
 interface MetricCard {
   title: string;
@@ -13,6 +16,7 @@ interface MetricCard {
 }
 
 export default function OverviewSection({ businessProfile }: { businessProfile: any }) {
+  const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [metrics, setMetrics] = useState<MetricCard[]>([
     {
       title: 'Bugünkü Ziyaretçi',
@@ -144,7 +148,7 @@ export default function OverviewSection({ businessProfile }: { businessProfile: 
       {/* Quick Actions */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Hızlı İşlemler</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button 
             onClick={() => window.dispatchEvent(new CustomEvent('navigateToSection', { detail: 'cameras' }))}
             className="flex items-center gap-3 p-4 rounded-lg border-2 border-dashed border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all group"
@@ -177,8 +181,32 @@ export default function OverviewSection({ businessProfile }: { businessProfile: 
               <p className="text-sm text-gray-500">Detaylı analiz görün</p>
             </div>
           </button>
+
+          <button 
+            onClick={() => setShowCampaignModal(true)}
+            className="flex items-center gap-3 p-4 rounded-lg border-2 border-dashed border-gray-200 hover:border-orange-500 hover:bg-orange-50 transition-all group"
+          >
+            <Megaphone className="w-8 h-8 text-gray-400 group-hover:text-orange-600" />
+            <div className="text-left">
+              <p className="font-medium text-gray-900 group-hover:text-orange-600">Kampanya Oluştur</p>
+              <p className="text-sm text-gray-500">Push bildirim gönder</p>
+            </div>
+          </button>
         </div>
       </div>
+
+      {/* Campaign Modal */}
+      <AnimatePresence>
+        {showCampaignModal && (
+          <CampaignCreationModal
+            businessProfile={businessProfile}
+            onClose={() => setShowCampaignModal(false)}
+            onSuccess={() => {
+              loadAnalytics(); // Refresh analytics after campaign
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Recent Activity */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
