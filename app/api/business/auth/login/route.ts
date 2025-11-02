@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { sql } from '@vercel/postgres';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
     console.log('🔐 Business login attempt:', email);
 
     // Business user'ı bul
-    const result = await query(
-      `SELECT 
+    const result = await sql`
+      SELECT 
         bu.id,
         bu.email,
         bu.password_hash,
@@ -29,9 +29,8 @@ export async function POST(request: NextRequest) {
         bu.added_by_admin,
         bu.is_active
        FROM business_users bu
-       WHERE bu.email = $1 AND bu.is_active = true`,
-      [email]
-    );
+       WHERE bu.email = ${email} AND bu.is_active = true
+    `;
 
     console.log('📋 Query result:', {
       found: result.rows.length > 0,
@@ -77,15 +76,14 @@ export async function POST(request: NextRequest) {
     // Membership bilgilerini YENİ SİSTEMden al (business_subscriptions tablosundan)
     let membershipData = null;
     try {
-      const membershipResult = await query(
-        `SELECT plan_type as membership_type, 
-                end_date as membership_expiry_date
-         FROM business_subscriptions
-         WHERE user_id = $1 AND is_active = true
-         ORDER BY created_at DESC
-         LIMIT 1`,
-        [user.id]
-      );
+      const membershipResult = await sql`
+        SELECT plan_type as membership_type, 
+               end_date as membership_expiry_date
+        FROM business_subscriptions
+        WHERE user_id = ${user.id} AND is_active = true
+        ORDER BY created_at DESC
+        LIMIT 1
+      `;
       
       if (membershipResult.rows.length > 0) {
         membershipData = membershipResult.rows[0];
