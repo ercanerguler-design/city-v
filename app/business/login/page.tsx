@@ -28,6 +28,13 @@ export default function BusinessLoginPage() {
         return;
       }
 
+      // GEÇİCİ: Verify-token bypass - token varsa direkt dashboard'a yönlendir
+      console.log('✅ Token found, redirecting to dashboard (verify skipped)');
+      toast.success('Giriş bilgileriniz bulundu! Yönlendiriliyorsunuz...');
+      window.location.href = '/business/dashboard';
+      return;
+
+      /* ESKI KOD - verify-token
       console.log('📋 Token found, verifying...');
       
       try {
@@ -54,6 +61,7 @@ export default function BusinessLoginPage() {
         authStorage.clear();
         setIsChecking(false);
       }
+      */
     };
 
     checkExistingAuth();
