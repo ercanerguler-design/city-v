@@ -128,10 +128,9 @@ export async function POST(request: NextRequest) {
     );
 
     // Last login güncelle
-    await query(
-      'UPDATE business_users SET last_login = NOW() WHERE id = $1',
-      [user.id]
-    );
+    await sql`
+      UPDATE business_users SET last_login = NOW() WHERE id = ${user.id}
+    `;
 
     // Kullanıcı bilgilerini döndür (şifre hariç) - YENİ SİSTEM
     const userData = {
