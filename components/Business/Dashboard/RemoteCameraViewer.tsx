@@ -13,7 +13,7 @@ interface Camera {
   ip_address: string;
   port: number;
   stream_url?: string;
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'offline' | 'error';
   location?: string;
   zones?: any[];
   calibration_line?: any;
