@@ -7,17 +7,19 @@ import { motion } from 'framer-motion';
 interface AddCameraModalProps {
   onClose: () => void;
   onSubmit: (data: any) => Promise<void>;
+  editMode?: boolean;
+  initialData?: any;
 }
 
-export default function AddCameraModal({ onClose, onSubmit }: AddCameraModalProps) {
+export default function AddCameraModal({ onClose, onSubmit, editMode = false, initialData }: AddCameraModalProps) {
   const [formData, setFormData] = useState({
-    camera_name: '',
-    ip_address: '',
-    port: 80,
-    stream_path: '/stream',
-    username: '',
-    password: '',
-    location_description: ''
+    camera_name: initialData?.camera_name || '',
+    ip_address: initialData?.ip_address || '',
+    port: initialData?.port || 80,
+    stream_path: initialData?.stream_path || '/stream',
+    username: initialData?.username || '',
+    password: initialData?.password || '',
+    location_description: initialData?.location_description || ''
   });
   const [loading, setLoading] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
@@ -71,8 +73,12 @@ export default function AddCameraModal({ onClose, onSubmit }: AddCameraModalProp
               <Camera className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Yeni Kamera Ekle</h2>
-              <p className="text-sm text-gray-500">IoT kamera veya IP kamera bağlayın</p>
+              <h2 className="text-xl font-bold text-gray-900">
+                {editMode ? 'Kamera Düzenle' : 'Yeni Kamera Ekle'}
+              </h2>
+              <p className="text-sm text-gray-500">
+                {editMode ? 'Kamera bilgilerini güncelleyin' : 'IoT kamera veya IP kamera bağlayın'}
+              </p>
             </div>
           </div>
           <button
@@ -238,7 +244,10 @@ export default function AddCameraModal({ onClose, onSubmit }: AddCameraModalProp
               disabled={loading}
               className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 transition-colors font-medium"
             >
-              {loading ? 'Ekleniyor...' : 'Kamera Ekle'}
+              {loading 
+                ? (editMode ? 'Güncelleniyor...' : 'Ekleniyor...') 
+                : (editMode ? 'Güncelle' : 'Kamera Ekle')
+              }
             </button>
           </div>
         </form>

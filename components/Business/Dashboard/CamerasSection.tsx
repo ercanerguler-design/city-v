@@ -44,6 +44,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingCamera, setEditingCamera] = useState<Camera | null>(null);
   const [showCalibrationModal, setShowCalibrationModal] = useState(false);
   const [showZoneModal, setShowZoneModal] = useState(false);
   const [showLiveView, setShowLiveView] = useState(false);
@@ -245,6 +246,48 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
     } catch (error) {
       console.error('Toggle camera error:', error);
       toast.error('Durum değiştirilemedi');
+    }
+  };
+
+  const handleEditCamera = (camera: Camera) => {
+    console.log('📝 Editing camera:', camera);
+    setEditingCamera(camera);
+    setShowAddModal(true);
+  };
+
+  const handleUpdateCamera = async (cameraData: any) => {
+    if (!editingCamera) return;
+
+    try {
+      const token = authStorage.getToken();
+      const user = authStorage.getUser();
+      
+      const response = await fetch('/api/business/cameras', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: editingCamera.id,
+          userId: user?.id,
+          ...cameraData
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('✅ Kamera güncellendi!');
+        setShowAddModal(false);
+        setEditingCamera(null);
+        loadCameras();
+      } else {
+        toast.error(data.error || 'Kamera güncellenemedi');
+      }
+    } catch (error) {
+      console.error('Update camera error:', error);
+      toast.error('Bir hata oluştu');
     }
   };
 
@@ -467,18 +510,18 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
                     Canlı İzle
                   </button>
                   <button
+                    onClick={() => handleEditCamera(camera)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Düzenle
+                  </button>
+                  <button
                     onClick={() => openCalibration(camera)}
                     className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors text-sm font-medium"
                   >
                     <Settings className="w-4 h-4" />
                     Kalibrasyon
-                  </button>
-                  <button
-                    onClick={() => openZoneDrawing(camera)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium"
-                  >
-                    <Maximize2 className="w-4 h-4" />
-                    Bölgeler
                   </button>
                   <button
                     onClick={() => handleDeleteCamera(camera.id)}
@@ -498,8 +541,13 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
       <AnimatePresence>
         {showAddModal && (
           <AddCameraModal
-            onClose={() => setShowAddModal(false)}
-            onSubmit={handleAddCamera}
+            onClose={() => {
+              setShowAddModal(false);
+              setEditingCamera(null);
+            }}
+            onSubmit={editingCamera ? handleUpdateCamera : handleAddCamera}
+            editMode={!!editingCamera}
+            initialData={editingCamera || undefined}
           />
         )}
 
