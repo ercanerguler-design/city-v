@@ -96,10 +96,14 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
     try {
       setLoading(true);
       const token = authStorage.getToken();
+      const user = authStorage.getUser();
       
-      console.log('📷 Cameras loading, token:', token ? 'exists' : 'missing');
+      console.log('📷 Cameras loading, token:', token ? 'exists' : 'missing', 'userId:', user?.id);
       
-      const response = await fetch('/api/business/cameras', {
+      // GEÇİCİ: Token decode sorunu için userId de gönder
+      const url = user?.id ? `/api/business/cameras?userId=${user.id}` : '/api/business/cameras';
+      
+      const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       

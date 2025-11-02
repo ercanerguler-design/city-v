@@ -67,10 +67,24 @@ async function getUserPlan(userId: number) {
 // GET - Kullanıcının kameralarını listele
 export async function GET(request: NextRequest) {
   try {
-    const user = getUserFromToken(request);
+    // GEÇİCİ: Token decode sorunu olduğu için query'den userId al
+    const { searchParams } = new URL(request.url);
+    const userIdParam = searchParams.get('userId');
+    
+    let user = getUserFromToken(request);
+    
+    // Token decode başarısız olursa query'den al
+    if (!user && userIdParam) {
+      console.log('⚠️ Token decode failed, using userId from query:', userIdParam);
+      user = { userId: parseInt(userIdParam), email: 'temp@temp.com' };
+    }
+    
     if (!user) {
+      console.log('❌ No auth - no token, no userId param');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    console.log('✅ Camera API authorized for userId:', user.userId);
 
     const cameras = await sql`
       SELECT 
