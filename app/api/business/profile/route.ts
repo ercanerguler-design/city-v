@@ -90,6 +90,8 @@ export async function PUT(request: Request) {
       }
     }
 
+    console.log('🔄 Profil güncelleniyor, user_id:', businessId);
+    
     const result = await sql`
       UPDATE business_profiles SET
         business_name = ${businessName},
@@ -107,9 +109,11 @@ export async function PUT(request: Request) {
         social_media = ${socialMedia ? JSON.stringify(socialMedia) : null},
         photos = ${photos || null},
         updated_at = NOW()
-      WHERE id = ${businessId}
+      WHERE user_id = ${businessId}
       RETURNING *
     `;
+    
+    console.log('✅ Profil güncellendi:', result.rows.length, 'rows affected');
 
     return NextResponse.json({
       success: true,

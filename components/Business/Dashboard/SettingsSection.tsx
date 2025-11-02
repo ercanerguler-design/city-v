@@ -62,13 +62,17 @@ export default function SettingsSection({ businessProfile, onUpdate }: { busines
     setLoading(true);
 
     try {
-      const businessId = businessProfile?.id;
+      // user_id'yi kullan, profile id değil!
+      const userId = businessProfile?.user_id;
       
-      if (!businessId) {
-        toast.error('İşletme ID bulunamadı');
+      if (!userId) {
+        toast.error('Kullanıcı ID bulunamadı');
+        console.error('❌ businessProfile:', businessProfile);
         return;
       }
 
+      console.log('💾 Profil kaydediliyor, userId:', userId);
+      
       const response = await fetch('/api/business/profile', {
         method: 'PUT',
         headers: { 
@@ -76,10 +80,23 @@ export default function SettingsSection({ businessProfile, onUpdate }: { busines
           'Authorization': `Bearer ${localStorage.getItem('business_token')}`
         },
         body: JSON.stringify({
-          businessId,
-          ...profile
+          businessId: userId, // user_id gönder
+          businessName: profile.business_name,
+          businessType: profile.business_type,
+          logoUrl: profile.logo_url,
+          description: profile.description,
+          address: profile.address,
+          city: profile.city,
+          district: profile.district,
+          phone: profile.phone,
+          email: profile.email,
+          workingHours: profile.working_hours,
+          socialMedia: profile.social_media,
+          photos: profile.photos
         })
       });
+      
+      console.log('📋 API response status:', response.status);
 
       const data = await response.json();
 
