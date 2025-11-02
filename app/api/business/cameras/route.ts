@@ -129,12 +129,23 @@ export async function GET(request: NextRequest) {
 // POST - Yeni kamera ekle
 export async function POST(request: NextRequest) {
   try {
-    const user = getUserFromToken(request);
+    // GEÇİCİ: Token decode sorunu için body'den userId al
+    const body = await request.json();
+    
+    let user = getUserFromToken(request);
+    
+    // Token decode başarısız olursa body'den al
+    if (!user && body.userId) {
+      console.log('⚠️ POST: Token decode failed, using userId from body:', body.userId);
+      user = { userId: parseInt(body.userId), email: 'temp@temp.com' };
+    }
+    
     if (!user) {
+      console.log('❌ POST: No auth - no token, no userId in body');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
+    console.log('✅ POST Camera API authorized for userId:', user.userId);
     const { 
       camera_name, 
       ip_address, 

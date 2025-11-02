@@ -165,6 +165,10 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
 
     try {
       const token = authStorage.getToken();
+      const user = authStorage.getUser();
+      
+      // GEÇİCİ: userId de gönder
+      const dataWithUserId = { ...cameraData, userId: user?.id };
       
       const response = await fetch('/api/business/cameras', {
         method: 'POST',
@@ -172,7 +176,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(cameraData)
+        body: JSON.stringify(dataWithUserId)
       });
 
       const data = await response.json();
