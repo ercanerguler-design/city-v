@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('❌ Business login error:', error);
     return NextResponse.json(
-      { error: 'Giriş işlemi sırasında hata oluştu' },
+      { error: `Giriş işlemi sırasında hata oluştu: ${error.message}` },
       { status: 500 }
     );
   }
