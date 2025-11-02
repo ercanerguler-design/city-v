@@ -49,18 +49,13 @@ export default function RemoteCameraViewer({ camera, onClose }: { camera: Camera
     
     const isLocal = localPatterns.some(pattern => pattern.test(cameraIp));
     
-    // Production domain kontrolü - HTTPS siteden HTTP kamera çağrılamaz
-    const isProductionDomain = typeof window !== 'undefined' && 
-      (window.location.protocol === 'https:' ||
-       window.location.hostname.includes('vercel.app') || 
-       window.location.hostname.includes('city-v.com') ||
-       window.location.hostname.includes('cityv.app'));
-    
-    // HTTPS sitedeyse veya local kamera ise PROXY KULLAN
-    if (isLocal || isProductionDomain) {
-      setConnectionMode('remote');
-      console.log('🌐 HTTPS mode - Proxy kullanılıyor (Mixed Content fix)');
+    // Local kamera ise - direk bağlan (Mixed Content uyarısı olacak ama çalışır)
+    // Çünkü Vercel sunucuları local network'e erişemez
+    if (isLocal) {
+      setConnectionMode('local');
+      console.log('� Local kamera - Direkt bağlantı (Mixed Content expected)');
     } else {
+      // Public IP ise proxy kullan
       setConnectionMode('remote');
       console.log('🌐 Public camera - Proxy kullanılıyor');
     }
@@ -287,6 +282,22 @@ export default function RemoteCameraViewer({ camera, onClose }: { camera: Camera
             )}
           </AnimatePresence>
 
+          {/* Mixed Content Warning for Local Cameras */}
+          {connectionMode === 'local' && typeof window !== 'undefined' && window.location.protocol === 'https:' && !error && (
+            <div className="absolute top-4 left-4 right-4 bg-yellow-600/90 backdrop-blur-sm p-3 rounded-lg z-10 text-white text-sm">
+              <div className="flex items-start gap-2">
+                <span className="text-lg">⚠️</span>
+                <div>
+                  <p className="font-semibold mb-1">Mixed Content Uyarısı</p>
+                  <p className="text-xs text-yellow-100">
+                    Güvenli HTTPS siteden güvensiz HTTP kamerayı görüntülüyorsunuz. 
+                    Tarayıcınız stream'i engelleyebilir. Bu durumda tarayıcı ayarlarından "güvenli olmayan içeriğe izin ver" seçeneğini aktifleştirin.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Error Overlay */}
           <AnimatePresence>
             {error && (
@@ -310,6 +321,9 @@ export default function RemoteCameraViewer({ camera, onClose }: { camera: Camera
                       <li>✓ Kamera çalışıyor mu?</li>
                       <li>✓ IP adresi doğru mu? ({camera.ip_address})</li>
                       <li>✓ Port doğru mu? ({camera.port})</li>
+                      {connectionMode === 'local' && typeof window !== 'undefined' && window.location.protocol === 'https:' && (
+                        <li className="text-yellow-400">⚠️ HTTPS siteden HTTP kamera: Tarayıcınız Mixed Content engelliyor olabilir</li>
+                      )}
                       {connectionMode === 'remote' && (
                         <li>✓ Kamera internete açık mı? (Port forwarding)</li>
                       )}
