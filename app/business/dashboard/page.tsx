@@ -100,10 +100,8 @@ export default function BusinessDashboard() {
       }
       
       setLoading(false);
-      return;
-
-      // ESKI KOD - verify-token (geçici olarak disabled)
-      /*
+      
+      /* BYPASS: verify-token çağrısı yapılmıyor - ESKI KOD KAPALI
       try {
         console.log('🔍 Verifying token...');
         
@@ -147,10 +145,10 @@ export default function BusinessDashboard() {
         toast.error('Bağlantı hatası. Lütfen tekrar giriş yapın.');
         window.location.href = '/business/login';
       }
-    };
     */
-
-    // verifyToken();
+    };
+    
+    verifyToken();
   }, [router]);
 
   // Quick Actions navigation listener
