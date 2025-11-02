@@ -18,18 +18,14 @@ export async function POST(request: NextRequest) {
 
     console.log('🔐 Business login attempt:', email);
 
-    // Business user'ı bul
+    // Business user'ı bul - membership bilgileriyle birlikte
     const result = await sql`
       SELECT 
-        bu.id,
-        bu.email,
-        bu.password_hash,
-        bu.full_name,
-        bu.phone,
-        bu.added_by_admin,
-        bu.is_active
-       FROM business_users bu
-       WHERE bu.email = ${email} AND bu.is_active = true
+        id, email, password_hash, full_name, phone,
+        added_by_admin, is_active, membership_type,
+        membership_expiry_date, max_cameras
+       FROM business_users
+       WHERE email = ${email} AND is_active = true
     `;
 
     console.log('📋 Query result:', {
@@ -49,16 +45,9 @@ export async function POST(request: NextRequest) {
     console.log('👤 User found:', {
       id: user.id,
       email: user.email,
-      added_by_admin: user.added_by_admin
+      membershipType: user.membership_type,
+      maxCameras: user.max_cameras
     });
-
-    // Admin tarafından eklenmiş mi kontrol et
-    if (!user.added_by_admin) {
-      return NextResponse.json(
-        { error: 'Bu hesap yetkili değil. Sadece admin tarafından eklenen üyeler giriş yapabilir.' },
-        { status: 403 }
-      );
-    }
 
     // Şifre kontrolü
     console.log('🔑 Checking password...');
@@ -73,55 +62,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Membership bilgilerini YENİ SİSTEMden al (business_subscriptions tablosundan)
-    let membershipData = null;
-    try {
-      const membershipResult = await sql`
-        SELECT plan_type as membership_type, 
-               end_date as membership_expiry_date
-        FROM business_subscriptions
-        WHERE user_id = ${user.id} AND is_active = true
-        ORDER BY created_at DESC
-        LIMIT 1
-      `;
-      
-      if (membershipResult.rows.length > 0) {
-        membershipData = membershipResult.rows[0];
-        // Plan type'a göre max_cameras belirle
-        if (membershipData.membership_type === 'premium') {
-          membershipData.max_cameras = 10;
-        } else if (membershipData.membership_type === 'enterprise') {
-          membershipData.max_cameras = 50;
-        } else {
-          membershipData.max_cameras = 1;
-        }
-        console.log('📋 Membership data:', membershipData);
-      } else {
-        // Subscription yoksa free plan
-        console.log('ℹ️ No active subscription, using free plan');
-        membershipData = {
-          membership_type: 'free',
-          max_cameras: 1,
-          membership_expiry_date: null
-        };
-      }
-    } catch (err) {
-      console.log('⚠️ Membership query failed, using free plan:', err);
-      membershipData = {
-        membership_type: 'free',
-        max_cameras: 1,
-        membership_expiry_date: null
-      };
-    }
+    // Membership bilgilerini direkt business_users tablosundan al
+    const membershipData = {
+      membership_type: user.membership_type || 'free',
+      membership_expiry_date: user.membership_expiry_date,
+      max_cameras: user.max_cameras || 1
+    };
+    
+    console.log('📋 Membership data:', membershipData);
 
-    // JWT token oluştur (8 saat - günlük session)
+    // JWT token oluştur
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
         role: 'business_user',
-        planType: membershipData?.membership_type || 'free',
-        maxCameras: membershipData?.max_cameras || 1
+        planType: membershipData.membership_type,
+        maxCameras: membershipData.max_cameras
       },
       JWT_SECRET,
       { expiresIn: '8h' }
@@ -132,20 +89,21 @@ export async function POST(request: NextRequest) {
       UPDATE business_users SET last_login = NOW() WHERE id = ${user.id}
     `;
 
-    // Kullanıcı bilgilerini döndür (şifre hariç) - YENİ SİSTEM
+    // Kullanıcı bilgilerini döndür (şifre hariç)
     const userData = {
       id: user.id,
       email: user.email,
       fullName: user.full_name,
       phone: user.phone,
       role: 'business_user',
-      membership_type: membershipData?.membership_type || 'free',
-      membership_expiry_date: membershipData?.membership_expiry_date || null,
-      max_cameras: membershipData?.max_cameras || 1,
-      // Backward compatibility için eski alanlar
-      planType: membershipData?.membership_type || 'free',
-      maxCameras: membershipData?.max_cameras || 1
+      membership_type: membershipData.membership_type,
+      membership_expiry_date: membershipData.membership_expiry_date,
+      max_cameras: membershipData.max_cameras,
+      planType: membershipData.membership_type,
+      maxCameras: membershipData.max_cameras
     };
+
+    console.log('✅ Login successful for:', user.email);
 
     return NextResponse.json({
       success: true,
