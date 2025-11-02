@@ -41,11 +41,51 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
   const [selectedZoneType, setSelectedZoneType] = useState('seating');
   const [zoneName, setZoneName] = useState('');
   const [isDrawing, setIsDrawing] = useState(false);
+  const [hoveredZoneIndex, setHoveredZoneIndex] = useState<number | null>(null);
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [gridSize] = useState(20);
+  const [history, setHistory] = useState<Point[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [showStats, setShowStats] = useState(true);
 
   const CANVAS_WIDTH = 1280;
   const CANVAS_HEIGHT = 720;
 
   const streamUrl = camera.stream_url || `http://${camera.ip_address}:${camera.port}/stream`;
+
+  // Snap to grid helper
+  const snapPoint = (point: Point): Point => {
+    if (!snapToGrid) return point;
+    return {
+      x: Math.round(point.x / gridSize) * gridSize,
+      y: Math.round(point.y / gridSize) * gridSize
+    };
+  };
+
+  // Calculate polygon area
+  const calculateArea = (points: Point[]): number => {
+    if (points.length < 3) return 0;
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+      const j = (i + 1) % points.length;
+      area += points[i].x * points[j].y;
+      area -= points[j].x * points[i].y;
+    }
+    return Math.abs(area / 2);
+  };
+
+  // Check if point is inside polygon
+  const isPointInPolygon = (point: Point, polygon: Point[]): boolean => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x, yi = polygon[i].y;
+      const xj = polygon[j].x, yj = polygon[j].y;
+      const intersect = ((yi > point.y) !== (yj > point.y))
+        && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  };
 
   useEffect(() => {
     // Mevcut bölgeleri yükle
@@ -56,13 +96,62 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
     loadCameraImage();
   }, [camera]);
 
-  // Şu an çizilen zone'u render et
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ESC - Cancel current drawing
+      if (e.key === 'Escape' && isDrawing) {
+        handleClearCurrent();
+        toast.info('❌ Çizim iptal edildi');
+      }
+      
+      // CTRL+Z - Undo
+      if (e.ctrlKey && e.key === 'z' && historyIndex > 0) {
+        e.preventDefault();
+        setHistoryIndex(historyIndex - 1);
+        setCurrentZone(history[historyIndex - 1]);
+        toast.info('↩️ Geri alındı');
+      }
+      
+      // CTRL+Y - Redo
+      if (e.ctrlKey && e.key === 'y' && historyIndex < history.length - 1) {
+        e.preventDefault();
+        setHistoryIndex(historyIndex + 1);
+        setCurrentZone(history[historyIndex + 1]);
+        toast.info('↪️ Yinelendi');
+      }
+      
+      // ENTER - Finish zone
+      if (e.key === 'Enter' && currentZone.length >= 3) {
+        handleFinishZone();
+      }
+      
+      // G - Toggle grid
+      if (e.key === 'g' || e.key === 'G') {
+        setSnapToGrid(!snapToGrid);
+        toast.info(snapToGrid ? '📴 Grid kapatıldı' : '📐 Grid açıldı');
+      }
+      
+      // S - Toggle stats
+      if (e.key === 's' || e.key === 'S') {
+        setShowStats(!showStats);
+        toast.info(showStats ? '📊 İstatistikler gizlendi' : '📊 İstatistikler gösteriliyor');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDrawing, historyIndex, history, currentZone, snapToGrid, showStats]);
+
+  // Şu an çizilen zone'u render et (ENHANCED)
   const drawCurrentZone = (ctx: CanvasRenderingContext2D) => {
     if (currentZone.length === 0) return;
 
     const color = ZONE_TYPES.find(t => t.value === selectedZoneType)?.color || '#3B82F6';
     
-    // Çizgiler (kesikli)
+    // Çizgiler (kalın, glow effect)
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = color;
     ctx.strokeStyle = color;
     ctx.lineWidth = 4;
     ctx.setLineDash([10, 5]);
@@ -74,37 +163,95 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
     }
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
 
-    // Noktalar
+    // Açı göstergeleri (her köşede)
     currentZone.forEach((point, index) => {
+      if (index > 0 && index < currentZone.length - 1) {
+        const prev = currentZone[index - 1];
+        const next = currentZone[index + 1];
+        const angle1 = Math.atan2(prev.y - point.y, prev.x - point.x);
+        const angle2 = Math.atan2(next.y - point.y, next.x - point.x);
+        let angleDiff = Math.abs(angle2 - angle1) * (180 / Math.PI);
+        if (angleDiff > 180) angleDiff = 360 - angleDiff;
+        
+        // Açı etiketi
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(point.x + 15, point.y - 25, 50, 20);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(Math.round(angleDiff) + '°', point.x + 40, point.y - 12);
+      }
+    });
+
+    // Noktalar (büyük, profesyonel)
+    currentZone.forEach((point, index) => {
+      // Gölge
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+      
       if (index === 0) {
-        // İlk nokta (yeşil)
+        // İlk nokta (yeşil, büyük)
         ctx.fillStyle = '#10B981';
       } else if (index === currentZone.length - 1) {
-        // Son nokta (turuncu)
+        // Son nokta (turuncu, pulse effect)
         ctx.fillStyle = '#F59E0B';
       } else {
         ctx.fillStyle = color;
       }
       
       ctx.beginPath();
-      ctx.arc(point.x, point.y, 10, 0, Math.PI * 2);
+      ctx.arc(point.x, point.y, 12, 0, Math.PI * 2);
       ctx.fill();
+      ctx.shadowBlur = 0;
+      
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3;
       ctx.stroke();
+      
+      // Nokta numarası
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText((index + 1).toString(), point.x, point.y);
     });
 
-    // Polygon'u tamamlamak için son noktadan ilk noktaya kesikli çizgi
+    // Polygon'u tamamlamak için son noktadan ilk noktaya kesikli çizgi + Alan bilgisi
     if (currentZone.length >= 2) {
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.5)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.7)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([8, 4]);
       ctx.beginPath();
       ctx.moveTo(currentZone[currentZone.length - 1].x, currentZone[currentZone.length - 1].y);
       ctx.lineTo(currentZone[0].x, currentZone[0].y);
       ctx.stroke();
       ctx.setLineDash([]);
+      
+      // Polygon tamamsa alan hesapla ve göster
+      if (currentZone.length >= 3) {
+        const area = calculateArea(currentZone);
+        const centerX = currentZone.reduce((sum, p) => sum + p.x, 0) / currentZone.length;
+        const centerY = currentZone.reduce((sum, p) => sum + p.y, 0) / currentZone.length;
+        
+        // Alan etiketi (büyük, belirgin)
+        const areaText = `${Math.round(area)} px²`;
+        ctx.font = 'bold 18px Arial';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        const textWidth = ctx.measureText(areaText).width;
+        ctx.fillRect(centerX - textWidth / 2 - 10, centerY - 25, textWidth + 20, 35);
+        
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(areaText, centerX, centerY - 8);
+        
+        // Alt başlık
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(`${currentZone.length} nokta`, centerX, centerY + 10);
+      }
     }
   };
 
@@ -211,14 +358,38 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
     };
   };
 
-  const drawZone = (ctx: CanvasRenderingContext2D, zone: Zone, isActive: boolean) => {
+  const drawZone = (ctx: CanvasRenderingContext2D, zone: Zone, isActive: boolean, index?: number) => {
     if (zone.points.length < 2) return;
 
-    // Bölge dolgusu
-    ctx.fillStyle = zone.color + (isActive ? '40' : '30');
+    const isHovered = index !== undefined && hoveredZoneIndex === index;
+
+    // Bölge dolgusu (gradient effect for hover)
+    if (zone.points.length >= 3) {
+      if (isHovered) {
+        // Hover'da gradient
+        const centerX = zone.points.reduce((sum, p) => sum + p.x, 0) / zone.points.length;
+        const centerY = zone.points.reduce((sum, p) => sum + p.y, 0) / zone.points.length;
+        const maxDist = Math.max(...zone.points.map(p => 
+          Math.sqrt(Math.pow(p.x - centerX, 2) + Math.pow(p.y - centerY, 2))
+        ));
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxDist);
+        gradient.addColorStop(0, zone.color + '60');
+        gradient.addColorStop(1, zone.color + '20');
+        ctx.fillStyle = gradient;
+      } else {
+        ctx.fillStyle = zone.color + (isActive ? '40' : '25');
+      }
+    }
+
+    // Glow effect for hover
+    if (isHovered) {
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = zone.color;
+    }
+
     ctx.strokeStyle = zone.color;
-    ctx.lineWidth = isActive ? 4 : 3;
-    ctx.setLineDash(isActive ? [10, 5] : []);
+    ctx.lineWidth = isActive ? 5 : (isHovered ? 4 : 3);
+    ctx.setLineDash(isActive ? [12, 6] : []);
 
     ctx.beginPath();
     ctx.moveTo(zone.points[0].x, zone.points[0].y);
@@ -234,6 +405,7 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
     
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
 
     // Noktaları çiz
     zone.points.forEach((point, index) => {
@@ -265,21 +437,52 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
       }
     });
 
-    // Bölge ismi
+    // Bölge ismi ve istatistikler (ENHANCED)
     if (zone.points.length >= 3) {
       const centerX = zone.points.reduce((sum, p) => sum + p.x, 0) / zone.points.length;
       const centerY = zone.points.reduce((sum, p) => sum + p.y, 0) / zone.points.length;
+      const area = calculateArea(zone.points);
 
       const icon = ZONE_TYPES.find(t => t.value === zone.type)?.icon || '📍';
       
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-      ctx.fillRect(centerX - 70, centerY - 20, 140, 40);
+      // Profesyonel label box (daha büyük hover'da)
+      const boxHeight = (isHovered && showStats) ? 80 : 50;
+      const boxWidth = (isHovered && showStats) ? 180 : 140;
       
+      // Gölge
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.fillRect(centerX - boxWidth / 2 + 4, centerY - boxHeight / 2 + 4, boxWidth, boxHeight);
+      
+      // Ana box (gradient)
+      const gradient = ctx.createLinearGradient(centerX, centerY - boxHeight / 2, centerX, centerY + boxHeight / 2);
+      gradient.addColorStop(0, 'rgba(0, 0, 0, 0.9)');
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0.75)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(centerX - boxWidth / 2, centerY - boxHeight / 2, boxWidth, boxHeight);
+      
+      // Border (zone color)
+      ctx.strokeStyle = zone.color;
+      ctx.lineWidth = isHovered ? 3 : 2;
+      ctx.strokeRect(centerX - boxWidth / 2, centerY - boxHeight / 2, boxWidth, boxHeight);
+      
+      // İçerik
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 18px Arial';
+      ctx.font = 'bold 16px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`${icon} ${zone.name}`, centerX, centerY);
+      ctx.fillText(`${icon} ${zone.name}`, centerX, centerY - (isHovered && showStats ? 20 : 5));
+      
+      // Ek bilgiler (hover'da)
+      if (isHovered && showStats) {
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#9CA3AF';
+        ctx.fillText(`Alan: ${Math.round(area)} px²`, centerX, centerY + 5);
+        ctx.fillText(`${zone.points.length} nokta`, centerX, centerY + 25);
+      } else {
+        ctx.font = '11px Arial';
+        ctx.fillStyle = '#6B7280';
+        ctx.fillText(zone.type, centerX, centerY + 12);
+      }
     }
   };
 
@@ -303,11 +506,33 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
       clientY = e.clientY;
     }
 
-    const x = ((clientX - rect.left) / rect.width) * CANVAS_WIDTH;
-    const y = ((clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
+    const rawX = ((clientX - rect.left) / rect.width) * CANVAS_WIDTH;
+    const rawY = ((clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
 
-    const newPoint: Point = { x, y };
-    const newZone = [...currentZone, newPoint];
+    // Apply snap-to-grid
+    const snappedPoint = snapPoint({ x: rawX, y: rawY });
+    
+    // Check if clicking on first point to close polygon
+    if (currentZone.length >= 3) {
+      const firstPoint = currentZone[0];
+      const dist = Math.sqrt(
+        Math.pow(snappedPoint.x - firstPoint.x, 2) + 
+        Math.pow(snappedPoint.y - firstPoint.y, 2)
+      );
+      
+      if (dist < 30) {
+        // Close polygon
+        handleFinishZone();
+        return;
+      }
+    }
+
+    const newZone = [...currentZone, snappedPoint];
+    
+    // Save to history for undo
+    setHistory([...history.slice(0, historyIndex + 1), newZone]);
+    setHistoryIndex(historyIndex + 1);
+    
     setCurrentZone(newZone);
     setIsDrawing(true);
 
@@ -349,11 +574,17 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
     redrawCanvas();
   };
 
-  const handleCancelZone = () => {
+  const handleClearCurrent = () => {
     setCurrentZone([]);
+    setHistory([]);
+    setHistoryIndex(-1);
     setIsDrawing(false);
-    toast('Bölge çizimi iptal edildi');
     redrawCanvas();
+  };
+
+  const handleCancelZone = () => {
+    handleClearCurrent();
+    toast('❌ Bölge çizimi iptal edildi');
   };
 
   const handleDeleteZone = (index: number) => {
@@ -416,12 +647,26 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
               </button>
             </div>
 
-            {/* İnfo */}
-            <div className="bg-purple-50 border-l-4 border-purple-500 p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-purple-900">
-                <p className="font-semibold">Nasıl Çizilir?</p>
-                <p>Canvas üzerine tıklayarak nokta ekleyin. En az 3 nokta gerekli. Polygon oluşturmak için noktaları sırayla işaretleyin.</p>
+            {/* İnfo + Keyboard Shortcuts */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-purple-50 border-l-4 border-purple-500 p-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-purple-900">
+                    <p className="font-semibold">Nasıl Çizilir?</p>
+                    <p className="text-xs">Canvas üzerine tıklayarak nokta ekleyin. İlk noktaya tıklayarak poligonu kapatın.</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
+                <p className="font-semibold text-sm text-blue-900 mb-2">⌨️ Kısayollar</p>
+                <div className="space-y-1 text-xs text-blue-800">
+                  <p><kbd className="bg-white px-1.5 py-0.5 rounded border">ESC</kbd> İptal</p>
+                  <p><kbd className="bg-white px-1.5 py-0.5 rounded border">Enter</kbd> Tamamla</p>
+                  <p><kbd className="bg-white px-1.5 py-0.5 rounded border">G</kbd> Grid</p>
+                  <p><kbd className="bg-white px-1.5 py-0.5 rounded border">Ctrl+Z</kbd> Geri Al</p>
+                </div>
               </div>
             </div>
 
@@ -442,6 +687,30 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
           {/* Sağ Panel - Kontroller */}
           <div className="w-96 bg-gray-50 border-l border-gray-200 flex flex-col overflow-hidden">
             <div className="p-6 space-y-6 overflow-y-auto flex-1">
+              {/* Çizim Ayarları */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSnapToGrid(!snapToGrid)}
+                  className={`flex-1 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                    snapToGrid
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-gray-300 bg-white text-gray-600'
+                  }`}
+                >
+                  📐 Grid {snapToGrid ? 'Açık' : 'Kapalı'}
+                </button>
+                <button
+                  onClick={() => setShowStats(!showStats)}
+                  className={`flex-1 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                    showStats
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 bg-white text-gray-600'
+                  }`}
+                >
+                  📊 İstatistik {showStats ? 'Açık' : 'Kapalı'}
+                </button>
+              </div>
+
               {/* Bölge Türü */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
