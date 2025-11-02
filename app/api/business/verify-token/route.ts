@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     // Membership bilgilerini business_subscriptions tablosundan çek
     const subscriptionResult = await query(
-      `SELECT plan_type, end_date, camera_count
+      `SELECT plan_type, end_date
        FROM business_subscriptions 
        WHERE user_id = $1 AND is_active = true
        ORDER BY created_at DESC 
@@ -65,10 +65,18 @@ export async function POST(request: Request) {
       
       // Süre dolmamışsa subscription bilgilerini kullan
       if (!expiryDate || expiryDate > now) {
+        // Plan type'a göre max_cameras belirle
+        const maxCamerasMap: { [key: string]: number } = {
+          'enterprise': 50,
+          'premium': 10,
+          'business': 5,
+          'free': 1
+        };
+        
         membershipData = {
           membership_type: subscription.plan_type || 'free',
           membership_expiry_date: subscription.end_date,
-          max_cameras: subscription.camera_count || (subscription.plan_type === 'enterprise' ? 50 : subscription.plan_type === 'premium' ? 10 : 1)
+          max_cameras: maxCamerasMap[subscription.plan_type] || 1
         };
       } else {
         console.log('⚠️ Subscription süresi dolmuş, free plana düşürüldü');
