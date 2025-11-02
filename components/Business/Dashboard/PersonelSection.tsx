@@ -82,6 +82,8 @@ export default function PersonelSection({ businessProfile }: { businessProfile: 
         permissions: formData.permissions || { cameras: false, menu: false, reports: false, settings: false }
       };
 
+      console.log('💼 Personel kaydediliyor:', staffData);
+
       let response;
       if (editingStaff) {
         // Güncelle
@@ -100,6 +102,7 @@ export default function PersonelSection({ businessProfile }: { businessProfile: 
       }
 
       const data = await response.json();
+      console.log('📋 API yanıtı:', data);
       
       if (data.success) {
         toast.success(editingStaff ? '✅ Personel güncellendi!' : '✅ Personel eklendi!');
@@ -107,6 +110,7 @@ export default function PersonelSection({ businessProfile }: { businessProfile: 
         setShowAddModal(false);
         setEditingStaff(null);
       } else {
+        console.error('❌ API hatası:', data.error);
         toast.error(data.error || 'İşlem başarısız');
       }
     } catch (error) {

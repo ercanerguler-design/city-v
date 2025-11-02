@@ -184,6 +184,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
       if (data.success) {
         toast.success('✅ Kamera başarıyla eklendi!');
         setShowAddModal(false);
+        setEditingCamera(null); // Düzenleme modunu sıfırla
         loadCameras();
       } else {
         toast.error(data.error || 'Kamera eklenemedi');
