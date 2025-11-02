@@ -15,16 +15,23 @@ export async function GET(request: Request) {
       );
     }
 
+    console.log('🔍 Profile API: businessId =', businessId);
+    
     const result = await sql`
-      SELECT * FROM business_profiles WHERE id = ${businessId}
+      SELECT * FROM business_profiles WHERE user_id = ${businessId}
     `;
 
+    console.log('📋 Profile query result:', result.rows.length, 'rows');
+
     if (result.rows.length === 0) {
+      console.log('⚠️ Profile bulunamadı, user_id:', businessId);
       return NextResponse.json(
         { error: 'Profil bulunamadı' },
         { status: 404 }
       );
     }
+    
+    console.log('✅ Profile bulundu:', result.rows[0].business_name);
 
     return NextResponse.json({
       success: true,
