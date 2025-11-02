@@ -1,6 +1,8 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY 
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
 
 /**
  * Business'a yeni personel eklendiğinde email gönder
@@ -12,6 +14,12 @@ export async function sendStaffWelcomeEmail(staffData: {
   position?: string;
   dashboardUrl?: string;
 }) {
+  // RESEND_API_KEY yoksa email gönderme
+  if (!resend || !process.env.RESEND_API_KEY) {
+    console.warn('⚠️ RESEND_API_KEY tanımlı değil, personel email\'i gönderilemedi');
+    return { success: false, error: 'API key missing' };
+  }
+
   try {
     const data = await resend.emails.send({
       from: 'CityV Business <noreply@city-v.com>',
@@ -104,6 +112,12 @@ export async function sendOwnerStaffNotification(ownerData: {
   staffPosition?: string;
   businessName: string;
 }) {
+  // RESEND_API_KEY yoksa email gönderme
+  if (!resend || !process.env.RESEND_API_KEY) {
+    console.warn('⚠️ RESEND_API_KEY tanımlı değil, owner bildirim email\'i gönderilemedi');
+    return { success: false, error: 'API key missing' };
+  }
+
   try {
     const data = await resend.emails.send({
       from: 'CityV Business <noreply@city-v.com>',
