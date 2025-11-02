@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { analyzeImageSimple } from '@/lib/simpleDetection';
+// import { analyzeImageSimple } from '@/lib/simpleDetection'; // TODO: Implement simple detection
 
 // Python AI servisinin URL'i (Railway, Render vb.)
 const PYTHON_AI_URL = process.env.PYTHON_AI_URL || null;

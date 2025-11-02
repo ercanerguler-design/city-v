@@ -352,7 +352,7 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
   const handleCancelZone = () => {
     setCurrentZone([]);
     setIsDrawing(false);
-    toast.info('Bölge çizimi iptal edildi');
+    toast('Bölge çizimi iptal edildi');
     redrawCanvas();
   };
 

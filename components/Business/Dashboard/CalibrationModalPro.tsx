@@ -335,7 +335,7 @@ export default function CalibrationModalPro({ camera, onClose, onSave }: Calibra
       ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     };
 
-    toast.info('Kalibrasyon sıfırlandı');
+    toast('Kalibrasyon sıfırlandı');
   };
 
   const handleSave = async () => {

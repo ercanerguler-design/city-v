@@ -363,9 +363,6 @@ export default function BusinessDashboard() {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto bg-gray-50 p-3 md:p-6">
-          {/* Debug: Active Section */}
-          {console.log('🎯 Active section:', activeSection, 'Profile:', !!businessProfile)}
-          
           {activeSection === 'overview' && <OverviewSection businessProfile={businessProfile} />}
           {activeSection === 'cameras' && <CamerasSection businessProfile={businessProfile} />}
           {activeSection === 'location' && <LocationSection businessProfile={businessProfile} />}
