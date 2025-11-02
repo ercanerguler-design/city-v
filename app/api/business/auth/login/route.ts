@@ -74,22 +74,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Membership bilgilerini YENİ SİSTEMden al (business_users tablosundan)
+    // Membership bilgilerini YENİ SİSTEMden al (business_subscriptions tablosundan)
     let membershipData = null;
     try {
       const membershipResult = await query(
-        `SELECT membership_type, max_cameras, membership_expiry_date
-         FROM business_users
-         WHERE id = $1`,
+        `SELECT plan_type as membership_type, 
+                end_date as membership_expiry_date
+         FROM business_subscriptions
+         WHERE user_id = $1 AND is_active = true
+         ORDER BY created_at DESC
+         LIMIT 1`,
         [user.id]
       );
       
       if (membershipResult.rows.length > 0) {
         membershipData = membershipResult.rows[0];
+        // Plan type'a göre max_cameras belirle
+        if (membershipData.membership_type === 'premium') {
+          membershipData.max_cameras = 10;
+        } else if (membershipData.membership_type === 'enterprise') {
+          membershipData.max_cameras = 50;
+        } else {
+          membershipData.max_cameras = 1;
+        }
         console.log('📋 Membership data:', membershipData);
+      } else {
+        // Subscription yoksa free plan
+        console.log('ℹ️ No active subscription, using free plan');
+        membershipData = {
+          membership_type: 'free',
+          max_cameras: 1,
+          membership_expiry_date: null
+        };
       }
     } catch (err) {
-      console.log('⚠️ Membership query failed:', err);
+      console.log('⚠️ Membership query failed, using free plan:', err);
+      membershipData = {
+        membership_type: 'free',
+        max_cameras: 1,
+        membership_expiry_date: null
+      };
     }
 
     // JWT token oluştur (8 saat - günlük session)

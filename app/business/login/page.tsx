@@ -64,9 +64,22 @@ export default function BusinessLoginPage() {
     setError('');
     setIsLoading(true);
 
-    console.log('📱 Login attempt:', { email, isMobile: /Mobile|Android|iPhone/i.test(navigator.userAgent) });
+    // Detailed mobile debugging
+    const isMobile = /Mobile|Android|iPhone/i.test(navigator.userAgent);
+    const userAgent = navigator.userAgent;
+    
+    console.log('🔐 ============ LOGIN DEBUG START ============');
+    console.log('📱 Device Info:', {
+      isMobile,
+      userAgent,
+      platform: navigator.platform,
+      language: navigator.language
+    });
+    console.log('📧 Credentials:', { email, passwordLength: password.length });
 
     try {
+      console.log('🌐 Fetching login API...');
+      
       const response = await fetch('/api/business/auth/login', {
         method: 'POST',
         headers: {
@@ -75,47 +88,92 @@ export default function BusinessLoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('📡 API Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
       const data = await response.json();
-      console.log('📋 Login response:', { success: response.ok, hasToken: !!data.token });
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Giriş başarısız');
-      }
-
-      // Token ve user'ı kaydet (cross-platform storage)
-      const tokenSaved = authStorage.setToken(data.token);
-      const userSaved = authStorage.setUser(data.user);
-      
-      console.log('💾 Storage check:', {
-        tokenSaved,
-        userSaved,
-        mobile: /Mobile|Android|iPhone/i.test(navigator.userAgent),
+      console.log('📋 Login response data:', {
+        success: response.ok,
+        hasToken: !!data.token,
+        hasUser: !!data.user,
+        error: data.error,
         tokenLength: data.token?.length || 0
       });
 
+      if (!response.ok) {
+        console.error('❌ Login failed:', {
+          status: response.status,
+          error: data.error
+        });
+        throw new Error(data.error || 'Giriş başarısız');
+      }
+
+      console.log('✅ Login API success');
+
+      // Storage availability check
+      const storageAvail = authStorage.isAvailable();
+      console.log('💾 Storage availability:', storageAvail);
+
+      if (!storageAvail.localStorage && !storageAvail.cookies) {
+        throw new Error('Tarayıcı depolama devre dışı. Lütfen gizli modu kapatın ve çerezleri etkinleştirin.');
+      }
+
+      // Token ve user'ı kaydet (cross-platform storage)
+      console.log('💾 Saving token to storage...');
+      const tokenSaved = authStorage.setToken(data.token);
+      console.log('💾 Token saved:', tokenSaved);
+      
+      console.log('💾 Saving user to storage...');
+      const userSaved = authStorage.setUser(data.user);
+      console.log('💾 User saved:', userSaved);
+
       if (!tokenSaved || !userSaved) {
+        console.error('❌ Storage save failed:', { tokenSaved, userSaved });
         throw new Error('Veri kaydetme hatası. Tarayıcı ayarlarınızı kontrol edin.');
       }
       
       // Doğrulama: Kaydedilen veriyi oku
+      console.log('🔍 Verifying saved data...');
       const verifyToken = authStorage.getToken();
       const verifyUser = authStorage.getUser();
       
+      console.log('🔍 Verification result:', {
+        hasToken: !!verifyToken,
+        hasUser: !!verifyUser,
+        tokenLength: verifyToken?.length || 0,
+        userEmail: verifyUser?.email || 'none'
+      });
+      
       if (!verifyToken || !verifyUser) {
+        console.error('❌ Verification failed');
         throw new Error('Tarayıcı depolama doğrulaması başarısız. Lütfen çerezleri etkinleştirin.');
       }
 
+      console.log('✅ All checks passed!');
       toast.success('✅ Giriş başarılı! Yönlendiriliyorsunuz...');
       
-      console.log('🚀 Redirecting to dashboard...');
+      console.log('🚀 Redirecting to dashboard in 800ms...');
+      console.log('🔐 ============ LOGIN DEBUG END ============');
       
       // Redirect için window.location kullan (mobilde daha güvenilir)
       setTimeout(() => {
+        console.log('🚀 Executing redirect now...');
         window.location.href = '/business/dashboard';
       }, 800);
 
     } catch (err: any) {
-      console.error('❌ Login error:', err);
+      console.error('❌ ============ LOGIN ERROR ============');
+      console.error('❌ Error details:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      });
+      console.error('❌ ============ ERROR END ============');
+      
       setError(err.message || 'Giriş başarısız. Email ve şifrenizi kontrol edin.');
       toast.error(err.message || 'Giriş başarısız');
     } finally {
