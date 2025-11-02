@@ -27,10 +27,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Kullanıcının hala aktif olup olmadığını kontrol et (membership bilgileriyle birlikte)
+    // Kullanıcının hala aktif olup olmadığını kontrol et
     const userResult = await sql`
-      SELECT id, email, full_name, phone, is_active, 
-             membership_type, membership_expiry_date, max_cameras
+      SELECT id, email, full_name, phone, is_active
       FROM business_users 
       WHERE id = ${decoded.userId}
     `;
@@ -44,20 +43,35 @@ export async function POST(request: Request) {
 
     const user = userResult.rows[0];
 
-    // Membership süresi dolmuş mu kontrol et
-    if (user.membership_expiry_date) {
-      const expiryDate = new Date(user.membership_expiry_date);
+    // Membership bilgilerini business_subscriptions tablosundan çek
+    const subscriptionResult = await sql`
+      SELECT plan_type, end_date, camera_count
+      FROM business_subscriptions 
+      WHERE user_id = ${user.id} AND is_active = true
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `;
+
+    let membershipData = {
+      membership_type: 'free',
+      membership_expiry_date: null,
+      max_cameras: 1
+    };
+
+    if (subscriptionResult.rows.length > 0) {
+      const subscription = subscriptionResult.rows[0];
+      const expiryDate = subscription.end_date ? new Date(subscription.end_date) : null;
       const now = new Date();
-      if (expiryDate < now) {
-        console.log('⚠️ Membership süresi dolmuş, free\'e düşürülüyor');
-        // Üyeliği free'e düşür
-        await sql`
-          UPDATE business_users 
-          SET membership_type = 'free', max_cameras = 1
-          WHERE id = ${user.id}
-        `;
-        user.membership_type = 'free';
-        user.max_cameras = 1;
+      
+      // Süre dolmamışsa subscription bilgilerini kullan
+      if (!expiryDate || expiryDate > now) {
+        membershipData = {
+          membership_type: subscription.plan_type || 'free',
+          membership_expiry_date: subscription.end_date,
+          max_cameras: subscription.camera_count || (subscription.plan_type === 'enterprise' ? 50 : subscription.plan_type === 'premium' ? 10 : 1)
+        };
+      } else {
+        console.log('⚠️ Subscription süresi dolmuş, free plana düşürüldü');
       }
     }
 
@@ -73,9 +87,9 @@ export async function POST(request: Request) {
         email: user.email,
         fullName: user.full_name,
         phone: user.phone,
-        membership_type: user.membership_type || 'free',
-        membership_expiry_date: user.membership_expiry_date,
-        max_cameras: user.max_cameras || 1
+        membership_type: membershipData.membership_type,
+        membership_expiry_date: membershipData.membership_expiry_date,
+        max_cameras: membershipData.max_cameras
       },
       profile: profileResult.rows[0] || null
     });
