@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import authStorage from '@/lib/authStorage';
 import AddCameraModal from './AddCameraModal';
 import CalibrationModalPro from './CalibrationModalPro';
 import ZoneDrawingModalPro from './ZoneDrawingModalPro';
@@ -94,7 +95,9 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
   const loadCameras = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('business_token');
+      const token = authStorage.getToken();
+      
+      console.log('📷 Cameras loading, token:', token ? 'exists' : 'missing');
       
       const response = await fetch('/api/business/cameras', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -157,7 +160,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
     }
 
     try {
-      const token = localStorage.getItem('business_token');
+      const token = authStorage.getToken();
       
       const response = await fetch('/api/business/cameras', {
         method: 'POST',
@@ -187,7 +190,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
     if (!confirm('Bu kamerayı silmek istediğinizden emin misiniz?')) return;
 
     try {
-      const token = localStorage.getItem('business_token');
+      const token = authStorage.getToken();
       
       const response = await fetch(`/api/business/cameras?id=${cameraId}`, {
         method: 'DELETE',
@@ -210,7 +213,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
 
   const handleToggleCamera = async (camera: Camera) => {
     try {
-      const token = localStorage.getItem('business_token');
+      const token = authStorage.getToken();
       
       const response = await fetch('/api/business/cameras', {
         method: 'PUT',
@@ -504,7 +507,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
                   method: 'PUT',
                   headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('business_token')}`
+                    'Authorization': `Bearer ${authStorage.getToken()}`
                   },
                   body: JSON.stringify({
                     id: selectedCamera.id,
@@ -541,7 +544,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
                   method: 'PUT',
                   headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('business_token')}`
+                    'Authorization': `Bearer ${authStorage.getToken()}`
                   },
                   body: JSON.stringify({
                     id: selectedCamera.id,
