@@ -49,21 +49,20 @@ export default function RemoteCameraViewer({ camera, onClose }: { camera: Camera
     
     const isLocal = localPatterns.some(pattern => pattern.test(cameraIp));
     
-    // Production domain kontrolü
+    // Production domain kontrolü - HTTPS siteden HTTP kamera çağrılamaz
     const isProductionDomain = typeof window !== 'undefined' && 
-      (window.location.hostname.includes('vercel.app') || 
-       window.location.hostname.includes('cityv.com') ||
+      (window.location.protocol === 'https:' ||
+       window.location.hostname.includes('vercel.app') || 
+       window.location.hostname.includes('city-v.com') ||
        window.location.hostname.includes('cityv.app'));
     
-    if (isLocal && isProductionDomain) {
+    // HTTPS sitedeyse veya local kamera ise PROXY KULLAN
+    if (isLocal || isProductionDomain) {
       setConnectionMode('remote');
-      console.log('🌐 Remote access mode - Proxy kullanılıyor');
-    } else if (isLocal && !isProductionDomain) {
-      setConnectionMode('local');
-      console.log('🏠 Local network mode - Direkt bağlantı');
+      console.log('🌐 HTTPS mode - Proxy kullanılıyor (Mixed Content fix)');
     } else {
       setConnectionMode('remote');
-      console.log('🌐 Public camera - Direkt bağlantı');
+      console.log('🌐 Public camera - Proxy kullanılıyor');
     }
   };
 
@@ -126,8 +125,14 @@ export default function RemoteCameraViewer({ camera, onClose }: { camera: Camera
   // Stats güncelleme (her 2 saniyede)
   useEffect(() => {
     const loadStats = async () => {
+      if (!camera?.device_id && !camera?.id) {
+        console.log('⚠️ No camera ID for stats');
+        return;
+      }
+      
       try {
-        const response = await fetch(`/api/business/cameras/${camera.device_id}/counting`);
+        const cameraId = camera.device_id || camera.id;
+        const response = await fetch(`/api/business/cameras/${cameraId}/counting`);
         const data = await response.json();
         
         if (data.success && data.counting) {

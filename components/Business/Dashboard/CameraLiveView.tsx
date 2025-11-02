@@ -126,8 +126,14 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
   };
 
   const loadCounting = async () => {
+    if (!camera?.device_id && !camera?.id) {
+      console.log('⚠️ No camera ID for counting');
+      return;
+    }
+    
     try {
-      const response = await fetch(`/api/business/cameras/${camera.device_id}/counting`);
+      const cameraId = camera.device_id || camera.id;
+      const response = await fetch(`/api/business/cameras/${cameraId}/counting`);
       const data = await response.json();
       
       if (data.success && data.counting) {
