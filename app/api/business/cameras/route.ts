@@ -13,15 +13,21 @@ const CAMERA_LIMITS = {
 // JWT token'dan user bilgisini al
 function getUserFromToken(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
+  console.log('🔐 Camera API auth check:', { hasHeader: !!authHeader, startsWithBearer: authHeader?.startsWith('Bearer ') });
+  
   if (!authHeader?.startsWith('Bearer ')) {
+    console.log('❌ Missing or invalid auth header');
     return null;
   }
 
   try {
     const token = authHeader.substring(7);
+    console.log('🔍 Decoding token, length:', token.length);
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+    console.log('✅ Token decoded:', { userId: decoded.userId, email: decoded.email });
     return decoded;
-  } catch {
+  } catch (error: any) {
+    console.error('❌ JWT verify failed:', error.message);
     return null;
   }
 }
