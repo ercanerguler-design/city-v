@@ -88,15 +88,22 @@ export default function BusinessDashboard() {
       if (user) {
         setBusinessUser(user);
         console.log('👤 User loaded from storage:', user.email);
+        
+        // Profile'ı yükle
+        loadBusinessProfile(user.id);
       } else {
         // Fallback user data
-        setBusinessUser({
+        const fallbackUser = {
           id: 6,
           email: 'merveerguler93@gmail.com',
           fullName: 'DERİN SU ERGÜLER',
           membership_type: 'premium',
           max_cameras: 10
-        });
+        };
+        setBusinessUser(fallbackUser);
+        
+        // Profile'ı yükle
+        loadBusinessProfile(fallbackUser.id);
       }
       
       setLoading(false);
@@ -356,13 +363,16 @@ export default function BusinessDashboard() {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto bg-gray-50 p-3 md:p-6">
+          {/* Debug: Active Section */}
+          {console.log('🎯 Active section:', activeSection, 'Profile:', !!businessProfile)}
+          
           {activeSection === 'overview' && <OverviewSection businessProfile={businessProfile} />}
           {activeSection === 'cameras' && <CamerasSection businessProfile={businessProfile} />}
           {activeSection === 'location' && <LocationSection businessProfile={businessProfile} />}
           {activeSection === 'menu' && <MenuSection businessProfile={businessProfile} />}
           {activeSection === 'personel' && <PersonelSection businessProfile={businessProfile} />}
           {activeSection === 'analytics' && <AnalyticsSection businessProfile={businessProfile} />}
-          {activeSection === 'settings' && <SettingsSection businessProfile={businessProfile} onUpdate={() => loadBusinessProfile(businessUser.id)} />}
+          {activeSection === 'settings' && <SettingsSection businessProfile={businessProfile} onUpdate={() => loadBusinessProfile(businessUser?.id)} />}
         </main>
       </div>
     </div>
