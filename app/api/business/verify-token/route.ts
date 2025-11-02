@@ -98,7 +98,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('❌ Token verification error:', error);
     return NextResponse.json(
-      { valid: false, error: 'Doğrulama hatası' },
+      { valid: false, error: 'Doğrulama hatası', details: error.message },
       { status: 500 }
     );
   }
