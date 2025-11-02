@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import { sql } from '@vercel/postgres';
+import { query } from '@/lib/db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-2024';
 
@@ -28,11 +28,10 @@ export async function POST(request: Request) {
     }
 
     // Kullanıcının hala aktif olup olmadığını kontrol et
-    const userResult = await sql`
-      SELECT id, email, full_name, phone, is_active
-      FROM business_users 
-      WHERE id = ${decoded.userId}
-    `;
+    const userResult = await query(
+      'SELECT id, email, full_name, phone, is_active FROM business_users WHERE id = $1',
+      [decoded.userId]
+    );
 
     if (userResult.rows.length === 0 || !userResult.rows[0].is_active) {
       return NextResponse.json(
@@ -44,13 +43,14 @@ export async function POST(request: Request) {
     const user = userResult.rows[0];
 
     // Membership bilgilerini business_subscriptions tablosundan çek
-    const subscriptionResult = await sql`
-      SELECT plan_type, end_date, camera_count
-      FROM business_subscriptions 
-      WHERE user_id = ${user.id} AND is_active = true
-      ORDER BY created_at DESC 
-      LIMIT 1
-    `;
+    const subscriptionResult = await query(
+      `SELECT plan_type, end_date, camera_count
+       FROM business_subscriptions 
+       WHERE user_id = $1 AND is_active = true
+       ORDER BY created_at DESC 
+       LIMIT 1`,
+      [user.id]
+    );
 
     let membershipData = {
       membership_type: 'free',
@@ -76,9 +76,10 @@ export async function POST(request: Request) {
     }
 
     // Business profilini getir
-    const profileResult = await sql`
-      SELECT * FROM business_profiles WHERE user_id = ${user.id}
-    `;
+    const profileResult = await query(
+      'SELECT * FROM business_profiles WHERE user_id = $1',
+      [user.id]
+    );
 
     return NextResponse.json({
       valid: true,
