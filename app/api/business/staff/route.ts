@@ -1,5 +1,6 @@
 import { sql } from '@vercel/postgres';
 import { NextRequest, NextResponse } from 'next/server';
+import { sendStaffWelcomeEmail, sendOwnerStaffNotification } from '@/lib/businessEmail';
 
 // GET - Personel listesi
 export async function GET(request: NextRequest) {
@@ -68,10 +69,44 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `;
 
+    // İşletme bilgisini al (email için)
+    const businessProfile = await sql`
+      SELECT bp.business_name, bp.user_id, bu.email as owner_email, bu.full_name as owner_name
+      FROM business_profiles bp
+      JOIN business_users bu ON bp.user_id = bu.id
+      WHERE bp.id = ${businessId}
+    `;
+
+    // Email gönder (asenkron, hata olsa da personel kaydı başarılı)
+    if (businessProfile.rows.length > 0) {
+      const business = businessProfile.rows[0];
+      
+      // Personele hoş geldin emaili
+      sendStaffWelcomeEmail({
+        fullName: full_name,
+        email: email,
+        businessName: business.business_name,
+        position: position,
+        dashboardUrl: 'https://city-v.com/business/dashboard'
+      }).catch(err => console.error('Email send error:', err));
+
+      // İşletme sahibine bildirim
+      if (business.owner_email) {
+        sendOwnerStaffNotification({
+          ownerEmail: business.owner_email,
+          ownerName: business.owner_name || 'İşletme Sahibi',
+          staffName: full_name,
+          staffEmail: email,
+          staffPosition: position,
+          businessName: business.business_name
+        }).catch(err => console.error('Owner notification error:', err));
+      }
+    }
+
     return NextResponse.json({
       success: true,
       staff: result.rows[0],
-      message: 'Personel eklendi'
+      message: 'Personel eklendi ve email gönderildi'
     });
 
   } catch (error: any) {
