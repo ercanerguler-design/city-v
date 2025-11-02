@@ -19,6 +19,7 @@ export async function POST(request: Request) {
     let decoded: any;
     try {
       decoded = jwt.verify(token, JWT_SECRET);
+      console.log('✅ Token decoded:', { userId: decoded.userId });
     } catch (error: any) {
       console.error('❌ Token doğrulama hatası:', error.message);
       return NextResponse.json(
@@ -27,14 +28,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // Kullanıcının hala aktif olup olmadığını kontrol et
+    // Kullanıcı bilgilerini business_users tablosundan çek (membership dahil)
     const userResult = await sql`
-      SELECT id, email, full_name, phone, is_active 
+      SELECT 
+        id, 
+        email, 
+        full_name, 
+        phone, 
+        is_active,
+        membership_type,
+        max_cameras
       FROM business_users 
-      WHERE id = ${decoded.userId}
+      WHERE id = ${decoded.userId} AND is_active = true
     `;
 
-    if (userResult.rows.length === 0 || !userResult.rows[0].is_active) {
+    console.log('📋 User query result:', { found: userResult.rows.length, userId: decoded.userId });
+
+    if (userResult.rows.length === 0) {
       return NextResponse.json(
         { valid: false, error: 'Kullanıcı bulunamadı veya aktif değil' },
         { status: 401 }
@@ -43,50 +53,18 @@ export async function POST(request: Request) {
 
     const user = userResult.rows[0];
 
-    // Membership bilgilerini business_subscriptions tablosundan çek
-    const subscriptionResult = await sql`
-      SELECT plan_type, end_date
-      FROM business_subscriptions 
-      WHERE user_id = ${user.id} AND is_active = true
-      ORDER BY created_at DESC 
-      LIMIT 1
-    `;
-
-    let membershipData = {
-      membership_type: 'free',
-      membership_expiry_date: null,
-      max_cameras: 1
-    };
-
-    if (subscriptionResult.rows.length > 0) {
-      const subscription = subscriptionResult.rows[0];
-      const expiryDate = subscription.end_date ? new Date(subscription.end_date) : null;
-      const now = new Date();
-      
-      // Süre dolmamışsa subscription bilgilerini kullan
-      if (!expiryDate || expiryDate > now) {
-        // Plan type'a göre max_cameras belirle
-        const maxCamerasMap: { [key: string]: number } = {
-          'enterprise': 50,
-          'premium': 10,
-          'business': 5,
-          'free': 1
-        };
-        
-        membershipData = {
-          membership_type: subscription.plan_type || 'free',
-          membership_expiry_date: subscription.end_date,
-          max_cameras: maxCamerasMap[subscription.plan_type] || 1
-        };
-      } else {
-        console.log('⚠️ Subscription süresi dolmuş, free plana düşürüldü');
-      }
+    // Business profilini getir (opsiyonel)
+    let profile = null;
+    try {
+      const profileResult = await sql`
+        SELECT * FROM business_profiles WHERE user_id = ${user.id}
+      `;
+      profile = profileResult.rows[0] || null;
+    } catch (error) {
+      console.log('⚠️ Profile bulunamadı (normal, ilk girişte olabilir)');
     }
 
-    // Business profilini getir
-    const profileResult = await sql`
-      SELECT * FROM business_profiles WHERE user_id = ${user.id}
-    `;
+    console.log('✅ Verify successful:', { email: user.email, membership: user.membership_type });
 
     return NextResponse.json({
       valid: true,
@@ -95,11 +73,10 @@ export async function POST(request: Request) {
         email: user.email,
         fullName: user.full_name,
         phone: user.phone,
-        membership_type: membershipData.membership_type,
-        membership_expiry_date: membershipData.membership_expiry_date,
-        max_cameras: membershipData.max_cameras
+        membership_type: user.membership_type || 'free',
+        max_cameras: user.max_cameras || 1
       },
-      profile: profileResult.rows[0] || null
+      profile: profile
     });
 
   } catch (error: any) {
