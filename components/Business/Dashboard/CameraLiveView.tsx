@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Maximize2, RefreshCw, Wifi, Activity, Eye, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getCameraStreamUrl, addCacheBusting } from '@/lib/streamUtils';
 
 interface DetectedObject {
   class: string;
@@ -21,32 +22,6 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
   const [heatmap, setHeatmap] = useState<any>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const imageRef = useRef<HTMLImageElement>(null);
-  
-  // RTSP'yi HTTP'ye çevir - Browser RTSP desteklemiyor
-  const getHttpStreamUrl = () => {
-    let url = camera.stream_url || `http://${camera.ip_address}:${camera.port}/stream`;
-    
-    // RTSP URL'ini parse et ve HTTP'ye çevir
-    if (url.startsWith('rtsp://')) {
-      try {
-        // rtsp://user:pass@192.168.1.2:80/stream formatını parse et
-        const rtspRegex = /rtsp:\/\/(?:([^:]+):([^@]+)@)?(.+)/;
-        const match = url.match(rtspRegex);
-        
-        if (match) {
-          const [, username, password, hostPath] = match;
-          // HTTP URL'e çevir - IoT kameralar için genelde /stream endpoint'i
-          url = `http://${hostPath}`;
-        }
-      } catch (e) {
-        console.error('RTSP URL parse error:', e);
-        // Fallback: IP:port/stream
-        url = `http://${camera.ip_address}:${camera.port}/stream`;
-      }
-    }
-    
-    return url;
-  };
   
   // Remote access kontrolü - Local network dışından mı bağlanılıyor?
   const isRemoteAccess = () => {
@@ -70,12 +45,13 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
     return isLocal && isProductionDomain;
   };
   
-  const streamUrl = getHttpStreamUrl();
+  // Stream URL'i al (RTSP otomatik HTTP'ye çevrilir)
+  const streamUrl = getCameraStreamUrl(camera);
   
   // Remote access ise proxy kullan
   const finalStreamUrl = isRemoteAccess() 
-    ? `/api/business/cameras/stream-proxy?url=${encodeURIComponent(streamUrl)}&t=${refreshKey}`
-    : `${streamUrl}${streamUrl.includes('?') ? '&' : '?'}t=${refreshKey}`;
+    ? addCacheBusting(`/api/business/cameras/stream-proxy?url=${encodeURIComponent(streamUrl)}`)
+    : addCacheBusting(streamUrl);
   
   console.log('📹 Stream mode:', isRemoteAccess() ? 'REMOTE (via proxy)' : 'LOCAL (direct)');
   console.log('📹 Final URL:', finalStreamUrl);

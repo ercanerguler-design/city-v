@@ -62,21 +62,17 @@ export default function RemoteCameraViewer({ camera, onClose }: { camera: Camera
   };
 
   const getStreamUrl = () => {
-    let baseUrl = camera.stream_url || `http://${camera.ip_address}:${camera.port}/stream`;
-    
-    // RTSP'yi HTTP'ye çevir
-    if (baseUrl.startsWith('rtsp://')) {
-      baseUrl = baseUrl.replace('rtsp://', 'http://');
-    }
+    // Stream URL'i al (RTSP otomatik HTTP'ye çevrilir)
+    const baseUrl = getCameraStreamUrl(camera);
     
     // Remote access ise proxy kullan
     if (connectionMode === 'remote') {
       const encodedUrl = encodeURIComponent(baseUrl);
-      return `/api/business/cameras/stream-proxy?url=${encodedUrl}&t=${refreshKey}&cache=${Math.random()}`;
+      return addCacheBusting(`/api/business/cameras/stream-proxy?url=${encodedUrl}`);
     }
     
     // Local access - direkt bağlan
-    return `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${refreshKey}&cache=${Math.random()}`;
+    return addCacheBusting(baseUrl);
   };
 
   const handleImageLoad = () => {

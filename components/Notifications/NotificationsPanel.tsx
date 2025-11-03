@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bell, TrendingUp, MapPin, Crown, Users, CheckCircle, AlertCircle, Info } from 'lucide-react';
 import { formatTime } from '@/lib/utils';
@@ -19,56 +20,46 @@ interface NotificationsPanelProps {
   onClose: () => void;
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'crowd',
-    title: 'Kalabalık Uyarısı',
-    message: 'Starbucks Kızılay şu anda çok kalabalık. Bekleme süresi: 15 dk',
-    timestamp: new Date(Date.now() - 5 * 60000), // 5 dakika önce
-    read: false,
-    icon: TrendingUp,
-  },
-  {
-    id: '2',
-    type: 'location',
-    title: 'Yeni Mekan',
-    message: 'Yakınınıza yeni bir kafe eklendi: Espresso Lab Çankaya',
-    timestamp: new Date(Date.now() - 2 * 3600000), // 2 saat önce
-    read: false,
-    icon: MapPin,
-  },
-  {
-    id: '3',
-    type: 'premium',
-    title: 'Premium Avantaj',
-    message: 'Premium üyeliğinizle tüm analitik özellikler aktif!',
-    timestamp: new Date(Date.now() - 24 * 3600000), // 1 gün önce
-    read: true,
-    icon: Crown,
-  },
-  {
-    id: '4',
-    type: 'social',
-    title: 'Yeni Takipçi',
-    message: 'Ahmet K. sizi takip etmeye başladı',
-    timestamp: new Date(Date.now() - 3 * 24 * 3600000), // 3 gün önce
-    read: true,
-    icon: Users,
-  },
-  {
-    id: '5',
-    type: 'achievement',
-    title: 'Başarı Kazanıldı! 🎉',
-    message: 'İlk 10 check-in rozetini kazandınız!',
-    timestamp: new Date(Date.now() - 7 * 24 * 3600000), // 1 hafta önce
-    read: true,
-    icon: CheckCircle,
-  },
-];
-
 export default function NotificationsPanel({ isOpen, onClose }: NotificationsPanelProps) {
-  const unreadCount = mockNotifications.filter(n => !n.read).length;
+  const [notifications, setNotifications] = React.useState<Notification[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  // Gerçek bildirimleri API'den yükle
+  React.useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const response = await fetch('/api/notifications');
+        const data = await response.json();
+        
+        if (data.success && data.notifications) {
+          // API'den gelen bildirimleri dönüştür
+          const formattedNotifications: Notification[] = data.notifications.map((n: any) => ({
+            id: n.id?.toString() || Math.random().toString(),
+            type: n.notification_type || n.type || 'premium',
+            title: n.title,
+            message: n.message,
+            timestamp: new Date(n.created_at || n.createdAt),
+            read: n.read || false,
+            icon: TrendingUp, // Default icon
+          }));
+          setNotifications(formattedNotifications);
+        } else {
+          setNotifications([]);
+        }
+      } catch (error) {
+        console.error('Bildirimler yüklenemedi:', error);
+        setNotifications([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isOpen) {
+      loadNotifications();
+    }
+  }, [isOpen]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const getNotificationColor = (type: Notification['type']) => {
     switch (type) {
@@ -133,7 +124,12 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
 
             {/* Notifications List */}
             <div className="p-4 space-y-3">
-              {mockNotifications.length === 0 ? (
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-500 dark:text-gray-400">Bildirimler yükleniyor...</p>
+                </div>
+              ) : notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="p-4 bg-gray-100 dark:bg-slate-700 rounded-full mb-4">
                     <Bell className="w-8 h-8 text-gray-400" />
@@ -146,7 +142,7 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
                   </p>
                 </div>
               ) : (
-                mockNotifications.map((notification) => {
+                notifications.map((notification) => {
                   const Icon = notification.icon || Info;
                   return (
                     <motion.div
@@ -198,7 +194,7 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
             </div>
 
             {/* Actions */}
-            {mockNotifications.length > 0 && (
+            {!loading && notifications.length > 0 && (
               <div className="sticky bottom-0 p-4 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex gap-2">
                   <button className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold">

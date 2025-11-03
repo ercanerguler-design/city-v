@@ -29,14 +29,55 @@ export default function CreateCampaignModal({ isOpen, onClose, businessId, onSuc
     setLoading(true);
     setError('');
 
+    // Validasyon
+    if (!formData.title.trim()) {
+      setError('Kampanya başlığı gerekli');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.description.trim()) {
+      setError('Açıklama gerekli');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.discountPercent || parseInt(formData.discountPercent) <= 0) {
+      setError('Geçerli bir indirim oranı girin');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.startDate || !formData.endDate) {
+      setError('Başlangıç ve bitiş tarihleri gerekli');
+      setLoading(false);
+      return;
+    }
+
     try {
+      console.log('📤 Kampanya oluşturuluyor:', {
+        businessId,
+        title: formData.title,
+        description: formData.description,
+        discountPercent: parseInt(formData.discountPercent),
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        targetAudience: formData.targetAudience
+      });
+
       const response = await fetch('/api/business/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           businessId,
-          ...formData,
-          discountPercent: parseInt(formData.discountPercent)
+          title: formData.title,
+          description: formData.description,
+          discountPercent: parseInt(formData.discountPercent),
+          discountAmount: null,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          targetAudience: formData.targetAudience,
+          imageUrl: null
         })
       });
 

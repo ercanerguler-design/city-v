@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Save, Trash2, Plus, Check, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { getCameraStreamUrl } from '@/lib/streamUtils';
 
 interface Point {
   x: number;
@@ -51,7 +52,8 @@ export default function ZoneDrawingModalPro({ camera, onClose, onSave }: ZoneDra
   const CANVAS_WIDTH = 1280;
   const CANVAS_HEIGHT = 720;
 
-  const streamUrl = camera.stream_url || `http://${camera.ip_address}:${camera.port}/stream`;
+  // Stream URL'i al (RTSP otomatik HTTP'ye çevrilir)
+  const streamUrl = getCameraStreamUrl(camera);
 
   // Snap to grid helper
   const snapPoint = (point: Point): Point => {

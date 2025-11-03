@@ -495,7 +495,15 @@ if (typeof window !== 'undefined') {
     store.clearExpiredNotifications();
   }, 5 * 60 * 1000);
 
-  // Auto-generate demo notifications when socket connects
+  // Demo notifications disabled - using real business campaigns only
+  // Real notifications will come from:
+  // 1. /api/campaigns/active (campaign notifications)
+  // 2. /api/notifications (push notifications from Vercel KV)
+  // 3. ESP32 IoT devices (crowd updates)
+  
+  console.log('🔔 Notification system ready (demo mode disabled)');
+  
+  /* DEMO CODE REMOVED - Auto-generation disabled
   let notificationInterval: NodeJS.Timeout;
   
   const startNotifications = () => {
@@ -549,6 +557,7 @@ if (typeof window !== 'undefined') {
       clearInterval(checkInterval);
     }
   }, 2000);
+  */
 }
 
 // Haversine formula to calculate distance between two points

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Save, RotateCcw, ZoomIn, Info, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { getCameraStreamUrl } from '@/lib/streamUtils';
 
 interface CalibrationLine {
   x1: number;
@@ -31,10 +32,9 @@ export default function CalibrationModalPro({ camera, onClose, onSave }: Calibra
   
   const CANVAS_WIDTH = 1280;
   const CANVAS_HEIGHT = 720;
-  
-  const streamUrl = camera.stream_url || `http://${camera.ip_address}:${camera.port}/stream`;
 
-  useEffect(() => {
+  // Stream URL'i al (RTSP otomatik HTTP'ye çevrilir)
+  const streamUrl = getCameraStreamUrl(camera);  useEffect(() => {
     // Mevcut kalibrasyonu yükle
     if (camera.calibration_line) {
       setCurrentLine(camera.calibration_line);

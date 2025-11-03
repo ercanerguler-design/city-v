@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 export default function CityVAdminDashboard() {
   const router = useRouter();
   const { isAdmin, stats: localStats, refreshStats, logout } = useAdminStore();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'locations' | 'revenue' | 'business'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'locations' | 'revenue' | 'business' | 'credits'>('overview');
   const [showBusinessForm, setShowBusinessForm] = useState(false);
   const [showEditBusinessModal, setShowEditBusinessModal] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState<any>(null);
@@ -26,6 +26,8 @@ export default function CityVAdminDashboard() {
   const [locations, setLocations] = useState<any[]>([]);
   const [realStats, setRealStats] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [creditUsers, setCreditUsers] = useState<any[]>([]);
+  const [assigningTo, setAssigningTo] = useState<number | null>(null);
 
   // Gerçek istatistikleri yükle
   const loadRealStats = async () => {
@@ -149,6 +151,57 @@ export default function CityVAdminDashboard() {
     }
   };
 
+  // Kredi kullanıcılarını yükle
+  const loadCreditUsers = async () => {
+    try {
+      const response = await fetch('/api/cityvadmin/assign-credits');
+      const data = await response.json();
+      if (data.success) {
+        setCreditUsers(data.users);
+        console.log('✅ Kredi kullanıcıları yüklendi:', data.users.length);
+      }
+    } catch (error) {
+      console.error('❌ Credit users load error:', error);
+    }
+  };
+
+  // Kredi ata
+  const handleAssignCredits = async (userId: number, credits: number) => {
+    if (credits <= 0) {
+      toast.error('Geçerli bir kredi miktarı girin');
+      return;
+    }
+
+    try {
+      setAssigningTo(userId);
+      
+      const response = await fetch('/api/cityvadmin/assign-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessUserId: userId,
+          credits,
+          description: `Admin tarafından ${credits} kredi eklendi`,
+          adminId: 1
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(data.message);
+        loadCreditUsers(); // Listeyi yenile
+      } else {
+        toast.error(data.error);
+      }
+    } catch (error) {
+      console.error('Kredi atanamadı:', error);
+      toast.error('Bir hata oluştu');
+    } finally {
+      setAssigningTo(null);
+    }
+  };
+
   // Normal kullanıcı premium yapma
   const handleTogglePremium = async (user: any) => {
     const newMembership = user.membership === 'premium' ? 'free' : 'premium';
@@ -217,6 +270,8 @@ export default function CityVAdminDashboard() {
     
     if (activeTab === 'business') {
       loadBusinessMembers();
+    } else if (activeTab === 'credits') {
+      loadCreditUsers();
     } else if (activeTab === 'users') {
       loadUsers();
     } else if (activeTab === 'locations') {
@@ -229,6 +284,7 @@ export default function CityVAdminDashboard() {
     { id: 'overview', label: 'Genel Bakış', icon: BarChart3 },
     { id: 'users', label: 'CityV Üyeleri', icon: Users },
     { id: 'business', label: 'Business Üyeler', icon: Building2 },
+    { id: 'credits', label: 'Kredi Yönetimi', icon: Star },
     { id: 'locations', label: 'Mekanlar', icon: MapPin },
     { id: 'revenue', label: 'Gelir', icon: DollarSign },
   ];
@@ -885,6 +941,163 @@ export default function CityVAdminDashboard() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Credits Tab */}
+        {activeTab === 'credits' && (
+          <div className="space-y-6">
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <StatCard
+                icon={Users}
+                label="Toplam Kullanıcı"
+                value={creditUsers.length}
+                gradient="bg-gradient-to-br from-blue-500 to-blue-600"
+              />
+              <StatCard
+                icon={Star}
+                label="Toplam Kredi"
+                value={creditUsers.reduce((sum, u) => sum + (u.campaign_credits || 0), 0)}
+                gradient="bg-gradient-to-br from-amber-500 to-amber-600"
+              />
+              <StatCard
+                icon={TrendingUp}
+                label="Toplam Kampanya"
+                value={creditUsers.reduce((sum, u) => sum + (u.total_campaigns_created || 0), 0)}
+                gradient="bg-gradient-to-br from-green-500 to-green-600"
+              />
+            </div>
+
+            {/* Credits Table */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Kampanya Kredileri</h2>
+                  <button
+                    onClick={loadCreditUsers}
+                    disabled={isRefreshing}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-slate-700/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Kullanıcı
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        İşletme
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Üyelik
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Kredi
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Kampanyalar
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Kredi Ekle
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                    {creditUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-12 text-center">
+                          <div className="flex flex-col items-center gap-3">
+                            <Star className="w-12 h-12 text-gray-400" />
+                            <p className="text-gray-500 dark:text-gray-400">
+                              Henüz kullanıcı bulunmuyor
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      creditUsers.map((user) => (
+                        <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {user.full_name || 'İsimsiz'}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {user.email}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className="text-sm text-gray-900 dark:text-white">
+                                {user.business_name || '-'}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {user.business_type || '-'}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              user.membership_type === 'enterprise'
+                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                : user.membership_type === 'premium'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                            }`}>
+                              {user.membership_type === 'enterprise' ? '💎 Enterprise' : 
+                               user.membership_type === 'premium' ? '👑 Premium' : 
+                               '🆓 Free'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className="text-lg font-bold text-amber-600">
+                              {user.campaign_credits || 0} ⭐
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className="text-sm text-gray-900 dark:text-white">
+                              {user.total_campaigns_created || 0}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-center gap-2">
+                              {[5, 10, 25].map((amount) => (
+                                <button
+                                  key={amount}
+                                  onClick={() => handleAssignCredits(user.id, amount)}
+                                  disabled={assigningTo === user.id}
+                                  className="px-3 py-1 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  +{amount}
+                                </button>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+
+            {/* Info */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>💡 Bilgi:</strong> Her kampanya oluşturma 2 kredi harcar. Premium üyeler 15, Enterprise üyeler 39 kredi ile başlar.
+              </p>
             </div>
           </div>
         )}

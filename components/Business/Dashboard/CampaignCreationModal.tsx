@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Send, Users, MapPin, Calendar, Percent, DollarSign, Image as ImageIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Send, Users, MapPin, Calendar, Percent, DollarSign, Image as ImageIcon, CreditCard } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -13,6 +13,7 @@ interface CampaignModalProps {
 
 export default function CampaignCreationModal({ businessProfile, onClose, onSuccess }: CampaignModalProps) {
   const [loading, setLoading] = useState(false);
+  const [credits, setCredits] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -26,6 +27,32 @@ export default function CampaignCreationModal({ businessProfile, onClose, onSucc
     max_age: '',
     banner_url: ''
   });
+
+  // Kredi bilgisini yükle
+  React.useEffect(() => {
+    const loadCredits = async () => {
+      if (businessProfile?.user_id) {
+        try {
+          const response = await fetch(`/api/business/credits?userId=${businessProfile.user_id}`);
+          const data = await response.json();
+          if (data.success) {
+            setCredits(data.credits.current);
+          }
+        } catch (error) {
+          console.error('Kredi yüklenemedi:', error);
+        }
+      }
+    };
+    loadCredits();
+  }, [businessProfile]);
+
+  // Guard: businessProfile yoksa modal açılmamalı
+  if (!businessProfile) {
+    return null;
+  }
+
+  const CAMPAIGN_COST = 2;
+  const hasEnoughCredits = credits !== null && credits >= CAMPAIGN_COST;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,9 +73,17 @@ export default function CampaignCreationModal({ businessProfile, onClose, onSucc
       return;
     }
 
+    // Business profile kontrolü
+    if (!businessProfile?.id) {
+      toast.error('İşletme profili yüklenemedi. Lütfen sayfayı yenileyin.');
+      return;
+    }
+
     setLoading(true);
 
     try {
+      console.log('📤 Kampanya oluşturuluyor, business_id:', businessProfile.id);
+      
       const response = await fetch('/api/business/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,11 +101,20 @@ export default function CampaignCreationModal({ businessProfile, onClose, onSucc
       const data = await response.json();
 
       if (data.success) {
-        toast.success(`Kampanya oluşturuldu! ${data.notifications_sent || 0} kullanıcıya bildirim gönderildi`);
+        toast.success(data.message || `Kampanya oluşturuldu! ${data.creditsUsed} kredi kullanıldı. Kalan: ${data.creditsRemaining}`);
         onSuccess();
         onClose();
       } else {
-        toast.error(data.error || 'Kampanya oluşturma hatası');
+        // Yetersiz kredi hatası
+        if (data.needsMoreCredits || response.status === 402) {
+          toast.error(data.message || 'Yetersiz kredi!', {
+            duration: 5000,
+            icon: '💳'
+          });
+          setCredits(data.currentCredits || 0); // Kredi bilgisini güncelle
+        } else {
+          toast.error(data.error || 'Kampanya oluşturma hatası');
+        }
       }
     } catch (error) {
       console.error('Campaign creation error:', error);
@@ -100,10 +144,12 @@ export default function CampaignCreationModal({ businessProfile, onClose, onSucc
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-2xl font-bold text-white mb-1">Yeni Kampanya Oluştur</h2>
-              <p className="text-blue-100">{businessProfile.business_name}</p>
+              <p className="text-blue-100">
+                {businessProfile?.business_name || 'İşletme Kampanyası'}
+              </p>
             </div>
             <button
               onClick={onClose}
@@ -112,6 +158,33 @@ export default function CampaignCreationModal({ businessProfile, onClose, onSucc
               <X className="w-6 h-6 text-white" />
             </button>
           </div>
+
+          {/* Credits Info */}
+          <div className="flex items-center justify-between bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-yellow-300" />
+              <span className="text-white font-medium">Mevcut Krediniz:</span>
+              <span className="text-yellow-300 font-bold text-lg">{credits ?? '...'} ⭐</span>
+            </div>
+            <div className="text-sm text-white/80">
+              Kampanya maliyeti: <span className="font-semibold text-white">{CAMPAIGN_COST} ⭐</span>
+            </div>
+          </div>
+
+          {/* Insufficient Credits Warning */}
+          {credits !== null && !hasEnoughCredits && (
+            <div className="mt-3 p-3 bg-red-500/20 border border-red-300/50 rounded-lg">
+              <p className="text-white text-sm font-medium">
+                ⚠️ Yetersiz kredi! Kampanya oluşturmak için en az {CAMPAIGN_COST} krediye ihtiyacınız var.
+              </p>
+              <button
+                onClick={() => toast('Kredi satın alma sistemi yakında aktif olacak!', { icon: '💳' })}
+                className="mt-2 px-4 py-2 bg-white text-purple-600 rounded-lg font-semibold hover:bg-purple-50 transition-colors text-sm"
+              >
+                💳 Kredi Satın Al
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Form */}

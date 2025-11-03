@@ -17,6 +17,7 @@ import LocationSection from '@/components/Business/Dashboard/LocationSection';
 import MenuSection from '@/components/Business/Dashboard/MenuSection';
 import PersonelSection from '@/components/Business/Dashboard/PersonelSection';
 import AnalyticsSection from '@/components/Business/Dashboard/AnalyticsSection';
+import AIAnalyticsSection from '@/components/Business/Dashboard/AIAnalyticsSection';
 import SettingsSection from '@/components/Business/Dashboard/SettingsSection';
 
 interface NavItem {
@@ -28,6 +29,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'overview', label: 'Genel Bakış', icon: LayoutDashboard },
   { id: 'cameras', label: 'Kameralar', icon: Camera },
+  { id: 'ai-analytics', label: 'AI Analytics', icon: Activity },
   { id: 'location', label: 'Konum Yönetimi', icon: MapPin },
   { id: 'menu', label: 'Menü & Fiyatlar', icon: MenuIcon },
   { id: 'personel', label: 'Personel Yönetimi', icon: UserCheck },
@@ -106,7 +108,7 @@ export default function BusinessDashboard() {
         loadBusinessProfile(fallbackUser.id);
       }
       
-      setLoading(false);
+      // setLoading(false) kaldırıldı - loadBusinessProfile finally'sinde yapılıyor
       
       /* BYPASS: verify-token çağrısı yapılmıyor - ESKI KOD KAPALI
       try {
@@ -189,6 +191,20 @@ export default function BusinessDashboard() {
         console.log('✅ Profile yüklendi:', profileWithUserId);
       } else {
         console.error('❌ Profile yüklenemedi:', data.error);
+      }
+
+      // Kredi bilgisini getir ve businessUser'a ekle
+      console.log('💳 Kredi bilgisi yükleniyor...');
+      const creditsResponse = await fetch(`/api/business/credits?userId=${userId}`);
+      const creditsData = await creditsResponse.json();
+      
+      if (creditsData.success) {
+        setBusinessUser((prev: any) => ({
+          ...prev,
+          campaign_credits: creditsData.credits.current,
+          total_campaigns_created: creditsData.credits.totalCampaigns
+        }));
+        console.log('✅ Kredi bilgisi yüklendi:', creditsData.credits.current);
       }
     } catch (error) {
       console.error('❌ Profile loading error:', error);
@@ -348,6 +364,14 @@ export default function BusinessDashboard() {
                 )}
               </div>
             )}
+
+            {/* Campaign Credits Badge */}
+            {businessUser && (
+              <div className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 flex items-center gap-2">
+                <span className="text-amber-600 font-bold text-sm">{businessUser.campaign_credits || 0}</span>
+                <span className="text-xs text-amber-700 font-medium">⭐ Kredi</span>
+              </div>
+            )}
             
             <button className="p-2 hover:bg-gray-100 rounded-lg relative">
               <Bell className="w-5 h-5 text-gray-600" />
@@ -356,7 +380,9 @@ export default function BusinessDashboard() {
             <div className="hidden md:block h-8 w-px bg-gray-200"></div>
             <div className="hidden md:block text-sm">
               <p className="text-gray-500">İşletme</p>
-              <p className="font-medium text-gray-900">{businessProfile?.business_name || 'Yükleniyor...'}</p>
+              <p className="font-medium text-gray-900">
+                {businessProfile ? businessProfile.business_name : businessUser?.fullName || businessUser?.email || 'İşletme'}
+              </p>
             </div>
           </div>
         </header>
@@ -365,6 +391,7 @@ export default function BusinessDashboard() {
         <main className="flex-1 overflow-y-auto bg-gray-50 p-3 md:p-6">
           {activeSection === 'overview' && <OverviewSection businessProfile={businessProfile} />}
           {activeSection === 'cameras' && <CamerasSection businessProfile={businessProfile} />}
+          {activeSection === 'ai-analytics' && <AIAnalyticsSection businessId={businessUser?.id?.toString() || '6'} />}
           {activeSection === 'location' && <LocationSection businessProfile={businessProfile} />}
           {activeSection === 'menu' && <MenuSection businessProfile={businessProfile} />}
           {activeSection === 'personel' && <PersonelSection businessProfile={businessProfile} />}

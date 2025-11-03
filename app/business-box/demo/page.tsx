@@ -118,11 +118,19 @@ const generateMockData = () => {
 };
 
 export default function DemoPage() {
-  const [data, setData] = useState(generateMockData());
+  const [data, setData] = useState<any>(null);
   const [isLive, setIsLive] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'cityv' | 'notifications'>('overview');
   const [mounted, setMounted] = useState(false);
+  const [sparklePositions] = useState(() => 
+    Array.from({ length: 20 }, () => ({
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      duration: 2 + Math.random() * 2,
+      delay: Math.random() * 2,
+    }))
+  );
   const { user, isAuthenticated } = useAuth();
   
   // İşletme adını belirle (kullanıcı giriş yapmışsa gerçek ismi, yoksa genel isim)
@@ -139,10 +147,13 @@ export default function DemoPage() {
 
   useEffect(() => {
     setMounted(true);
+    // Initialize data on client side only
+    setData(generateMockData());
+    setLastUpdate(new Date());
   }, []);
 
   useEffect(() => {
-    if (!isLive) return;
+    if (!isLive || !data) return;
     const interval = setInterval(() => {
       setData(generateMockData());
       setLastUpdate(new Date());
@@ -161,6 +172,18 @@ export default function DemoPage() {
     if (occupancy < 70) return '🟡 Normal';
     return '🔴 Yoğun';
   };
+
+  // Show loading state until data is initialized
+  if (!mounted || !data || !lastUpdate) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-semibold">Yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -186,7 +209,7 @@ export default function DemoPage() {
             </div>
             <div className="flex items-center gap-3">
               <div className="text-xs bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/20 font-mono">
-                {mounted ? lastUpdate.toLocaleTimeString('tr-TR') : '--:--:--'}
+                {lastUpdate.toLocaleTimeString('tr-TR')}
               </div>
               <button
                 onClick={() => setIsLive(!isLive)}
@@ -427,7 +450,7 @@ export default function DemoPage() {
                 <div className="absolute inset-0 flex items-end justify-between gap-1">
                   {data.hourly.map((item, index) => {
                     const height = (item.count / 50) * 100;
-                    const isCurrentHour = item.hour === new Date().getHours();
+                    const isCurrentHour = item.hour === lastUpdate.getHours();
                     return (
                       <motion.div
                         key={index}
@@ -864,22 +887,22 @@ export default function DemoPage() {
           {/* Campaign Banner */}
           <div className="relative bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-2xl p-8 mb-8 overflow-hidden">
             <div className="absolute inset-0 opacity-20">
-              {[...Array(20)].map((_, i) => (
+              {sparklePositions.map((pos, i) => (
                 <motion.div
                   key={i}
                   className="absolute w-2 h-2 bg-white rounded-full"
                   style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
+                    left: `${pos.left}%`,
+                    top: `${pos.top}%`,
                   }}
                   animate={{
                     scale: [1, 1.5, 1],
                     opacity: [0.3, 1, 0.3],
                   }}
                   transition={{
-                    duration: 2 + Math.random() * 2,
+                    duration: pos.duration,
                     repeat: Infinity,
-                    delay: Math.random() * 2,
+                    delay: pos.delay,
                   }}
                 />
               ))}
