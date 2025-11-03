@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Maximize2, RefreshCw, Wifi, WifiOff, Activity, Eye, Zap, Globe, Expand } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getCameraStreamUrl, addCacheBusting } from '@/lib/streamUtils';
 import AIDetectionOverlay from './AIDetectionOverlay';
 import HeatMapOverlay from './HeatMapOverlay';
 
