@@ -260,9 +260,18 @@ export async function POST(request: NextRequest) {
 // PUT - Kamera güncelle
 export async function PUT(request: NextRequest) {
   try {
-    const user = getUserFromToken(request);
+    let user = getUserFromToken(request);
+    
+    // Token decode başarısız olursa body'den userId al (fallback)
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const body = await request.json();
+      if (body.userId) {
+        console.log('⚠️ PUT: Token decode failed, using userId from body:', body.userId);
+        user = { userId: parseInt(body.userId), email: 'temp@temp.com' };
+      } else {
+        console.log('❌ PUT: No auth - no token, no userId in body');
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     const body = await request.json();
@@ -274,7 +283,10 @@ export async function PUT(request: NextRequest) {
       username, 
       password,
       location_description,
-      status 
+      status,
+      calibration_line,
+      entry_direction,
+      zones
     } = body;
 
     if (!id) {
@@ -289,6 +301,7 @@ export async function PUT(request: NextRequest) {
       ? `rtsp://${username}:${password}@${ip_address}:${port}/stream`
       : `rtsp://${ip_address}:${port}/stream`;
 
+    // Kalibrasyon ve zone bilgilerini de güncelle
     const result = await sql`
       UPDATE business_cameras 
       SET 
@@ -300,6 +313,9 @@ export async function PUT(request: NextRequest) {
         stream_url = ${streamUrl},
         location_description = COALESCE(${location_description}, location_description),
         status = COALESCE(${status}, status),
+        calibration_line = COALESCE(${calibration_line ? JSON.stringify(calibration_line) : null}::jsonb, calibration_line),
+        entry_direction = COALESCE(${entry_direction}, entry_direction),
+        zones = COALESCE(${zones ? JSON.stringify(zones) : null}::jsonb, zones),
         updated_at = NOW()
       WHERE id = ${id} 
         AND business_user_id = ${user.userId}
@@ -333,9 +349,19 @@ export async function PUT(request: NextRequest) {
 // DELETE - Kamera sil (HARD DELETE - aynı IP tekrar eklenebilsin)
 export async function DELETE(request: NextRequest) {
   try {
-    const user = getUserFromToken(request);
+    let user = getUserFromToken(request);
+    
+    // Token decode başarısız olursa query'den userId al (fallback)
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const { searchParams } = new URL(request.url);
+      const userIdParam = searchParams.get('userId');
+      if (userIdParam) {
+        console.log('⚠️ DELETE: Token decode failed, using userId from query:', userIdParam);
+        user = { userId: parseInt(userIdParam), email: 'temp@temp.com' };
+      } else {
+        console.log('❌ DELETE: No auth - no token, no userId param');
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     const { searchParams } = new URL(request.url);

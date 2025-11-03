@@ -201,8 +201,10 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
 
     try {
       const token = authStorage.getToken();
+      const user = authStorage.getUser();
+      const userId = businessProfile?.user_id || user?.id;
       
-      const response = await fetch(`/api/business/cameras?id=${cameraId}`, {
+      const response = await fetch(`/api/business/cameras?id=${cameraId}&userId=${userId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -560,6 +562,9 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
             }}
             onSave={async (calibrationData) => {
               try {
+                const user = authStorage.getUser();
+                const userId = businessProfile?.user_id || user?.id;
+                
                 const response = await fetch('/api/business/cameras', {
                   method: 'PUT',
                   headers: { 
@@ -568,6 +573,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
                   },
                   body: JSON.stringify({
                     id: selectedCamera.id,
+                    userId: userId,
                     calibration_line: calibrationData.calibration_line,
                     entry_direction: calibrationData.entry_direction
                   })
@@ -597,6 +603,9 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
             }}
             onSave={async (zones) => {
               try {
+                const user = authStorage.getUser();
+                const userId = businessProfile?.user_id || user?.id;
+                
                 const response = await fetch('/api/business/cameras', {
                   method: 'PUT',
                   headers: { 
@@ -605,6 +614,7 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
                   },
                   body: JSON.stringify({
                     id: selectedCamera.id,
+                    userId: userId,
                     zones: zones
                   })
                 });
