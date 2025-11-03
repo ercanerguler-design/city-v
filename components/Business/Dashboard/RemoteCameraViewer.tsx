@@ -352,17 +352,18 @@ export default function RemoteCameraViewer({ camera, onClose }: { camera: Camera
             {/* AI Detection Overlay */}
             {showAI && !isLoading && !error && imageRef.current && (
               <AIDetectionOverlay
-                cameraId={camera.device_id}
-                streamRef={imageRef}
+                streamUrl={getStreamUrl()}
+                enablePersonDetection={true}
+                enableObjectDetection={true}
               />
             )}
 
             {/* Heatmap Overlay */}
             {showHeatmap && !isLoading && !error && camera.zones && (
               <HeatMapOverlay
-                cameraId={camera.device_id}
-                zones={camera.zones}
-                streamRef={imageRef}
+                streamUrl={getStreamUrl()}
+                zones={camera.zones || []}
+                detections={[]}
               />
             )}
 
