@@ -66,6 +66,15 @@ export default function RemoteCameraViewer({ camera, onClose }: { camera: Camera
     // Stream URL'i al (RTSP otomatik HTTP'ye çevrilir)
     const baseUrl = getCameraStreamUrl(camera);
     
+    console.log('📹 Camera Stream Debug:', {
+      camera_name: camera.camera_name,
+      ip_address: camera.ip_address,
+      port: camera.port,
+      stream_url: camera.stream_url,
+      connectionMode,
+      baseUrl
+    });
+    
     // Remote access ise proxy kullan
     if (connectionMode === 'remote') {
       const encodedUrl = encodeURIComponent(baseUrl);

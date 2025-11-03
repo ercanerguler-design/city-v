@@ -43,8 +43,9 @@ export function convertToHttpStream(
     return `http://${ipAddress}:${finalPort}/stream`;
   }
   
-  // Son çare: localhost (test için)
-  return 'http://localhost:80/stream';
+  // Son çare: Demo stream URL (test için)
+  // Gerçek çalışan public MJPEG stream
+  return 'http://77.223.99.166:8080/mjpg/video.mjpg'; // Demo traffic camera
 }
 
 /**
