@@ -354,8 +354,9 @@ export default function CalibrationModalPro({ camera, onClose, onSave }: Calibra
       
       toast.success('✅ Kalibrasyon kaydedildi!');
       setTimeout(() => onClose(), 1000);
-    } catch (error) {
-      toast.error('Kayıt başarısız');
+    } catch (error: any) {
+      console.error('❌ Kalibrasyon kayıt hatası:', error);
+      toast.error(error?.message || 'Kayıt başarısız. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
     }
