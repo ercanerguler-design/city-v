@@ -102,10 +102,15 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
       console.log('📷 Cameras loading, token:', token ? 'exists' : 'missing', 'userId:', user?.id);
       
       // GEÇİCİ: Token decode sorunu için userId de gönder
-      const url = user?.id ? `/api/business/cameras?userId=${user.id}` : '/api/business/cameras';
+      // Cache bypass için timestamp ekle
+      const timestamp = new Date().getTime();
+      const url = user?.id 
+        ? `/api/business/cameras?userId=${user.id}&t=${timestamp}` 
+        : `/api/business/cameras?t=${timestamp}`;
       
       const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store' // Browser cache'i bypass et
       });
       
       const data = await response.json();
@@ -212,7 +217,10 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
       const data = await response.json();
 
       if (data.success) {
+        // Optimistic update: State'i hemen güncelle
+        setCameras(prevCameras => prevCameras.filter(cam => cam.id !== cameraId));
         toast.success('Kamera silindi');
+        // Yine de backend'den güncel listeyi çek (doğrulama için)
         loadCameras();
       } else {
         toast.error(data.error || 'Silinemedi');
