@@ -94,17 +94,27 @@ export default function RemoteCameraViewer({ camera, onClose }: { camera: Camera
   const handleImageError = (e: any) => {
     setIsLoading(false);
     
+    // Detaylı error logging
+    console.error('❌ Stream hatası:', {
+      camera_name,
+      stream_url,
+      ip_address,
+      port,
+      connectionMode,
+      error: e?.message || 'Unknown error',
+      target: e?.target?.src || 'No src'
+    });
+    
     // Hata mesajını daha detaylı yap
     let errorMsg = 'Stream bağlantısı kurulamadı';
     
     if (connectionMode === 'remote') {
       errorMsg = 'Uzaktan erişim başarısız. Kamera local ağda çalışıyor olabilir.';
     } else {
-      errorMsg = 'Kamera bağlantısı kurulamadı. IP adresini kontrol edin.';
+      errorMsg = `Kamera bağlantısı kurulamadı: ${ip_address}:${port}`;
     }
     
     setError(errorMsg);
-    console.error('❌ Stream hatası:', e);
   };
 
   const handleRefresh = () => {
