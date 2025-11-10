@@ -174,12 +174,78 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET - Son tespitler (test için)
+ * GET - Test endpoint & Son tespitler
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const test = searchParams.get('test');
     const limit = searchParams.get('limit') || '10';
+    
+    // Test endpoint for ESP32-CAM connectivity
+    if (test === 'connectivity') {
+      return NextResponse.json({
+        success: true,
+        message: '🟢 Staff Detection API Working!',
+        endpoint: '/api/iot/staff-detection',
+        timestamp: new Date().toISOString(),
+        methods: ['POST', 'GET'],
+        required_fields: ['camera_id', 'staff_qr', 'detection_type'],
+        example_payload: {
+          camera_id: 29,
+          staff_qr: 'STAFF-001-ADMIN',
+          detection_type: 'qr_scan',
+          location_zone: 'Giris-Kapisi'
+        },
+        test_qr_codes: [
+          'STAFF-001-ADMIN',
+          'STAFF-002-GUARD', 
+          'STAFF-003-CLEAN',
+          'STAFF-004-MAINT'
+        ]
+      });
+    }
+    
+    // Create test staff if needed
+    if (test === 'create_test_data') {
+      try {
+        // Check if test data exists
+        const existingStaff = await sql`
+          SELECT COUNT(*) as count FROM business_staff WHERE id <= 4
+        `;
+        
+        if (existingStaff.rows[0].count < 4) {
+          // Create test business user first
+          await sql`
+            INSERT INTO business_users (id, email, password_hash, full_name)
+            VALUES (1, 'test@cityv.com', 'test_hash', 'Test Business')
+            ON CONFLICT (id) DO NOTHING
+          `;
+          
+          // Create test staff
+          await sql`
+            INSERT INTO business_staff (id, business_id, full_name, email, position, status)
+            VALUES 
+            (1, 1, 'Admin User', 'admin@cityv.com', 'Admin', 'active'),
+            (2, 1, 'Güvenlik Görevlisi', 'guard@cityv.com', 'Güvenlik', 'active'),
+            (3, 1, 'Temizlik Personeli', 'cleaner@cityv.com', 'Temizlik', 'active'),
+            (4, 1, 'Bakım Teknisyeni', 'maintenance@cityv.com', 'Bakım', 'active')
+            ON CONFLICT (id) DO NOTHING
+          `;
+        }
+        
+        return NextResponse.json({
+          success: true,
+          message: 'Test data created/verified',
+          staff_count: 4
+        });
+      } catch (error: any) {
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to create test data: ' + error.message
+        }, { status: 500 });
+      }
+    }
 
     const result = await sql`
       SELECT 
@@ -205,3 +271,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Kayıtlar alınamadı' }, { status: 500 });
   }
 }
+
+
