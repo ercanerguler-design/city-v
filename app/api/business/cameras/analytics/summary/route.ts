@@ -1,0 +1,135 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { query } from '@/lib/db';
+
+/**
+ * 📊 Camera Analytics Summary
+ * Kullanıcının tüm kameralarından real-time özet
+ * GET /api/business/cameras/analytics/summary?businessUserId=20
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const businessUserId = searchParams.get('businessUserId');
+
+    if (!businessUserId) {
+      return NextResponse.json(
+        { success: false, error: 'Business User ID gerekli' },
+        { status: 400 }
+      );
+    }
+
+    console.log('📊 Camera Analytics Summary for user:', businessUserId);
+
+    // Son 5 dakikadaki real-time analytics (iot_ai_analysis tablosundan)
+    const realtimeResult = await query(
+      `SELECT 
+        bc.id as camera_id,
+        bc.camera_name,
+        ia.person_count as people_count,
+        COALESCE((ia.detection_objects->>'current_occupancy')::INTEGER, 0) as current_occupancy,
+        COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0) as entries_count,
+        COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0) as exits_count,
+        ROUND((ia.crowd_density * 100)::numeric, 1) as density_level,
+        ia.created_at as timestamp,
+        ia.detection_objects as zone_data
+       FROM business_cameras bc
+       LEFT JOIN iot_ai_analysis ia ON ia.camera_id = bc.id
+       WHERE bc.business_user_id = $1
+         AND ia.created_at >= NOW() - INTERVAL '5 minutes'
+       ORDER BY ia.created_at DESC`,
+      [businessUserId]
+    );
+
+    // Bugünkü toplam istatistikler (iot_ai_analysis tablosundan)
+    const dailyResult = await query(
+      `SELECT 
+        COUNT(DISTINCT bc.id) as active_cameras,
+        SUM(COALESCE(ia.person_count, 0)) as total_people,
+        SUM(COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0)) as total_entries,
+        SUM(COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0)) as total_exits,
+        AVG(COALESCE((ia.detection_objects->>'current_occupancy')::INTEGER, 0)) as avg_occupancy,
+        MAX(COALESCE((ia.detection_objects->>'current_occupancy')::INTEGER, 0)) as peak_occupancy,
+        MAX(ia.created_at) as last_update
+       FROM business_cameras bc
+       LEFT JOIN iot_ai_analysis ia ON ia.camera_id = bc.id
+       WHERE bc.business_user_id = $1
+         AND DATE(ia.created_at) = CURRENT_DATE`,
+      [businessUserId]
+    );
+
+    // Toplam kamera sayısı
+    const totalCamerasResult = await query(
+      `SELECT COUNT(*) as total FROM business_cameras WHERE business_user_id = $1`,
+      [businessUserId]
+    );
+
+    const dailyStats = dailyResult.rows[0];
+    const totalCameras = parseInt(totalCamerasResult.rows[0]?.total || 0);
+    const activeCameras = parseInt(dailyStats?.active_cameras || 0);
+    const totalPeople = parseInt(dailyStats?.total_people || 0);
+    const totalEntries = parseInt(dailyStats?.total_entries || 0);
+    const totalExits = parseInt(dailyStats?.total_exits || 0);
+    const avgOccupancy = parseFloat(dailyStats?.avg_occupancy || 0);
+    const peakOccupancy = parseInt(dailyStats?.peak_occupancy || 0);
+    const lastUpdate = dailyStats?.last_update;
+
+    // Crowd level hesapla
+    let crowdLevel = 'low';
+    if (avgOccupancy > 15) crowdLevel = 'high';
+    else if (avgOccupancy > 8) crowdLevel = 'medium';
+
+    // Ortalama kalış süresi (basit hesaplama)
+    const avgStayMinutes = avgOccupancy > 0 ? Math.round(avgOccupancy * 2.5) : 0;
+
+    // Her kameradan son veri
+    const cameraMap = new Map();
+    realtimeResult.rows.forEach(row => {
+      if (!cameraMap.has(row.camera_id)) {
+        cameraMap.set(row.camera_id, {
+          cameraId: row.camera_id,
+          cameraName: row.camera_name,
+          currentPeople: row.people_count,
+          currentOccupancy: row.current_occupancy,
+          densityLevel: row.density_level,
+          lastUpdate: row.timestamp,
+          zoneData: row.zone_data
+        });
+      }
+    });
+
+    const cameras = Array.from(cameraMap.values());
+
+    const summary = {
+      activeCameras,
+      totalCameras,
+      totalPeople,
+      totalEntries,
+      totalExits,
+      avgOccupancy: Math.round(avgOccupancy),
+      peakOccupancy,
+      crowdLevel,
+      avgStayMinutes,
+      lastUpdate,
+      cameras
+    };
+
+    console.log('✅ Analytics Summary:', summary);
+
+    return NextResponse.json({
+      success: true,
+      summary,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error: any) {
+    console.error('❌ Analytics summary error:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Analytics özeti alınamadı',
+        details: error.message 
+      },
+      { status: 500 }
+    );
+  }
+}

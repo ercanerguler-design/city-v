@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google OAuth Test</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        #google-button {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .log {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #2d2d2d;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .log div {
+            margin: 3px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Google OAuth Test Sayfası</h1>
+        
+        <div id="status"></div>
+        
+        <div class="info">
+            <strong>📍 Client ID:</strong><br>
+            <code>693372259383-c2ge11rus1taeh0dae9sur7kdo6ndiuo.apps.googleusercontent.com</code>
+        </div>
+
+        <div id="google-button"></div>
+
+        <div class="info">
+            <strong>ℹ️ Test Adımları:</strong><br>
+            1. Google butonuna tıklayın<br>
+            2. Google hesabınızı seçin<br>
+            3. Aşağıdaki logları kontrol edin
+        </div>
+
+        <h3>📊 Console Logs:</h3>
+        <div class="log" id="logs">
+            <div>Sistem hazırlanıyor...</div>
+        </div>
+
+        <h3>📋 Gereksinimler:</h3>
+        <pre id="requirements">
+✅ Google Cloud Console Ayarları:
+
+1. OAuth Consent Screen:
+   - Publishing status: Testing
+   - Test users: ercanerguler@gmail.com
+
+2. Credentials → OAuth 2.0 Client ID:
+   - Authorized JavaScript origins:
+     • http://localhost:3000
+     • http://localhost:3001
+     • https://cityv.vercel.app
+   
+   - Authorized redirect URIs:
+     • http://localhost:3000
+     • http://localhost:3001
+     • https://cityv.vercel.app
+        </pre>
+    </div>
+
+    <script>
+        const logsDiv = document.getElementById('logs');
+        const statusDiv = document.getElementById('status');
+
+        function addLog(message, type = 'info') {
+            const div = document.createElement('div');
+            const timestamp = new Date().toLocaleTimeString();
+            div.textContent = `[${timestamp}] ${message}`;
+            div.style.color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : '#00ff00';
+            logsDiv.appendChild(div);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function showStatus(message, type) {
+            statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        // Google Sign-In callback
+        function handleCredentialResponse(response) {
+            addLog('✅ Google response alındı!', 'success');
+            
+            try {
+                // JWT decode
+                const decoded = JSON.parse(atob(response.credential.split('.')[1]));
+                
+                addLog(`✅ Email: ${decoded.email}`, 'success');
+                addLog(`✅ İsim: ${decoded.name}`, 'success');
+                addLog(`✅ Google ID: ${decoded.sub}`, 'success');
+                
+                showStatus(`
+                    ✅ BAŞARILI! Google OAuth Çalışıyor!<br>
+                    📧 Email: ${decoded.email}<br>
+                    👤 İsim: ${decoded.name}
+                `, 'success');
+                
+                addLog('🎉 TEST BAŞARILI! Artık ana uygulamada da çalışmalı.', 'success');
+                
+            } catch (error) {
+                addLog('❌ JWT decode hatası: ' + error.message, 'error');
+                showStatus('❌ JWT decode hatası! Console loglarını kontrol edin.', 'error');
+            }
+        }
+
+        // Google Sign-In initialize
+        window.onload = function () {
+            addLog('🚀 Sayfa yüklendi, Google script bekleniyor...');
+            
+            // Google script yüklenene kadar bekle
+            const checkGoogle = setInterval(() => {
+                if (window.google) {
+                    clearInterval(checkGoogle);
+                    addLog('✅ Google script yüklendi!', 'success');
+                    
+                    const client_id = '693372259383-c2ge11rus1taeh0dae9sur7kdo6ndiuo.apps.googleusercontent.com';
+                    addLog(`📍 Client ID: ${client_id.substring(0, 20)}...`);
+                    
+                    try {
+                        google.accounts.id.initialize({
+                            client_id: client_id,
+                            callback: handleCredentialResponse,
+                            auto_select: false,
+                        });
+                        addLog('✅ Google Sign-In initialize edildi!', 'success');
+                        
+                        google.accounts.id.renderButton(
+                            document.getElementById('google-button'),
+                            { 
+                                theme: 'outline', 
+                                size: 'large',
+                                text: 'signin_with',
+                                width: 400,
+                                locale: 'tr'
+                            }
+                        );
+                        addLog('✅ Google butonu render edildi!', 'success');
+                        
+                        showStatus('✅ Google OAuth hazır! Butona tıklayın.', 'info');
+                        
+                    } catch (error) {
+                        addLog('❌ Initialize hatası: ' + error.message, 'error');
+                        showStatus('❌ Google OAuth initialize hatası! ' + error.message, 'error');
+                    }
+                }
+            }, 100);
+            
+            // 10 saniye sonra hala yüklenmediyse hata göster
+            setTimeout(() => {
+                if (!window.google) {
+                    clearInterval(checkGoogle);
+                    addLog('❌ Google script 10 saniye içinde yüklenmedi!', 'error');
+                    showStatus('❌ Google script yüklenemedi! İnternet bağlantınızı kontrol edin.', 'error');
+                }
+            }, 10000);
+        };
+    </script>
+</body>
+</html>

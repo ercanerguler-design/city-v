@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Google OAuth Test - City-V</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .status {
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .info { background: #d1ecf1; color: #0c5460; }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    #google-signin-button {
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Google OAuth Test - City-V</h1>
+  
+  <div id="status" class="status info">
+    Hazırlanıyor...
+  </div>
+
+  <div id="google-signin-button"></div>
+
+  <h2>📊 Log:</h2>
+  <pre id="log"></pre>
+
+  <h2>👤 Kullanıcı Bilgileri:</h2>
+  <pre id="user-data"></pre>
+
+  <script>
+    const log = (message, type = 'info') => {
+      const logEl = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString();
+      logEl.textContent += `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+      console.log(message);
+    };
+
+    const setStatus = (message, type = 'info') => {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+    };
+
+    async function handleCredentialResponse(response) {
+      try {
+        log('📦 Google credential alındı');
+        setStatus('Google token decode ediliyor...', 'info');
+
+        // JWT decode
+        const decoded = JSON.parse(atob(response.credential.split('.')[1]));
+        log(`✅ Token decode edildi: ${decoded.email}`);
+        
+        document.getElementById('user-data').textContent = JSON.stringify(decoded, null, 2);
+
+        setStatus('API\'ye gönderiliyor...', 'info');
+        log(`🔄 API çağrısı başlatılıyor: /api/auth/google`);
+
+        // API'ye gönder
+        const apiResponse = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: decoded.email,
+            name: decoded.name,
+            picture: decoded.picture,
+            googleId: decoded.sub
+          })
+        });
+
+        log(`📡 API response status: ${apiResponse.status}`);
+
+        const data = await apiResponse.json();
+        
+        if (data.success) {
+          log('✅ API başarılı! Kullanıcı:', JSON.stringify(data.user));
+          setStatus(`✅ BAŞARILI! Kullanıcı: ${data.user.email}`, 'success');
+          document.getElementById('user-data').textContent += '\n\n=== DATABASE USER ===\n' + JSON.stringify(data.user, null, 2);
+        } else {
+          log(`❌ API hatası: ${data.error}`);
+          setStatus(`❌ HATA: ${data.error}`, 'error');
+        }
+
+      } catch (error) {
+        log(`❌ Beklenmeyen hata: ${error.message}`, 'error');
+        setStatus(`❌ HATA: ${error.message}`, 'error');
+        console.error('Full error:', error);
+      }
+    }
+
+    window.onload = function() {
+      log('🚀 Sayfa yüklendi');
+      setStatus('Google script bekleniyor...', 'info');
+
+      const checkGoogle = setInterval(() => {
+        if (window.google) {
+          clearInterval(checkGoogle);
+          log('✅ Google SDK yüklendi');
+          initializeGoogle();
+        }
+      }, 100);
+
+      setTimeout(() => {
+        if (!window.google) {
+          clearInterval(checkGoogle);
+          log('❌ Google SDK yüklenemedi (timeout)', 'error');
+          setStatus('❌ Google SDK yüklenemedi', 'error');
+        }
+      }, 5000);
+    };
+
+    function initializeGoogle() {
+      try {
+        const CLIENT_ID = '693372259383-c2ge11rus1taeh0dae9sur7kdo6ndiuo.apps.googleusercontent.com';
+        
+        log(`🔧 Google initialize: ${CLIENT_ID}`);
+        
+        window.google.accounts.id.initialize({
+          client_id: CLIENT_ID,
+          callback: handleCredentialResponse,
+          auto_select: false,
+          ux_mode: 'popup'
+        });
+
+        log('✅ Google initialized');
+
+        const buttonDiv = document.getElementById('google-signin-button');
+        window.google.accounts.id.renderButton(
+          buttonDiv,
+          {
+            theme: 'outline',
+            size: 'large',
+            text: 'signin_with',
+            width: 300,
+            locale: 'tr'
+          }
+        );
+
+        log('✅ Google button rendered');
+        setStatus('✅ Hazır! Google butona tıklayın', 'success');
+
+      } catch (error) {
+        log(`❌ Initialize hatası: ${error.message}`, 'error');
+        setStatus(`❌ Initialize hatası: ${error.message}`, 'error');
+        console.error('Init error:', error);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+<!-- Placeholder for missing 144x144 icon -->
+<svg width="144" height="144" xmlns="http://www.w3.org/2000/svg">
+  <rect width="144" height="144" fill="#2563eb"/>
+  <text x="72" y="80" text-anchor="middle" fill="white" font-size="24" font-family="Arial">📹</text>
+  <text x="72" y="100" text-anchor="middle" fill="white" font-size="12" font-family="Arial">CityV</text>
+</svg>

@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CityV - Akıllı Şehir Zeka Platformu | Profesyonel Katalog 2025</title>
+  <meta name="description" content="Yapay zeka destekli kalabalık analitiği, IoT entegrasyonu ve modern şehirler için akıllı kentsel yönetim platformu">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --primary: #667eea;
+      --secondary: #764ba2;
+      --accent: #48bb78;
+      --gold: #d4af37;
+      --dark: #1a202c;
+      --light: #f7fafc;
+      --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--dark);
+      overflow-x: hidden;
+      background: #ffffff;
+    }
+
+    /* Hero Section */
+    .hero {
+      min-height: 100vh;
+      background: var(--gradient);
+      color: white;
+      padding: 100px 20px 80px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600"><circle cx="200" cy="150" r="100" fill="rgba(255,255,255,0.05)"/><circle cx="800" cy="400" r="150" fill="rgba(255,255,255,0.05)"/><circle cx="1000" cy="200" r="80" fill="rgba(255,255,255,0.05)"/></svg>');
+      animation: float 20s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(5deg); }
+    }
+
+    .hero-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 800;
+      margin-bottom: 20px;
+      animation: fadeInDown 1s ease;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1.2rem, 3vw, 1.8rem);
+      margin-bottom: 40px;
+      opacity: 0.95;
+      font-weight: 300;
+      animation: fadeInUp 1s ease 0.2s both;
+    }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 30px;
+      margin-top: 60px;
+      animation: fadeInUp 1s ease 0.4s both;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      padding: 30px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: transform 0.3s, background 0.3s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .stat-label {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Section */
+    .section {
+      padding: 100px 20px;
+    }
+
+    .section-title {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 20px;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section-subtitle {
+      text-align: center;
+      font-size: 1.2rem;
+      color: #666;
+      margin-bottom: 60px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Real Analysis Examples */
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 30px;
+      margin-top: 50px;
+    }
+
+    .analysis-card {
+      background: white;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .analysis-card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+
+    .analysis-image {
+      width: 100%;
+      height: 250px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .analysis-overlay {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .analysis-content {
+      padding: 30px;
+    }
+
+    .analysis-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+      color: var(--dark);
+    }
+
+    .analysis-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .metric {
+      background: var(--light);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .metric-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--primary);
+      display: block;
+    }
+
+    .metric-label {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 5px;
+    }
+
+    .analysis-description {
+      color: #555;
+      line-height: 1.8;
+      margin-bottom: 20px;
+    }
+
+    .analysis-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .tag {
+      background: var(--gradient);
+      color: white;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* Device Showcase */
+    .device-showcase {
+      background: linear-gradient(135deg, #f7fafc 0%, #e2e8f0 100%);
+      padding: 80px 20px;
+      margin: 50px 0;
+    }
+
+    .device-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 40px;
+      max-width: 1200px;
+      margin: 50px auto;
+    }
+
+    .device-card {
+      background: white;
+      border-radius: 25px;
+      padding: 40px;
+      box-shadow: 0 15px 50px rgba(0,0,0,0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .device-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: var(--gradient);
+    }
+
+    .device-card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 25px 70px rgba(0,0,0,0.15);
+    }
+
+    .device-icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      display: block;
+    }
+
+    .device-name {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+      color: var(--dark);
+    }
+
+    .device-subtitle {
+      color: #666;
+      margin-bottom: 25px;
+      font-size: 1rem;
+    }
+
+    .device-specs {
+      list-style: none;
+      margin: 25px 0;
+    }
+
+    .device-specs li {
+      padding: 12px 0;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .device-specs li:last-child {
+      border-bottom: none;
+    }
+
+    .spec-label {
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    .spec-value {
+      font-weight: 700;
+      color: var(--dark);
+    }
+
+    .device-badge {
+      display: inline-block;
+      background: var(--gradient);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 20px;
+    }
+
+    /* Pricing Section */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 40px;
+      max-width: 900px;
+      margin: 50px auto;
+    }
+
+    .pricing-card {
+      background: white;
+      border-radius: 25px;
+      padding: 50px 40px;
+      box-shadow: 0 15px 50px rgba(0,0,0,0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+      position: relative;
+      border: 2px solid #e2e8f0;
+    }
+
+    .pricing-card.featured {
+      border-color: var(--primary);
+      transform: scale(1.05);
+      box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+    }
+
+    .pricing-card:hover {
+      transform: translateY(-10px) scale(1.02);
+      box-shadow: 0 25px 70px rgba(0,0,0,0.15);
+    }
+
+    .pricing-badge {
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--gradient);
+      color: white;
+      padding: 8px 24px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .pricing-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .pricing-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+      color: var(--dark);
+    }
+
+    .pricing-device {
+      color: #666;
+      font-size: 1rem;
+      margin-bottom: 20px;
+    }
+
+    .pricing-cost {
+      margin: 25px 0;
+    }
+
+    .pricing-main {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--primary);
+      display: block;
+    }
+
+    .pricing-sub {
+      font-size: 1rem;
+      color: #666;
+      margin-top: 5px;
+    }
+
+    .pricing-subscription {
+      background: var(--light);
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .pricing-subscription strong {
+      display: block;
+      font-size: 1.5rem;
+      color: var(--primary);
+      margin-bottom: 5px;
+    }
+
+    .pricing-features {
+      list-style: none;
+      margin: 30px 0;
+    }
+
+    .pricing-features li {
+      padding: 12px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #555;
+    }
+
+    .pricing-features li::before {
+      content: "✓";
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 1.2rem;
+    }
+
+    .pricing-button {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      background: var(--gradient);
+      color: white;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .pricing-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    /* Features Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin: 50px 0;
+    }
+
+    .feature-card {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+      transition: transform 0.3s, box-shadow 0.3s;
+      border-left: 4px solid var(--primary);
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 50px rgba(0,0,0,0.12);
+    }
+
+    .feature-icon {
+      font-size: 3rem;
+      margin-bottom: 20px;
+      display: block;
+    }
+
+    .feature-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+      color: var(--dark);
+    }
+
+    .feature-description {
+      color: #555;
+      line-height: 1.8;
+      margin-bottom: 20px;
+    }
+
+    .feature-list {
+      list-style: none;
+      margin-top: 20px;
+    }
+
+    .feature-list li {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #666;
+    }
+
+    .feature-list li::before {
+      content: "→";
+      color: var(--primary);
+      font-weight: 800;
+    }
+
+    /* CTA Section */
+    .cta-section {
+      background: var(--gradient);
+      color: white;
+      padding: 100px 20px;
+      text-align: center;
+      margin: 50px 0;
+    }
+
+    .cta-title {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      margin-bottom: 20px;
+    }
+
+    .cta-description {
+      font-size: 1.3rem;
+      margin-bottom: 40px;
+      opacity: 0.95;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .cta-button {
+      padding: 18px 40px;
+      border: 2px solid white;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .cta-button.primary {
+      background: white;
+      color: var(--primary);
+    }
+
+    .cta-button.primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .cta-button.secondary {
+      background: transparent;
+      color: white;
+    }
+
+    .cta-button.secondary:hover {
+      background: white;
+      color: var(--primary);
+    }
+
+    /* Footer */
+    .footer {
+      background: var(--dark);
+      color: white;
+      padding: 60px 20px 30px;
+      text-align: center;
+    }
+
+    .footer-content {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .footer-logo {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 20px;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .footer-description {
+      opacity: 0.8;
+      margin-bottom: 40px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+
+    .footer-links a {
+      color: white;
+      text-decoration: none;
+      opacity: 0.8;
+      transition: opacity 0.3s;
+    }
+
+    .footer-links a:hover {
+      opacity: 1;
+    }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding-top: 30px;
+      margin-top: 30px;
+      opacity: 0.6;
+    }
+
+    /* Animations */
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero-stats {
+        grid-template-columns: 1fr;
+      }
+      
+      .analysis-grid,
+      .device-grid,
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .pricing-card.featured {
+        transform: scale(1);
+      }
+      
+      .cta-buttons {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .cta-button {
+        width: 100%;
+        max-width: 300px;
+      }
+    }
+
+    /* Print Styles */
+    @media print {
+      .hero::before,
+      .cta-section,
+      .pricing-button {
+        display: none;
+      }
+      
+      .section {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1>CityV Zeka Platformu</h1>
+      <p class="hero-subtitle">Gelişmiş Yapay Zeka Destekli Kentsel Analitik & Gerçek Zamanlı Kalabalık Yönetimi</p>
+      
+      <div class="hero-stats">
+        <div class="stat-card">
+          <span class="stat-number">%99.9</span>
+          <span class="stat-label">Sistem Çalışma Süresi</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number">500K+</span>
+          <span class="stat-label">Günlük Analiz</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number">%95</span>
+          <span class="stat-label">AI Doğruluk Oranı</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number">7/24</span>
+          <span class="stat-label">Canlı İzleme</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Real Analysis Examples -->
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">Gerçek Dünya Zekası İş Başında</h2>
+      <p class="section-subtitle">CityV'nin gelişmiş AI algoritmaları ile kentsel verileri nasıl eyleme dönüştürülebilir içgörülere çevirdiğini görün</p>
+      
+      <div class="analysis-grid">
+        <!-- Analysis Example 1 -->
+        <div class="analysis-card">
+          <div class="analysis-image">
+            📊
+            <div class="analysis-overlay">Canlı Analiz</div>
+          </div>
+          <div class="analysis-content">
+            <h3 class="analysis-title">Alışveriş Merkezi Yoğun Saatler</h3>
+            <div class="analysis-metrics">
+              <div class="metric">
+                <span class="metric-value">2,847</span>
+                <span class="metric-label">Tespit Edilen Kişi</span>
+              </div>
+              <div class="metric">
+                <span class="metric-value">%78</span>
+                <span class="metric-label">Kapasite Seviyesi</span>
+              </div>
+            </div>
+            <p class="analysis-description">Ankara'nın en büyük alışveriş merkezinde hafta sonu yoğunluğunda gerçek zamanlı kalabalık yoğunluğu izleme. AI, kalıpları tespit eder ve tıkanıklık bölgelerini önceden tahmin eder.</p>
+            <div class="analysis-tags">
+              <span class="tag">Perakende Analitik</span>
+              <span class="tag">Zirve Tespiti</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analysis Example 2 -->
+        <div class="analysis-card">
+          <div class="analysis-image">
+            🚇
+            <div class="analysis-overlay">Ulaşım Merkezi</div>
+          </div>
+          <div class="analysis-content">
+            <h3 class="analysis-title">Metro İstasyonu Akış Analizi</h3>
+            <div class="analysis-metrics">
+              <div class="metric">
+                <span class="metric-value">5,241</span>
+                <span class="metric-label">Saatlik Trafik</span>
+              </div>
+              <div class="metric">
+                <span class="metric-value">3.2dk</span>
+                <span class="metric-label">Ort. Bekleme</span>
+              </div>
+            </div>
+            <p class="analysis-description">Kızılay Metro İstasyonu'nda otomatik yolcu akış izleme. Sistem gerçek zamanlı tıkanıklık uyarıları sağlar ve hizmet sıklığını optimize eder.</p>
+            <div class="analysis-tags">
+              <span class="tag">Toplu Taşıma</span>
+              <span class="tag">Akış Optimizasyonu</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analysis Example 3 -->
+        <div class="analysis-card">
+          <div class="analysis-image">
+            🎭
+            <div class="analysis-overlay">Etkinlik İzleme</div>
+          </div>
+          <div class="analysis-content">
+            <h3 class="analysis-title">Konser Mekanı Güvenlik Kontrolü</h3>
+            <div class="analysis-metrics">
+              <div class="metric">
+                <span class="metric-value">8,500</span>
+                <span class="metric-label">Katılımcı</span>
+              </div>
+              <div class="metric">
+                <span class="metric-value">Güvenli</span>
+                <span class="metric-label">Kalabalık Durumu</span>
+              </div>
+            </div>
+            <p class="analysis-description">Kalabalık güvenlik analizi ile büyük ölçekli etkinlik izleme. AI, yoğunluk kalıplarını takip eder ve güvenlik eşiklerine yaklaşıldığında uyarı gönderir.</p>
+            <div class="analysis-tags">
+              <span class="tag">Etkinlik Güvenliği</span>
+              <span class="tag">Güvenlik Analitiği</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analysis Example 4 -->
+        <div class="analysis-card">
+          <div class="analysis-image">
+            🏪
+            <div class="analysis-overlay">İş Zekası</div>
+          </div>
+          <div class="analysis-content">
+            <h3 class="analysis-title">Restoran Kuyruk Yönetimi</h3>
+            <div class="analysis-metrics">
+              <div class="metric">
+                <span class="metric-value">42</span>
+                <span class="metric-label">Kuyruk Uzunluğu</span>
+              </div>
+              <div class="metric">
+                <span class="metric-value">12dk</span>
+                <span class="metric-label">Tahmini Bekleme</span>
+              </div>
+            </div>
+            <p class="analysis-description">Restoranlar ve kafeler için akıllı kuyruk tespiti. Müşterilere doğru bekleme süreleri sağlar ve işletmelerin personel tahsisini optimize etmelerine yardımcı olur.</p>
+            <div class="analysis-tags">
+              <span class="tag">Kuyruk Analitiği</span>
+              <span class="tag">Müşteri Deneyimi</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analysis Example 5 -->
+        <div class="analysis-card">
+          <div class="analysis-image">
+            🏛️
+            <div class="analysis-overlay">Kamu Sektörü</div>
+          </div>
+          <div class="analysis-content">
+            <h3 class="analysis-title">Kamu Binası Doluluk</h3>
+            <div class="analysis-metrics">
+              <div class="metric">
+                <span class="metric-value">234</span>
+                <span class="metric-label">Mevcut Ziyaretçi</span>
+              </div>
+              <div class="metric">
+                <span class="metric-value">%45</span>
+                <span class="metric-label">Doluluk Oranı</span>
+              </div>
+            </div>
+            <p class="analysis-description">Ziyaretçi akış analitiği ile kamu binası doluluk takibi. Hizmet pencerelerini optimize etmeye ve vatandaş deneyimini iyileştirmeye yardımcı olur.</p>
+            <div class="analysis-tags">
+              <span class="tag">Kamu</span>
+              <span class="tag">Doluluk Kontrolü</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analysis Example 6 -->
+        <div class="analysis-card">
+          <div class="analysis-image">
+            🏙️
+            <div class="analysis-overlay">Kentsel Planlama</div>
+          </div>
+          <div class="analysis-content">
+            <h3 class="analysis-title">Şehir Meydanı Isı Haritası</h3>
+            <div class="analysis-metrics">
+              <div class="metric">
+                <span class="metric-value">12K+</span>
+                <span class="metric-label">Günlük Yaya Trafiği</span>
+              </div>
+              <div class="metric">
+                <span class="metric-value">3.4sa</span>
+                <span class="metric-label">Ort. Kalma Süresi</span>
+              </div>
+            </div>
+            <p class="analysis-description">Kentsel planlama kararları için tarihsel veri analizi. Popüler bölgeleri, yaya kalıplarını ve kamu hizmetleri için optimal konumları belirler.</p>
+            <div class="analysis-tags">
+              <span class="tag">Kentsel Analitik</span>
+              <span class="tag">Planlama Verisi</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Device Showcase -->
+  <section class="device-showcase">
+    <div class="container">
+      <h2 class="section-title">Business Box - Profesyonel IoT Cihazı</h2>
+      <p class="section-subtitle">Son teknoloji yapay zeka ile desteklenen kurumsal sınıf donanım</p>
+      
+      <div class="device-grid">
+        <!-- Main Device -->
+        <div class="device-card">
+          <span class="device-icon">📷</span>
+          <h3 class="device-name">Business Box Kamera</h3>
+          <p class="device-subtitle">AI Destekli Görüntü Sistemi</p>
+          <ul class="device-specs">
+            <li>
+              <span class="spec-label">İşlemci</span>
+              <span class="spec-value">Çift Çekirdek 240MHz</span>
+            </li>
+            <li>
+              <span class="spec-label">Kamera</span>
+              <span class="spec-value">2MP HD Sensör</span>
+            </li>
+            <li>
+              <span class="spec-label">Bağlantı</span>
+              <span class="spec-value">WiFi 802.11 b/g/n</span>
+            </li>
+            <li>
+              <span class="spec-label">Depolama</span>
+              <span class="spec-value">MicroSD Desteği</span>
+            </li>
+            <li>
+              <span class="spec-label">Güç</span>
+              <span class="spec-value">5V USB-C / PoE</span>
+            </li>
+            <li>
+              <span class="spec-label">AI Doğruluğu</span>
+              <span class="spec-value">%95+</span>
+            </li>
+          </ul>
+          <span class="device-badge">🔥 En Popüler</span>
+        </div>
+
+        <!-- Features -->
+        <div class="device-card">
+          <span class="device-icon">⚡</span>
+          <h3 class="device-name">Akıllı Özellikler</h3>
+          <p class="device-subtitle">Gelişmiş Yetenekler</p>
+          <ul class="device-specs">
+            <li>
+              <span class="spec-label">Gerçek Zamanlı Yayın</span>
+              <span class="spec-value">✓</span>
+            </li>
+            <li>
+              <span class="spec-label">Kalabalık Tespiti</span>
+              <span class="spec-value">✓</span>
+            </li>
+            <li>
+              <span class="spec-label">Isı Haritaları</span>
+              <span class="spec-value">✓</span>
+            </li>
+            <li>
+              <span class="spec-label">Bulut Analitiği</span>
+              <span class="spec-value">✓</span>
+            </li>
+            <li>
+              <span class="spec-label">Uzaktan Güncelleme</span>
+              <span class="spec-value">✓</span>
+            </li>
+            <li>
+              <span class="spec-label">Web Paneli</span>
+              <span class="spec-value">✓</span>
+            </li>
+          </ul>
+          <span class="device-badge">✨ Kurumsal Hazır</span>
+        </div>
+
+        <!-- Integration -->
+        <div class="device-card">
+          <span class="device-icon">🔗</span>
+          <h3 class="device-name">Entegrasyon & Destek</h3>
+          <p class="device-subtitle">Sorunsuz Bağlantı</p>
+          <ul class="device-specs">
+            <li>
+              <span class="spec-label">Kurulum Süresi</span>
+              <span class="spec-value">5 Dakika</span>
+            </li>
+            <li>
+              <span class="spec-label">API Erişimi</span>
+              <span class="spec-value">REST + WebSocket</span>
+            </li>
+            <li>
+              <span class="spec-label">Veri Dışa Aktarma</span>
+              <span class="spec-value">CSV, JSON, PDF</span>
+            </li>
+            <li>
+              <span class="spec-label">Destek</span>
+              <span class="spec-value">7/24 Öncelikli</span>
+            </li>
+            <li>
+              <span class="spec-label">Garanti</span>
+              <span class="spec-value">2 Yıl</span>
+            </li>
+            <li>
+              <span class="spec-label">Eğitim</span>
+              <span class="spec-value">Dahil</span>
+            </li>
+          </ul>
+          <span class="device-badge">🛡️ Korumalı</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Section -->
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">Her İşletme İçin Esnek Fiyatlandırma</h2>
+      <p class="section-subtitle">İhtiyaçlarınıza uygun paketi seçin. Tüm planlar tam CityV platform erişimi içerir.</p>
+      
+      <div class="pricing-grid">
+        <!-- Single Device -->
+        <div class="pricing-card">
+          <div class="pricing-header">
+            <h3 class="pricing-title">Tek Cihaz</h3>
+            <p class="pricing-device">Küçük İşletmeler İçin Mükemmel</p>
+          </div>
+          
+          <div class="pricing-cost">
+            <span class="pricing-main">₺7,499</span>
+            <span class="pricing-sub">tek seferlik cihaz maliyeti</span>
+          </div>
+          
+          <div class="pricing-subscription">
+            <strong>₺349/ay</strong>
+            <span>Aylık Abonelik</span>
+          </div>
+          
+          <ul class="pricing-features">
+            <li>1 Business Box Cihazı</li>
+            <li>Gerçek Zamanlı İzleme</li>
+            <li>Temel Analitik Raporlar</li>
+            <li>CityV Platform Entegrasyonu</li>
+            <li>Mobil Uygulama Erişimi</li>
+            <li>E-posta Desteği</li>
+            <li>Veri Dışa Aktarma (CSV/PDF)</li>
+          </ul>
+          
+          <button class="pricing-button">Başvur</button>
+        </div>
+
+        <!-- Multi Device -->
+        <div class="pricing-card featured">
+          <div class="pricing-badge">Kurumsal</div>
+          <div class="pricing-header">
+            <h3 class="pricing-title">Çoklu Cihaz Paketi</h3>
+            <p class="pricing-device">Büyüyen Organizasyonlar İçin</p>
+          </div>
+          
+          <div class="pricing-cost">
+            <span class="pricing-main">₺13,999</span>
+            <span class="pricing-sub">tek seferlik cihaz maliyeti</span>
+          </div>
+          
+          <div class="pricing-subscription">
+            <strong>₺599/ay</strong>
+            <span>Aylık Abonelik</span>
+          </div>
+          
+          <ul class="pricing-features">
+            <li>Çoklu Business Box Cihazları</li>
+            <li>Gelişmiş AI Analitiği</li>
+            <li>Isı Haritası Görselleştirme</li>
+            <li>Öncelikli 7/24 Destek</li>
+            <li>Özel Paneller</li>
+            <li>API Erişimi</li>
+            <li>Beyaz Etiket Seçenekleri</li>
+            <li>Özel Hesap Yöneticisi</li>
+          </ul>
+          
+          <button class="pricing-button">Satış Ekibiyle İletişime Geç</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Platform Features -->
+  <section class="section" style="background: #f7fafc;">
+    <div class="container">
+      <h2 class="section-title">Güçlü Platform Özellikleri</h2>
+      <p class="section-subtitle">Kentsel alanları yönetmek, analiz etmek ve optimize etmek için ihtiyacınız olan her şey</p>
+      
+      <div class="features-grid">
+        <div class="feature-card">
+          <span class="feature-icon">🤖</span>
+          <h3 class="feature-title">Gelişmiş AI Analitiği</h3>
+          <p class="feature-description">Makine öğrenimi algoritmaları video akışlarını gerçek zamanlı işler, kalabalıkları tespit eder, kalıpları analiz eder ve %95+ doğrulukla trendleri önceden tahmin eder.</p>
+          <ul class="feature-list">
+            <li>Derin öğrenme kalabalık tespiti</li>
+            <li>Davranışsal kalıp analizi</li>
+            <li>Öngörücü tıkanıklık modelleme</li>
+            <li>Anomali tespit uyarıları</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">📊</span>
+          <h3 class="feature-title">İş Zekası Panosu</h3>
+          <p class="feature-description">Özelleştirilebilir widget'lar, gerçek zamanlı metrikler ve veri odaklı kararlar için tarihsel veri görselleştirme içeren kapsamlı analitik paneli.</p>
+          <ul class="feature-list">
+            <li>Gerçek zamanlı veri görselleştirme</li>
+            <li>Özel rapor oluşturma</li>
+            <li>Tarihsel trend analizi</li>
+            <li>Excel/PDF'ye dışa aktarma</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">🗺️</span>
+          <h3 class="feature-title">Etkileşimli Isı Haritaları</h3>
+          <p class="feature-description">Dinamik ısı haritaları ile kalabalık yoğunluğu ve hareket kalıplarını görselleştirin. Kalabalık noktaları belirleyin ve alan kullanımını optimize edin.</p>
+          <ul class="feature-list">
+            <li>Gerçek zamanlı yoğunluk haritalama</li>
+            <li>Tarihsel oynatma</li>
+            <li>Bölge tabanlı analiz</li>
+            <li>Trafik akışı görselleştirme</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">🔔</span>
+          <h3 class="feature-title">Akıllı Uyarılar & Bildirimler</h3>
+          <p class="feature-description">Önceden tanımlı eşikler aşıldığında bildirim gönderen otomatik uyarı sistemi, kritik durumlara hızlı yanıt sağlar.</p>
+          <ul class="feature-list">
+            <li>Özel eşik ayarları</li>
+            <li>Çok kanallı bildirimler</li>
+            <li>Öncelikli uyarı yükseltme</li>
+            <li>SMS/E-posta/Push uyarıları</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">📱</span>
+          <h3 class="feature-title">Mobil & Web Uygulamaları</h3>
+          <p class="feature-description">Native iOS/Android uygulamaları ve duyarlı web panosu ile verilerinize her yerden erişin. Hareket halindeyken birden fazla konumu izleyin.</p>
+          <ul class="feature-list">
+            <li>iOS & Android uygulamaları</li>
+            <li>Duyarlı web arayüzü</li>
+            <li>Çevrimdışı veri senkronizasyonu</li>
+            <li>Uzaktan cihaz kontrolü</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <span class="feature-icon">🔐</span>
+          <h3 class="feature-title">Kurumsal Güvenlik</h3>
+          <p class="feature-description">Uçtan uca şifreleme, rol tabanlı erişim kontrolü ve uluslararası veri koruma standartlarına uyumluluk ile banka düzeyinde güvenlik.</p>
+          <ul class="feature-list">
+            <li>256-bit AES şifreleme</li>
+            <li>Rol tabanlı izinler</li>
+            <li>GDPR uyumlu</li>
+            <li>Denetim günlüğü</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <div class="container">
+      <h2 class="cta-title">Kentsel Alanınızı Dönüştürmeye Hazır Mısınız?</h2>
+      <p class="cta-description">Gerçek zamanlı zekayla daha akıllı kararlar almak için CityV kullanan önde gelen işletmelere ve kamu kuruluşlarına katılın.</p>
+      <div class="cta-buttons">
+        <a href="#" class="cta-button primary">Demo Planlayın</a>
+        <a href="#" class="cta-button secondary">Broşür İndirin</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <h2 class="footer-logo">CityV</h2>
+      <p class="footer-description">
+        Önde gelen akıllı şehir zeka platformu. AI ile güçlendirilmiş, dünya çapında kurumlarca güvenilir.
+      </p>
+      <div class="footer-links">
+        <a href="#">Hakkımızda</a>
+        <a href="#">Çözümler</a>
+        <a href="#">Vaka Çalışmaları</a>
+        <a href="#">Dokümantasyon</a>
+        <a href="#">Destek</a>
+        <a href="#">İletişim</a>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2025 CityV Zeka Platformu. Tüm hakları saklıdır. | Gizlilik Politikası | Hizmet Şartları</p>
+        <p style="margin-top: 10px;">📧 info@cityv.ai | 📞 +90 (312) 123 45 67 | 🌐 www.cityv.ai</p>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
