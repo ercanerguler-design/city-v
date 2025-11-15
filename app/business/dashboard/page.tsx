@@ -75,36 +75,28 @@ export default function BusinessDashboard() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Auth kontrolü - Database'den fresh data çek
+  // Auth kontrolü - Basit token kontrolü
   useEffect(() => {
     const loadUserData = async () => {
-      console.log('🔐 Dashboard loading user data from database...');
+      console.log('🔐 Dashboard auth check...');
       
-      // Sadece token'ı kontrol et
-      const token = authStorage.getToken();
-      
-      // FORCE CLEAR old localStorage user data
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('business_user');
-        localStorage.removeItem('business-dashboard-storage');
-        console.log('🗑️ Old localStorage data cleared');
-      }
+      // Token kontrolü - localStorage'dan direkt
+      const token = localStorage.getItem('business_token');
       
       console.log('📋 Token check:', { 
         hasToken: !!token, 
-        tokenLength: token?.length || 0,
-        mobile: /Mobile|Android|iPhone/i.test(navigator.userAgent)
+        tokenLength: token?.length || 0
       });
 
       if (!token) {
-        console.log('❌ Token bulunamadı, login sayfasına yönlendiriliyor...');
-        window.location.href = '/business/login';
+        console.log('❌ No token found, redirecting to login...');
+        router.push('/business/login');
         return;
       }
 
       try {
-        // Database'den FRESH user + profile data çek
-        console.log('🔄 Fetching fresh data from database...');
+        // Database'den user data çek
+        console.log('🔄 Fetching user data...');
         const response = await fetch('/api/business/me', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -112,11 +104,14 @@ export default function BusinessDashboard() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch user data');
+          console.log('❌ API call failed, clearing token');
+          localStorage.removeItem('business_token');
+          router.push('/business/login');
+          return;
         }
 
         const data = await response.json();
-        console.log('✅ Fresh data loaded:', {
+        console.log('✅ User data loaded:', {
           email: data.user?.email,
           membership: data.user?.membership_type,
           hasProfile: !!data.profile
@@ -165,10 +160,9 @@ export default function BusinessDashboard() {
           throw new Error(data.error || 'User data yüklenemedi');
         }
       } catch (error) {
-        console.error('❌ User data loading error:', error);
-        authStorage.clear();
-        toast.error('Oturumunuz sonlanmış. Lütfen tekrar giriş yapın.');
-        window.location.href = '/business/login';
+        console.error('❌ Dashboard auth error:', error);
+        localStorage.removeItem('business_token');
+        router.push('/business/login');
       }
     };
     
