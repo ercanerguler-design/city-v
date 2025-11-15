@@ -244,16 +244,21 @@ export async function DELETE(request: NextRequest) {
         console.log(`📋 Business profile IDs: ${profileIds.join(', ')}`);
         
         // 2. Business profiles'a bağlı tabloları sil
-        await query('DELETE FROM business_campaigns WHERE business_id = ANY($1)', [profileIds]);
-        console.log(`🗑️ Campaigns deleted`);
-        
-        await query('DELETE FROM business_cameras WHERE business_id = ANY($1)', [profileIds]);
-        console.log(`🗑️ Cameras (via business_id) deleted`);
+        try {
+          await query('DELETE FROM business_campaigns WHERE profile_id = ANY($1)', [profileIds]);
+          console.log(`🗑️ Campaigns deleted`);
+        } catch (e: any) {
+          console.log(`ℹ️ No campaigns or table doesn't exist: ${e.message}`);
+        }
       }
       
-      // 3. Business_user_id ile doğrudan bağlı kameraları sil (business-cameras.sql schema)
-      await query('DELETE FROM business_cameras WHERE business_user_id = $1', [userId]);
-      console.log(`🗑️ Cameras (via business_user_id) deleted`);
+      // 3. Business_user_id ile doğrudan bağlı kameraları sil
+      try {
+        await query('DELETE FROM business_cameras WHERE business_user_id = $1', [userId]);
+        console.log(`🗑️ Cameras deleted`);
+      } catch (e: any) {
+        console.log(`ℹ️ No cameras or table doesn't exist: ${e.message}`);
+      }
       
       // 4. Business subscriptions'ı sil (user_id'ye bağlı)
       await query('DELETE FROM business_subscriptions WHERE user_id = $1', [userId]);
