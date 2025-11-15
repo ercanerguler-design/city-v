@@ -112,8 +112,8 @@ export async function GET(request: NextRequest) {
       ORDER BY created_at DESC
     `;
     
-    console.log('📋 Found cameras:', cameras.rows.length);
-    cameras.rows.forEach(cam => {
+    console.log('📋 Found cameras:', cameras.length);
+    cameras.forEach(cam => {
       console.log(`  - Camera ${cam.id}: ${cam.camera_name}, stream_url: ${cam.stream_url}`);
     });
 
@@ -122,12 +122,12 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      cameras: cameras.rows,
+      cameras: cameras,
       plan: {
         type: planInfo.planType,
         maxCameras: planInfo.maxCameras,
-        currentCount: cameras.rows.length,
-        remainingSlots: planInfo.maxCameras - cameras.rows.length
+        currentCount: cameras.length,
+        remainingSlots: planInfo.maxCameras - cameras.length
       }
     });
 
@@ -187,11 +187,11 @@ export async function POST(request: NextRequest) {
       WHERE business_user_id = ${user.userId}
     `;
 
-    if (parseInt(currentCount.rows[0].count) >= planInfo.maxCameras) {
+    if (parseInt(currentCount[0].count) >= planInfo.maxCameras) {
       return NextResponse.json(
         { 
           error: `${planInfo.planType.toUpperCase()} planınızda maksimum ${planInfo.maxCameras} kamera ekleyebilirsiniz`,
-          currentCount: currentCount.rows[0].count,
+          currentCount: currentCount[0].count,
           maxCameras: planInfo.maxCameras
         },
         { status: 400 }
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      camera: result.rows[0],
+      camera: result[0],
       message: 'Kamera başarıyla eklendi'
     });
 
