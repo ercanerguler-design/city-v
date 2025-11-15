@@ -147,17 +147,15 @@ export default function BusinessLoginPage() {
       // Doğrulama: Kaydedilen veriyi oku
       console.log('🔍 Verifying saved data...');
       const verifyToken = authStorage.getToken();
-      const verifyUser = authStorage.getUser();
-      
+      // User data artık database'de tutulduğu için sadece token kontrolü yeterli
       console.log('🔍 Verification result:', {
         hasToken: !!verifyToken,
-        hasUser: !!verifyUser,
         tokenLength: verifyToken?.length || 0,
-        userEmail: verifyUser?.email || 'none'
+        tokenSource: verifyToken ? (localStorage.getItem('business_token') ? 'localStorage' : 'cookie') : 'none'
       });
       
-      if (!verifyToken || !verifyUser) {
-        console.error('❌ Verification failed');
+      if (!verifyToken) {
+        console.error('❌ Token verification failed');
         throw new Error('Tarayıcı depolama doğrulaması başarısız. Lütfen çerezleri etkinleştirin.');
       }
 
