@@ -120,9 +120,9 @@ export default function AIAnalyticsSection({ businessId }: AIAnalyticsSectionPro
         </div>
       </motion.div>
 
-      {/* Modern Tab Navigation */}
-      <div className="relative">
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+      {/* Modern Professional Tab Navigation */}
+      <div className="relative bg-slate-800/50 backdrop-blur-xl rounded-2xl p-2 border border-slate-700/50">
+        <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -131,28 +131,40 @@ export default function AIAnalyticsSection({ businessId }: AIAnalyticsSectionPro
               <motion.button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
-                className={`relative flex items-center gap-3 px-6 py-4 rounded-2xl font-semibold transition-all whitespace-nowrap ${
+                className={`relative flex items-center gap-3 px-5 py-3.5 rounded-xl font-semibold text-sm transition-all duration-300 whitespace-nowrap min-w-fit ${
                   isActive
-                    ? 'bg-gradient-to-r ' + tab.gradient + ' text-white shadow-2xl'
-                    : 'bg-white/5 text-white/70 hover:bg-white/10 border border-white/10 hover:border-white/20'
+                    ? `bg-gradient-to-r ${tab.gradient} text-white shadow-lg shadow-${tab.color}-500/25 border border-white/20`
+                    : 'bg-slate-700/30 text-slate-300 hover:bg-slate-600/40 hover:text-white border border-slate-600/30 hover:border-slate-500/50'
                 }`}
+                style={{
+                  boxShadow: isActive ? `0 0 20px rgba(${tab.color === 'blue' ? '59, 130, 246' : tab.color === 'purple' ? '147, 51, 234' : tab.color === 'orange' ? '249, 115, 22' : tab.color === 'green' ? '34, 197, 94' : '99, 102, 241'}, 0.3)` : 'none'
+                }}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'animate-pulse' : ''}`} />
-                <span>{tab.label}</span>
+                <Icon className={`w-5 h-5 ${isActive ? 'drop-shadow-sm' : ''}`} />
+                <span className="font-medium">{tab.label}</span>
                 
+                {/* Active Tab Indicator */}
                 {isActive && (
                   <motion.div
-                    layoutId="activeTab"
-                    className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent rounded-2xl"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    layoutId="activeTabIndicator"
+                    className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-0.5 bg-white rounded-full"
+                    transition={{ type: "spring", bounce: 0.3, duration: 0.6 }}
                   />
+                )}
+                
+                {/* Hover Glow Effect */}
+                {!isActive && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-xl opacity-0 hover:opacity-100 transition-opacity duration-300" />
                 )}
               </motion.button>
             );
           })}
         </div>
+        
+        {/* Tab Background Pattern */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-800/20 via-transparent to-slate-800/20 rounded-2xl pointer-events-none" />
       </div>
 
       {/* Tab Content */}

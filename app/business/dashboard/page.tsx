@@ -264,8 +264,8 @@ export default function BusinessDashboard() {
           )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        {/* Professional Navigation */}
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
@@ -275,16 +275,25 @@ export default function BusinessDashboard() {
                 key={item.id}
                 onClick={() => {
                   setActiveSection(item.id);
-                  if (isMobile) setSidebarOpen(false); // Mobilde section değişince sidebar'ı kapat
+                  if (isMobile) setSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${
                   isActive
-                    ? 'bg-blue-50 text-blue-600 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-500/25 border border-blue-400/30'
+                    : 'text-gray-600 hover:bg-slate-100 hover:text-gray-900 border border-transparent hover:border-gray-200'
                 }`}
               >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                {(sidebarOpen || isMobile) && <span>{item.label}</span>}
+                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'drop-shadow-sm' : 'group-hover:text-blue-500'} transition-colors duration-200`} />
+                {(sidebarOpen || isMobile) && (
+                  <span className={`font-medium ${isActive ? 'text-white' : ''}`}>
+                    {item.label}
+                  </span>
+                )}
+                
+                {/* Active Indicator */}
+                {isActive && (sidebarOpen || isMobile) && (
+                  <div className="ml-auto w-2 h-2 bg-white rounded-full shadow-sm" />
+                )}
               </button>
             );
           })}
