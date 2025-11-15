@@ -74,94 +74,24 @@ export async function GET(request: NextRequest) {
 
     const recognitionLogs = await sql(query, params);
 
-    // If no real data, generate mock data
+    // If no real data found, return empty result
     if (recognitionLogs.length === 0) {
-      console.log('⚠️ No AI recognition data found - generating mock data');
+      console.log('⚠️ No AI recognition data found');
       
-      const mockDetections = [];
-      for (let i = 0; i < Math.min(limit, 50); i++) {
-        const detectionTypes = ['person', 'face', 'vehicle', 'object'];
-        const objects = {
-          person: ['person', 'customer', 'visitor'],
-          face: ['happy_face', 'neutral_face', 'surprised_face'],
-          vehicle: ['car', 'bicycle', 'motorcycle'],
-          object: ['bag', 'phone', 'laptop']
-        };
-        
-        const randomType = detectionTypes[Math.floor(Math.random() * detectionTypes.length)];
-        const randomObject = objects[randomType][Math.floor(Math.random() * objects[randomType].length)];
-        
-        mockDetections.push({
-          id: `mock-${i}`,
-          detection_type: randomType,
-          object_class: randomObject,
-          confidence_score: Math.random() * 0.3 + 0.7, // 0.7-1.0
-          bounding_box: JSON.stringify({
-            x: Math.floor(Math.random() * 400),
-            y: Math.floor(Math.random() * 300),
-            width: Math.floor(Math.random() * 100) + 50,
-            height: Math.floor(Math.random() * 100) + 50
-          }),
-          person_id: randomType === 'person' ? `person_${Math.floor(Math.random() * 100)}` : null,
-          timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString(),
-          device_id: `camera_${Math.floor(Math.random() * 3) + 1}`,
-          business_id: parseInt(businessId)
-        });
-      }
-      
-      // Group by detection type
-      const groupedByType: { [key: string]: any[] } = {};
-      mockDetections.forEach((log: any) => {
-        if (!groupedByType[log.detection_type]) {
-          groupedByType[log.detection_type] = [];
-        }
-        groupedByType[log.detection_type].push({
-          id: log.id,
-          objectClass: log.object_class,
-          confidence: Math.round(log.confidence_score * 100),
-          boundingBox: typeof log.bounding_box === 'string' 
-            ? JSON.parse(log.bounding_box) 
-            : log.bounding_box,
-          personId: log.person_id,
-          timestamp: log.timestamp,
-          deviceId: log.device_id
-        });
-      });
-
-      // Calculate statistics
-      const stats = {
-        totalDetections: mockDetections.length,
-        byType: Object.entries(groupedByType).map(([type, detections]) => ({
-          type,
-          count: detections.length,
-          avgConfidence: Math.round(
-            detections.reduce((sum, d) => sum + d.confidence, 0) / detections.length
-          )
-        })),
-        uniquePersons: new Set(
-          mockDetections
-            .filter((r: any) => r.person_id)
-            .map((r: any) => r.person_id)
-        ).size
-      };
-
       return NextResponse.json({
         success: true,
-        isMockData: true,
         filters: {
           detectionType,
           minConfidence,
           limit
         },
-        stats,
-        detections: groupedByType,
-        recentDetections: mockDetections.slice(0, 20).map((log: any) => ({
-          id: log.id,
-          type: log.detection_type,
-          object: log.object_class,
-          confidence: Math.round(log.confidence_score * 100),
-          timestamp: log.timestamp
-        }))
+        stats: {
+          totalDetections: 0,
+          byType: [],
+          uniquePersons: 0
+        },
+        detections: {},
+        recentDetections: []
       });
     }
 

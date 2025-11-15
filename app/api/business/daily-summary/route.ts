@@ -65,65 +65,12 @@ export async function GET(request: NextRequest) {
     );
 
     if (summaryResult.length === 0) {
-      console.log(`⚠️ ${date} tarihli günlük özet verisi bulunamadı - mock data oluşturuluyor`);
-      
-      // Mock data generator for missing dates
-      const mockSummary = {
-        business_user_id: parseInt(businessUserId),
-        summary_date: date,
-        total_visitors: Math.floor(Math.random() * 150 + 50),
-        total_entries: Math.floor(Math.random() * 200 + 80),
-        total_exits: Math.floor(Math.random() * 180 + 70),
-        current_occupancy: Math.floor(Math.random() * 30 + 5),
-        avg_occupancy: (Math.random() * 20 + 10).toFixed(2),
-        max_occupancy: Math.floor(Math.random() * 50 + 25),
-        min_occupancy: Math.floor(Math.random() * 10 + 1),
-        avg_crowd_density: (Math.random() * 0.8 + 0.2).toFixed(2),
-        max_crowd_density: (Math.random() * 0.4 + 0.6).toFixed(2),
-        peak_hour: Math.floor(Math.random() * 6) + 14,
-        peak_hour_visitors: Math.floor(Math.random() * 30 + 15),
-        busiest_period: ['sabah', 'öğle', 'akşam'][Math.floor(Math.random() * 3)],
-        total_detections: Math.floor(Math.random() * 500 + 200),
-        active_cameras_count: Math.floor(Math.random() * 3) + 1,
-        total_analysis_records: Math.floor(Math.random() * 800 + 300),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
+      console.log(`⚠️ ${date} tarihli günlük özet verisi bulunamadı`);
       return NextResponse.json({
-        success: true,
-        isMockData: true,
-        summary: {
-          id: 'mock-' + Date.now(),
-          businessUserId: mockSummary.business_user_id,
-          date: mockSummary.summary_date,
-          metrics: {
-            totalVisitors: mockSummary.total_visitors,
-            totalEntries: mockSummary.total_entries,
-            totalExits: mockSummary.total_exits,
-            currentOccupancy: mockSummary.current_occupancy,
-            avgOccupancy: parseFloat(mockSummary.avg_occupancy),
-            maxOccupancy: mockSummary.max_occupancy,
-            minOccupancy: mockSummary.min_occupancy,
-            avgCrowdDensity: parseFloat(mockSummary.avg_crowd_density),
-            maxCrowdDensity: parseFloat(mockSummary.max_crowd_density)
-          },
-          timeAnalysis: {
-            peakHour: mockSummary.peak_hour,
-            peakHourVisitors: mockSummary.peak_hour_visitors,
-            busiestPeriod: mockSummary.busiest_period
-          },
-          cameraData: {
-            totalDetections: mockSummary.total_detections,
-            activeCamerasCount: mockSummary.active_cameras_count,
-            totalAnalysisRecords: mockSummary.total_analysis_records
-          },
-          timestamps: {
-            createdAt: mockSummary.created_at,
-            updatedAt: mockSummary.updated_at
-          }
-        }
-      });
+        success: false,
+        error: 'Bu tarih için günlük özet verisi bulunamadı',
+        message: 'Veri henüz oluşturulmamış olabilir'
+      }, { status: 404 });
     }
 
     const summary = summaryResult[0];
