@@ -55,19 +55,19 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2 sm:gap-3"
+            className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1"
           >
-            <div className="p-2 sm:p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-lg">
-              <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="p-2 sm:p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-lg flex-shrink-0">
+              <MapPin className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
             </div>
-            <div>
-              <h1 className="text-lg sm:text-2xl font-bold flex items-center gap-2">
-                CityView
-                <span className="text-xs bg-yellow-400 text-purple-900 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-bold">
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg md:text-2xl font-bold flex items-center gap-1.5 sm:gap-2">
+                <span className="truncate">CityView</span>
+                <span className="text-[10px] sm:text-xs bg-yellow-400 text-purple-900 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-bold flex-shrink-0">
                   PRO
                 </span>
               </h1>
-              <p className="text-xs sm:text-sm text-white/80 hidden sm:block">Akıllı Şehir Yoğunluk Haritası</p>
+              <p className="text-xs sm:text-sm text-white/80 hidden sm:block truncate">Akıllı Şehir Yoğunluk Haritası</p>
             </div>
           </motion.div>
 

@@ -335,36 +335,42 @@ export default function BusinessDashboard() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden w-full">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-2 md:gap-4">
+        <header className="h-14 sm:h-16 bg-white border-b border-gray-200 flex items-center justify-between px-3 sm:px-4 md:px-6">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation flex-shrink-0"
+              aria-label="Toggle menu"
             >
               <MenuIcon className="w-5 h-5" />
             </button>
-            <h1 className="text-lg md:text-xl font-bold text-gray-900 truncate">
+            <h1 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 truncate">
               {navItems.find(item => item.id === activeSection)?.label || 'Dashboard'}
             </h1>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0">
             {/* Membership Badge */}
             {businessUser && (() => {
               console.log('🏷️ Rendering membership badge:', businessUser.membership_type);
               return (
-                <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                <div className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
                   businessUser.membership_type === 'enterprise' 
                     ? 'bg-purple-100 text-purple-700' 
                     : businessUser.membership_type === 'premium'
                     ? 'bg-blue-100 text-blue-700'
                     : 'bg-gray-100 text-gray-700'
                 }`}>
-                  {businessUser.membership_type === 'enterprise' ? '⭐ Enterprise' : 
-                   businessUser.membership_type === 'premium' ? '💎 Premium' : 
-                   '🆓 Free'}
+                  {businessUser.membership_type === 'enterprise' ? '⭐' : 
+                   businessUser.membership_type === 'premium' ? '💎' : 
+                   '🆓'}
+                  <span className="hidden sm:inline ml-1">
+                    {businessUser.membership_type === 'enterprise' ? 'Enterprise' : 
+                     businessUser.membership_type === 'premium' ? 'Premium' : 
+                     'Free'}
+                  </span>
                   {businessUser.membership_expiry_date && (
-                    <span className="ml-1 opacity-70">
+                    <span className="ml-1 opacity-70 hidden md:inline">
                       ({new Date(businessUser.membership_expiry_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' })})
                     </span>
                   )}
@@ -403,7 +409,7 @@ export default function BusinessDashboard() {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-3 md:p-6">
+        <main className="flex-1 overflow-y-auto bg-gray-50 p-2 sm:p-3 md:p-6 pb-20 sm:pb-6">
           {activeSection === 'overview' && <OverviewSection businessProfile={businessProfile} />}
           {activeSection === 'cameras' && <CamerasSection businessProfile={businessProfile} />}
           {activeSection === 'ai-analytics' && <AIAnalyticsSection businessId={businessUser?.id?.toString() || '6'} />}
