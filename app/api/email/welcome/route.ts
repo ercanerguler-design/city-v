@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Build sırasında RESEND_API_KEY yoksa hata vermesin
+const resend = process.env.RESEND_API_KEY 
+  ? new Resend(process.env.RESEND_API_KEY) 
+  : null;
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +15,15 @@ export async function POST(request: NextRequest) {
         { error: 'Email ve isim gerekli' },
         { status: 400 }
       );
+    }
+
+    // RESEND_API_KEY yoksa email gönderme, sadece log
+    if (!resend) {
+      console.log('⚠️ RESEND_API_KEY tanımlı değil. Email gönderilmedi:', { email, name });
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Email sistemi şu anda devre dışı' 
+      });
     }
 
     const htmlContent = `
