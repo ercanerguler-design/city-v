@@ -16,56 +16,25 @@ export default function BusinessLoginPage() {
   const [isChecking, setIsChecking] = useState(true);
   const [error, setError] = useState('');
 
-  // Zaten login olmuş mu kontrol et
+  // Zaten login olmuş mu kontrol et - SADECE TOKEN VARLIĞINI KONTROL ET
   useEffect(() => {
-    const checkExistingAuth = async () => {
+    const checkExistingAuth = () => {
       console.log('🔍 Checking existing auth...');
       const token = authStorage.getToken();
       
       if (!token) {
-        console.log('❌ No existing token, showing login form');
+        console.log('❌ No token found, showing login form');
         setIsChecking(false);
         return;
       }
 
-      // GEÇİCİ: Verify-token bypass - token varsa direkt dashboard'a yönlendir
-      console.log('✅ Token found, redirecting to dashboard (verify skipped)');
-      toast.success('Giriş bilgileriniz bulundu! Yönlendiriliyorsunuz...');
-      window.location.href = '/business/dashboard';
-      return;
-
-      /* ESKI KOD - verify-token
-      console.log('📋 Token found, verifying...');
-      
-      try {
-        // Token'ı verify et
-        const response = await fetch('/api/business/verify-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-        });
-
-        const data = await response.json();
-
-        if (data.valid) {
-          console.log('✅ Valid token, redirecting to dashboard...');
-          toast.success('Zaten giriş yapmışsınız! Yönlendiriliyorsunuz...');
-          window.location.href = '/business/dashboard';
-        } else {
-          console.log('❌ Invalid token, clearing and showing login');
-          authStorage.clear();
-          setIsChecking(false);
-        }
-      } catch (error) {
-        console.error('❌ Token check error:', error);
-        authStorage.clear();
-        setIsChecking(false);
-      }
-      */
+      // Token varsa dashboard'a yönlendir
+      console.log('✅ Token found, redirecting to dashboard');
+      router.push('/business/dashboard');
     };
 
     checkExistingAuth();
-  }, []);
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
