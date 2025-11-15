@@ -1,8 +1,9 @@
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-2024';
+const sql = neon(process.env.DATABASE_URL!);
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 // Plan limitleri - Membership based
 const CAMERA_LIMITS: Record<string, number> = {
@@ -43,7 +44,7 @@ async function getUserPlan(userId: number) {
       WHERE id = ${userId}
     `;
     
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       console.log(`⚠️ User ${userId} not found in business_users, using free plan`);
       return {
         planType: 'free',
@@ -51,7 +52,7 @@ async function getUserPlan(userId: number) {
       };
     }
 
-    const membershipType = (result.rows[0].membership_type || 'free').toLowerCase();
+    const membershipType = (result[0].membership_type || 'free').toLowerCase();
     
     // Membership'e göre limit belirle
     const maxCameras = CAMERA_LIMITS[membershipType] || CAMERA_LIMITS.free;

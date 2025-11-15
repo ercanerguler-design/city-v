@@ -1,5 +1,9 @@
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
+
+const sql = neon(process.env.DATABASE_URL!);
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 /**
  * AI Recognition API
@@ -9,6 +13,22 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   try {
+    // JWT token authentication
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    let user;
+    
+    try {
+      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const businessId = searchParams.get('businessId');
     const detectionType = searchParams.get('detectionType') || 'all';
@@ -22,7 +42,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let query = `
+    console.log('🔍 AI Recognition query:', { businessId, detectionType, minConfidence, limit });
+
+    // Check for actual data first
+    let whereClause = `business_id = $1 AND confidence_score >= $2`;
+    let params = [businessId, minConfidence];
+    
+    if (detectionType !== 'all') {
+      whereClause += ` AND detection_type = $3`;
+      params.push(detectionType);
+    }
+
+    const query = `
       SELECT 
         id,
         detection_type,
@@ -31,23 +62,113 @@ export async function GET(request: NextRequest) {
         bounding_box,
         person_id,
         timestamp,
-        device_id
+        device_id,
+        business_id
       FROM ai_recognition_logs
-      WHERE business_id = ${businessId}
-        AND confidence_score >= ${minConfidence}
+      WHERE ${whereClause}
+      ORDER BY timestamp DESC 
+      LIMIT $${params.length + 1}
     `;
+    
+    params.push(limit.toString());
 
-    if (detectionType !== 'all') {
-      query += ` AND detection_type = '${detectionType}'`;
+    const recognitionLogs = await sql(query, params);
+
+    // If no real data, generate mock data
+    if (recognitionLogs.length === 0) {
+      console.log('⚠️ No AI recognition data found - generating mock data');
+      
+      const mockDetections = [];
+      for (let i = 0; i < Math.min(limit, 50); i++) {
+        const detectionTypes = ['person', 'face', 'vehicle', 'object'];
+        const objects = {
+          person: ['person', 'customer', 'visitor'],
+          face: ['happy_face', 'neutral_face', 'surprised_face'],
+          vehicle: ['car', 'bicycle', 'motorcycle'],
+          object: ['bag', 'phone', 'laptop']
+        };
+        
+        const randomType = detectionTypes[Math.floor(Math.random() * detectionTypes.length)];
+        const randomObject = objects[randomType][Math.floor(Math.random() * objects[randomType].length)];
+        
+        mockDetections.push({
+          id: `mock-${i}`,
+          detection_type: randomType,
+          object_class: randomObject,
+          confidence_score: Math.random() * 0.3 + 0.7, // 0.7-1.0
+          bounding_box: JSON.stringify({
+            x: Math.floor(Math.random() * 400),
+            y: Math.floor(Math.random() * 300),
+            width: Math.floor(Math.random() * 100) + 50,
+            height: Math.floor(Math.random() * 100) + 50
+          }),
+          person_id: randomType === 'person' ? `person_${Math.floor(Math.random() * 100)}` : null,
+          timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+          device_id: `camera_${Math.floor(Math.random() * 3) + 1}`,
+          business_id: parseInt(businessId)
+        });
+      }
+      
+      // Group by detection type
+      const groupedByType: { [key: string]: any[] } = {};
+      mockDetections.forEach((log: any) => {
+        if (!groupedByType[log.detection_type]) {
+          groupedByType[log.detection_type] = [];
+        }
+        groupedByType[log.detection_type].push({
+          id: log.id,
+          objectClass: log.object_class,
+          confidence: Math.round(log.confidence_score * 100),
+          boundingBox: typeof log.bounding_box === 'string' 
+            ? JSON.parse(log.bounding_box) 
+            : log.bounding_box,
+          personId: log.person_id,
+          timestamp: log.timestamp,
+          deviceId: log.device_id
+        });
+      });
+
+      // Calculate statistics
+      const stats = {
+        totalDetections: mockDetections.length,
+        byType: Object.entries(groupedByType).map(([type, detections]) => ({
+          type,
+          count: detections.length,
+          avgConfidence: Math.round(
+            detections.reduce((sum, d) => sum + d.confidence, 0) / detections.length
+          )
+        })),
+        uniquePersons: new Set(
+          mockDetections
+            .filter((r: any) => r.person_id)
+            .map((r: any) => r.person_id)
+        ).size
+      };
+
+      return NextResponse.json({
+        success: true,
+        isMockData: true,
+        filters: {
+          detectionType,
+          minConfidence,
+          limit
+        },
+        stats,
+        detections: groupedByType,
+        recentDetections: mockDetections.slice(0, 20).map((log: any) => ({
+          id: log.id,
+          type: log.detection_type,
+          object: log.object_class,
+          confidence: Math.round(log.confidence_score * 100),
+          timestamp: log.timestamp
+        }))
+      });
     }
 
-    query += ` ORDER BY timestamp DESC LIMIT ${limit}`;
-
-    const recognitionLogs = await sql.query(query);
-
+    // Process real data
     // Group by detection type
     const groupedByType: { [key: string]: any[] } = {};
-    recognitionLogs.rows.forEach((log: any) => {
+    recognitionLogs.forEach((log: any) => {
       if (!groupedByType[log.detection_type]) {
         groupedByType[log.detection_type] = [];
       }
@@ -66,7 +187,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate statistics
     const stats = {
-      totalDetections: recognitionLogs.rows.length,
+      totalDetections: recognitionLogs.length,
       byType: Object.entries(groupedByType).map(([type, detections]) => ({
         type,
         count: detections.length,
@@ -75,7 +196,7 @@ export async function GET(request: NextRequest) {
         )
       })),
       uniquePersons: new Set(
-        recognitionLogs.rows
+        recognitionLogs
           .filter((r: any) => r.person_id)
           .map((r: any) => r.person_id)
       ).size
@@ -90,7 +211,7 @@ export async function GET(request: NextRequest) {
       },
       stats,
       detections: groupedByType,
-      recentDetections: recognitionLogs.rows.slice(0, 20).map((log: any) => ({
+      recentDetections: recognitionLogs.slice(0, 20).map((log: any) => ({
         id: log.id,
         type: log.detection_type,
         object: log.object_class,

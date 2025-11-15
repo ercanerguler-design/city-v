@@ -34,11 +34,11 @@ export default function AIAnalyticsSection({ businessId }: AIAnalyticsSectionPro
   }, []);
 
   const tabs = [
-    { id: 'overview', label: 'Genel Bakış', icon: BarChart3, color: 'blue', gradient: 'from-blue-500 to-cyan-500' },
-    { id: 'crowd', label: 'Kalabalık Analizi', icon: Users, color: 'purple', gradient: 'from-purple-500 to-pink-500' },
-    { id: 'heatmap', label: 'Isı Haritası', icon: Activity, color: 'orange', gradient: 'from-orange-500 to-red-500' },
-    { id: 'ai', label: 'AI Algılama', icon: Eye, color: 'green', gradient: 'from-green-500 to-emerald-500' },
-    { id: 'seating', label: 'Oturma Durumu', icon: Armchair, color: 'indigo', gradient: 'from-indigo-500 to-violet-500' }
+    { id: 'overview', label: 'Genel Bakış', icon: BarChart3, color: 'blue', gradient: 'bg-gradient-to-r from-blue-500 to-cyan-500', bgColor: 'bg-blue-500' },
+    { id: 'crowd', label: 'Kalabalık Analizi', icon: Users, color: 'purple', gradient: 'bg-gradient-to-r from-purple-500 to-pink-500', bgColor: 'bg-purple-500' },
+    { id: 'heatmap', label: 'Isı Haritası', icon: Activity, color: 'orange', gradient: 'bg-gradient-to-r from-orange-500 to-red-500', bgColor: 'bg-orange-500' },
+    { id: 'ai', label: 'AI Algılama', icon: Eye, color: 'green', gradient: 'bg-gradient-to-r from-green-500 to-emerald-500', bgColor: 'bg-green-500' },
+    { id: 'seating', label: 'Oturma Durumu', icon: Armchair, color: 'indigo', gradient: 'bg-gradient-to-r from-indigo-500 to-violet-500', bgColor: 'bg-indigo-500' }
   ];
 
   const currentTab = tabs.find(t => t.id === activeTab);
@@ -120,9 +120,9 @@ export default function AIAnalyticsSection({ businessId }: AIAnalyticsSectionPro
         </div>
       </motion.div>
 
-      {/* Modern Professional Tab Navigation */}
-      <div className="relative bg-slate-800/50 backdrop-blur-xl rounded-2xl p-2 border border-slate-700/50">
-        <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
+      {/* Enhanced Professional Tab Navigation */}
+      <div className="relative bg-slate-900/80 backdrop-blur-xl rounded-2xl p-3 border border-slate-600/30 shadow-2xl">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -131,40 +131,49 @@ export default function AIAnalyticsSection({ businessId }: AIAnalyticsSectionPro
               <motion.button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className={`relative flex items-center gap-3 px-5 py-3.5 rounded-xl font-semibold text-sm transition-all duration-300 whitespace-nowrap min-w-fit ${
+                whileHover={{ scale: 1.05, y: -3 }}
+                whileTap={{ scale: 0.95 }}
+                className={`relative flex items-center gap-3 px-6 py-4 rounded-xl font-semibold text-sm transition-all duration-300 whitespace-nowrap min-w-fit border ${
                   isActive
-                    ? `bg-gradient-to-r ${tab.gradient} text-white shadow-lg shadow-${tab.color}-500/25 border border-white/20`
-                    : 'bg-slate-700/30 text-slate-300 hover:bg-slate-600/40 hover:text-white border border-slate-600/30 hover:border-slate-500/50'
+                    ? `${tab.gradient} text-white shadow-xl border-white/30`
+                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/60 hover:text-white border-slate-600/50 hover:border-slate-500/70'
                 }`}
                 style={{
-                  boxShadow: isActive ? `0 0 20px rgba(${tab.color === 'blue' ? '59, 130, 246' : tab.color === 'purple' ? '147, 51, 234' : tab.color === 'orange' ? '249, 115, 22' : tab.color === 'green' ? '34, 197, 94' : '99, 102, 241'}, 0.3)` : 'none'
+                  boxShadow: isActive 
+                    ? `0 8px 32px rgba(${
+                        tab.color === 'blue' ? '59, 130, 246' : 
+                        tab.color === 'purple' ? '147, 51, 234' : 
+                        tab.color === 'orange' ? '249, 115, 22' : 
+                        tab.color === 'green' ? '34, 197, 94' : 
+                        '99, 102, 241'
+                      }, 0.4)` 
+                    : 'none'
                 }}
               >
                 <Icon className={`w-5 h-5 ${isActive ? 'drop-shadow-sm' : ''}`} />
-                <span className="font-medium">{tab.label}</span>
+                <span className="font-semibold">{tab.label}</span>
                 
-                {/* Active Tab Indicator */}
+                {/* Active Tab Glow */}
                 {isActive && (
                   <motion.div
-                    layoutId="activeTabIndicator"
-                    className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-0.5 bg-white rounded-full"
+                    layoutId="activeTabGlow"
+                    className="absolute inset-0 bg-gradient-to-r from-white/10 to-white/5 rounded-xl"
                     transition={{ type: "spring", bounce: 0.3, duration: 0.6 }}
                   />
                 )}
                 
-                {/* Hover Glow Effect */}
-                {!isActive && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-xl opacity-0 hover:opacity-100 transition-opacity duration-300" />
+                {/* Active Indicator Dot */}
+                {isActive && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full shadow-lg animate-pulse" />
                 )}
               </motion.button>
             );
           })}
         </div>
         
-        {/* Tab Background Pattern */}
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-800/20 via-transparent to-slate-800/20 rounded-2xl pointer-events-none" />
+        {/* Background Decoration */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/40 via-transparent to-slate-900/40 rounded-2xl pointer-events-none" />
+        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
       </div>
 
       {/* Tab Content */}
