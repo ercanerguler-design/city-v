@@ -1,5 +1,9 @@
+import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import jwt from 'jsonwebtoken';
+
+const sql = neon(process.env.DATABASE_URL!);
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 /**
  * Business Menü Yönetimi API
@@ -12,6 +16,22 @@ import { query } from '@/lib/db';
 // GET - Menüyü getir
 export async function GET(request: NextRequest) {
   try {
+    // JWT token authentication
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    let user;
+    
+    try {
+      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const businessId = searchParams.get('businessId');
 
@@ -23,7 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Kategorileri getir
-    const categoriesResult = await query(
+    const categoriesResult = await sql(
       `SELECT id, name, display_order, is_active, icon
        FROM business_menu_categories
        WHERE business_id = $1
@@ -32,7 +52,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Tüm ürünleri getir (category_id üzerinden)
-    const itemsResult = await query(
+    const itemsResult = await sql(
       `SELECT 
         mi.id,
         mi.category_id,
@@ -57,16 +77,16 @@ export async function GET(request: NextRequest) {
     );
 
     // Kategorilere ürünleri grupla
-    const categoriesWithItems = categoriesResult.rows.map(category => ({
+    const categoriesWithItems = categoriesResult.map(category => ({
       ...category,
-      items: itemsResult.rows.filter(item => item.category_id === category.id)
+      items: itemsResult.filter(item => item.category_id === category.id)
     }));
 
     return NextResponse.json({
       success: true,
       categories: categoriesWithItems,
-      totalItems: itemsResult.rows.length,
-      totalCategories: categoriesResult.rows.length
+      totalItems: itemsResult.length,
+      totalCategories: categoriesResult.length
     });
 
   } catch (error: any) {
@@ -81,6 +101,22 @@ export async function GET(request: NextRequest) {
 // POST - Yeni ürün ekle
 export async function POST(request: NextRequest) {
   try {
+    // JWT token authentication
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    let user;
+    
+    try {
+      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       businessId,
@@ -104,7 +140,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await query(
+    const result = await sql(
       `INSERT INTO business_menu_items (
         business_id,
         category_id,
@@ -138,7 +174,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      item: result.rows[0],
+      item: result[0],
       message: 'Ürün başarıyla eklendi'
     });
 
