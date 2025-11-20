@@ -9,8 +9,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 const CAMERA_LIMITS: Record<string, number> = {
   free: 1,
   premium: 10,
-  enterprise: 30,
-  business: 5
+  enterprise: 30,  // 30 kamera
+  business: 10
 };
 
 // JWT token'dan user bilgisini al
@@ -143,8 +143,11 @@ export async function GET(request: NextRequest) {
 // POST - Yeni kamera ekle
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔥 ===== CAMERA ADD DEBUG START =====');
+    
     // GEÇİCİ: Token decode sorunu için body'den userId al
     const body = await request.json();
+    console.log('📋 Received body:', JSON.stringify(body, null, 2));
     
     let user = getUserFromToken(request);
     
@@ -169,6 +172,16 @@ export async function POST(request: NextRequest) {
       password,
       location_description 
     } = body;
+
+    console.log('🔍 Extracted fields:', {
+      camera_name,
+      ip_address,
+      port,
+      stream_path,
+      username: username ? '***' : 'none',
+      password: password ? '***' : 'none',
+      location_description
+    });
 
     // Validasyon
     if (!camera_name || !ip_address) {
@@ -332,13 +345,13 @@ export async function PUT(request: NextRequest) {
       SELECT business_user_id FROM business_cameras WHERE id = ${id}
     `;
     
-    if (ownerCheck.rows.length === 0) {
+    if (ownerCheck.length === 0) {
       console.log(`❌ Camera ${id} not found`);
       return NextResponse.json({ error: 'Kamera bulunamadı' }, { status: 404 });
     }
     
-    if (ownerCheck.rows[0].business_user_id !== user.userId) {
-      console.log(`❌ User ${user.userId} tried to update camera ${id} owned by ${ownerCheck.rows[0].business_user_id}`);
+    if (ownerCheck[0].business_user_id !== user.userId) {
+      console.log(`❌ User ${user.userId} tried to update camera ${id} owned by ${ownerCheck[0].business_user_id}`);
       return NextResponse.json({ error: 'Bu kameraya erişim yetkiniz yok' }, { status: 403 });
     }
 
@@ -368,18 +381,18 @@ export async function PUT(request: NextRequest) {
       RETURNING *
     `;
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return NextResponse.json(
         { error: 'Kamera bulunamadı veya yetkiniz yok' },
         { status: 404 }
       );
     }
 
-    console.log(`✅ Kamera güncellendi: ${result.rows[0].camera_name}`);
+    console.log(`✅ Kamera güncellendi: ${result[0].camera_name}`);
 
     return NextResponse.json({
       success: true,
-      camera: result.rows[0],
+      camera: result[0],
       message: 'Kamera başarıyla güncellendi'
     });
 
@@ -428,14 +441,14 @@ export async function DELETE(request: NextRequest) {
       RETURNING camera_name
     `;
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return NextResponse.json(
         { error: 'Kamera bulunamadı veya yetkiniz yok' },
         { status: 404 }
       );
     }
 
-    console.log(`✅ Kamera kalıcı olarak silindi: ${result.rows[0].camera_name}`);
+    console.log(`✅ Kamera kalıcı olarak silindi: ${result[0].camera_name}`);
 
     return NextResponse.json({
       success: true,

@@ -52,21 +52,21 @@ export async function POST(req: NextRequest) {
       ]
     );
 
-    console.log('✅ Review added:', result.rows[0]);
+    console.log('✅ Review added:', result[0]);
 
     // 🔔 Create notification for business owner
     try {
       // Find business_user_id from location_id
-      const businessResult = await query(
+      const businessResult = await sql(
         `SELECT bp.user_id, bp.business_name
          FROM business_profiles bp
          WHERE bp.location_id = $1`,
         [locationId]
       );
 
-      if (businessResult.rows.length > 0) {
-        const businessUserId = businessResult.rows[0].user_id;
-        const businessName = businessResult.rows[0].business_name;
+      if (businessResult.length > 0) {
+        const businessUserId = businessResult[0].user_id;
+        const businessName = businessResult[0].business_name;
 
         // Create sentiment emoji
         const sentimentEmoji = sentiment === 'positive' ? '😊' 
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
         // Create rating stars
         const ratingStars = rating ? '⭐'.repeat(rating) : '';
 
-        await query(
+        await sql(
           `INSERT INTO business_notifications (
             business_user_id, type, title, message, data
           ) VALUES ($1, $2, $3, $4, $5)`,
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
               sentiment,
               priceRating,
               comment: comment ? comment.substring(0, 100) : null,
-              reviewId: result.rows[0].id
+              reviewId: result[0].id
             })
           ]
         );
@@ -145,7 +145,9 @@ export async function GET(req: NextRequest) {
 
     // Business sayfası için: businessUserId'ye göre filtrele
     if (businessUserId) {
-      const businessResult = await query(
+      console.log('🔍 Business reviews query for user ID:', businessUserId);
+      
+      const businessResult = await sql(
         `SELECT lr.*, bp.business_name
          FROM location_reviews lr
          JOIN business_profiles bp ON lr.location_id = bp.location_id
@@ -155,11 +157,22 @@ export async function GET(req: NextRequest) {
         [businessUserId, parseInt(limit)]
       );
 
+      console.log('📊 Found reviews:', businessResult.length);
+      if (businessResult.length > 0) {
+        console.log('📝 Sample review:', {
+          id: businessResult[0].id,
+          location_id: businessResult[0].location_id,
+          user_name: businessResult[0].user_name,
+          sentiment: businessResult[0].sentiment,
+          comment: businessResult[0].comment
+        });
+      }
+
       // Stats hesapla
       const stats = {
-        total: businessResult.rows.length,
-        avgRating: businessResult.rows.reduce((sum, r) => sum + (r.rating || 0), 0) / businessResult.rows.length || 0,
-        sentimentCounts: businessResult.rows.reduce((acc: any, r) => {
+        total: businessResult.length,
+        avgRating: businessResult.reduce((sum, r) => sum + (r.rating || 0), 0) / businessResult.length || 0,
+        sentimentCounts: businessResult.reduce((acc: any, r) => {
           if (r.sentiment) {
             acc[r.sentiment] = (acc[r.sentiment] || 0) + 1;
           }
@@ -167,13 +180,13 @@ export async function GET(req: NextRequest) {
         }, {})
       };
 
-      console.log(`📊 Found ${businessResult.rows.length} reviews for business user ${businessUserId}`);
+      console.log(`📊 Found ${businessResult.length} reviews for business user ${businessUserId}`);
 
       return NextResponse.json({
         success: true,
-        reviews: businessResult.rows,
-        stats,
-        count: businessResult.rows.length
+        reviews: businessResult,
+        stats: stats,
+        count: businessResult.length
       });
     }
 
@@ -215,7 +228,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Full reviews
-    const result = await query(
+    const result = await sql(
       `SELECT 
         id,
         user_name,
@@ -234,12 +247,12 @@ export async function GET(req: NextRequest) {
       [locationId, parseInt(limit)]
     );
 
-    console.log(`📊 Found ${result.rows.length} reviews for ${locationId}`);
+    console.log(`📊 Found ${result.length} reviews for ${locationId}`);
 
     return NextResponse.json({
       success: true,
-      reviews: result.rows,
-      count: result.rows.length
+      reviews: result,
+      count: result.length
     });
 
   } catch (error: any) {
@@ -268,7 +281,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    await query(
+    await sql(
       `UPDATE location_reviews 
        SET helpful_count = helpful_count + 1 
        WHERE id = $1`,

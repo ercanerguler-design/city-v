@@ -91,6 +91,16 @@ export function getCameraStreamUrl(camera: any): string {
 }
 
 /**
+ * Kamera objesinden fallback stream URL'i al (bağlantı yoksa demo stream)
+ * @param camera - Kamera objesi
+ * @returns Demo stream URL
+ */
+export function getFallbackStreamUrl(): string {
+  // Çalışan demo stream - çok güvenilir traffic camera
+  return 'https://images-webcams.windy.com/14/1413279542/current/icon/1413279542.jpg';
+}
+
+/**
  * Stream URL'in geçerli olup olmadığını kontrol eder
  * @param url - Kontrol edilecek URL
  * @returns URL geçerliyse true

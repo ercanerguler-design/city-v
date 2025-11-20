@@ -159,8 +159,10 @@ export async function GET(req: NextRequest) {
     const hourlyData = hourlyAnalysisResult.rows.map(row => ({
       hour: parseInt(row.hour),
       occupancy: Math.round(parseFloat(row.avg_occupancy || 0)),
+      avg_occupancy: parseFloat(row.avg_occupancy || 0), // Frontend için eklendi
       level: parseFloat(row.avg_occupancy || 0) > 15 ? 'Yoğun' : 
-             parseFloat(row.avg_occupancy || 0) > 8 ? 'Normal' : 'Boş'
+             parseFloat(row.avg_occupancy || 0) > 8 ? 'Normal' : 'Boş',
+      location_name: 'Genel Alan' // Frontend için eklendi
     }));
 
     // Haftalık trendi işle
@@ -174,12 +176,14 @@ export async function GET(req: NextRequest) {
     // Peak hours'ı işle
     const peakHours = peakHoursResult.rows.slice(0, 3).map(row => ({
       hour: parseInt(row.hour),
-      occupancy: Math.round(parseFloat(row.avg_occupancy || 0))
+      occupancy: Math.round(parseFloat(row.avg_occupancy || 0)),
+      avg_occupancy: parseFloat(row.avg_occupancy || 0) // Frontend için eklendi
     }));
 
     const quietHours = peakHoursResult.rows.slice(-3).reverse().map(row => ({
       hour: parseInt(row.hour),
-      occupancy: Math.round(parseFloat(row.avg_occupancy || 0))
+      occupancy: Math.round(parseFloat(row.avg_occupancy || 0)),
+      avg_occupancy: parseFloat(row.avg_occupancy || 0) // Frontend için eklendi
     }));
 
     // AI Önerileri (gerçek verilere dayalı)

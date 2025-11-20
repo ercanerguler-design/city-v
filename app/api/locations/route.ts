@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * 🗺️ Locations API
@@ -21,7 +23,7 @@ export async function GET(req: NextRequest) {
     let businessLocations: any[] = [];
     
     if (includeBusiness) {
-      const result = await query(
+      const result = await sql(
         `SELECT 
           bp.location_id as id,
           bp.business_name as name,
@@ -62,7 +64,7 @@ export async function GET(req: NextRequest) {
         city !== 'all' ? [city] : []
       );
 
-      businessLocations = result.rows.map(row => ({
+      businessLocations = result.map(row => ({
         id: row.id,
         name: row.name,
         category: row.category,
@@ -135,7 +137,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Try business location first
-    const result = await query(
+    const result = await sql(
       `SELECT 
         location_id as id,
         business_name as name,
@@ -160,8 +162,8 @@ export async function POST(req: NextRequest) {
       [locationId]
     );
 
-    if (result.rows.length > 0) {
-      const row = result.rows[0];
+    if (result.length > 0) {
+      const row = result[0];
       const location = {
         id: row.id,
         name: row.name,

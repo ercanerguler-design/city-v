@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import authStorage from '@/lib/authStorage';
 import { useBusinessDashboardStore } from '@/store/businessDashboardStore';
 import NotificationsDropdown from '@/components/Business/Dashboard/NotificationsDropdown';
+import RemoteAccessPanel from '@/components/Business/RemoteAccess/RemoteAccessPanel';
 
 // Dashboard Sections
 import OverviewSection from '@/components/Business/Dashboard/OverviewSection';
@@ -413,7 +414,10 @@ export default function BusinessDashboard() {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto bg-gray-50 p-2 sm:p-3 md:p-6 pb-20 sm:pb-6">
-          {activeSection === 'overview' && <OverviewSection businessProfile={businessProfile} />}
+          {/* Remote Access Panel - Always Visible */}
+          <RemoteAccessPanel />
+          
+          {activeSection === 'overview' && <OverviewSection businessProfile={businessProfile} businessUser={businessUser} />}
           {activeSection === 'cameras' && <CamerasSection businessProfile={businessProfile} />}
           {activeSection === 'ai-analytics' && <AIAnalyticsSection businessId={businessUser?.id?.toString() || '6'} />}
           {activeSection === 'reviews' && <ReviewsAndSentiments businessUserId={businessUser?.id} />}

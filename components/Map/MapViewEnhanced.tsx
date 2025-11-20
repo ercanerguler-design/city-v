@@ -484,6 +484,11 @@ function LocationPopupContent({ location, distance, onLocationClick }: { locatio
         <p className="text-sm text-gray-600 mb-2">{location.address}</p>
       )}
 
+      {/* Working Hours Badge */}
+      <div className="mb-2">
+        <WorkingHoursBadge location={location} size="medium" />
+      </div>
+
       {/* Google Rating & Price Level */}
       <div className="flex items-center gap-3 mb-2 flex-wrap">
         {location.rating && (

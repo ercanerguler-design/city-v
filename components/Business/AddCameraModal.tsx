@@ -76,9 +76,14 @@ export default function AddCameraModal({ isOpen, onClose, onAdd, planInfo }: Add
     // İşlenmiş IP adresini kullan
     const finalFormData = { ...formData, ip_address: processedIpAddress };
 
+    console.log('🚀 Camera form submitting:', finalFormData);
+    
     setLoading(true);
     try {
+      console.log('📤 Calling onAdd with data...');
       await onAdd(finalFormData);
+      console.log('✅ onAdd completed successfully');
+      
       // Reset form
       setFormData({
         camera_name: '',
@@ -91,6 +96,9 @@ export default function AddCameraModal({ isOpen, onClose, onAdd, planInfo }: Add
       });
       onClose();
     } catch (err: any) {
+      console.error('❌ Camera add error:', err);
+      console.error('❌ Error message:', err.message);
+      console.error('❌ Error stack:', err.stack);
       setError(err.message || 'Kamera eklenemedi');
     } finally {
       setLoading(false);

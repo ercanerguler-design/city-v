@@ -8,11 +8,14 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import authStorage from '@/lib/authStorage';
+import { useBusinessDashboardStore } from '@/store/businessDashboardStore';
 import AddCameraModal from './AddCameraModal';
 import CalibrationModalPro from './CalibrationModalPro';
 import ZoneDrawingModalPro from './ZoneDrawingModalPro';
 import CameraLiveView from './CameraLiveView';
 import RemoteCameraViewer from './RemoteCameraViewer';
+import RemoteCameraStream from '../RemoteAccess/RemoteCameraStream';
+import { useRemoteAccess } from '@/lib/hooks/useRemoteAccess';
 
 interface Camera {
   id: number;
@@ -51,6 +54,12 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
   const [selectedCamera, setSelectedCamera] = useState<Camera | null>(null);
   const [planInfo, setPlanInfo] = useState<any>(null);
 
+  // Remote access hook
+  const { networkInfo } = useRemoteAccess();
+
+  // Business dashboard store hook
+  const { businessUser, businessProfile: storeProfile } = useBusinessDashboardStore();
+
   useEffect(() => {
     if (businessProfile) {
       loadCameras();
@@ -58,34 +67,38 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
     }
   }, [businessProfile]);
 
-  // Plan bilgisini güncelle
+  // Plan bilgisini güncelle - Sadece API'den
   const updatePlanInfo = () => {
-    const userStr = localStorage.getItem('business_user');
-    if (!userStr) return;
-
-    try {
-      const user = JSON.parse(userStr);
-      const membership = user.membership_type || 'free';
-      
-      const limits: { [key: string]: number } = {
-        'free': 1,
-        'premium': 10,
-        'enterprise': 50,
-        'business': 10
-      };
-
-      const maxCameras = limits[membership] || 1;
-      const remaining = Math.max(0, maxCameras - cameras.length);
-
-      setPlanInfo({
-        type: membership,
-        maxCameras,
-        currentCameras: cameras.length,
-        remainingSlots: remaining
-      });
-    } catch (error) {
-      console.error('Plan info error:', error);
+    if (!businessUser) {
+      console.log('⚠️ No user data for plan info update');
+      return;
     }
+
+    const membership = businessUser.membership_type || 'free';
+    
+    const limits: { [key: string]: number } = {
+      'free': 1,
+      'premium': 10,
+      'enterprise': 30,
+      'business': 10
+    };
+
+    const maxCameras = limits[membership] || 1;
+    const remaining = Math.max(0, maxCameras - cameras.length);
+
+    setPlanInfo({
+      type: membership,
+      maxCameras,
+      currentCameras: cameras.length,
+      remainingSlots: remaining
+    });
+    
+    console.log('📊 Plan info updated from database:', {
+      membership,
+      maxCameras,
+      currentCount: cameras.length,
+      remaining
+    });
   };
 
   // Kamera sayısı değiştiğinde planInfo'yu güncelle
@@ -97,15 +110,14 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
     try {
       setLoading(true);
       const token = authStorage.getToken();
-      const user = authStorage.getUser();
       
-      console.log('📷 Cameras loading, token:', token ? 'exists' : 'missing', 'userId:', user?.id);
+      console.log('📷 Cameras loading (DB ONLY), token:', token ? 'exists' : 'missing', 'businessUser:', businessUser?.id);
       
-      // GEÇİCİ: Token decode sorunu için userId de gönder
       // Cache bypass için timestamp ekle
       const timestamp = new Date().getTime();
-      const url = user?.id 
-        ? `/api/business/cameras?userId=${user.id}&t=${timestamp}` 
+      const userId = businessUser?.id || businessProfile?.user_id;
+      const url = userId 
+        ? `/api/business/cameras?userId=${userId}&t=${timestamp}` 
         : `/api/business/cameras?t=${timestamp}`;
       
       const response = await fetch(url, {
@@ -129,53 +141,106 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
     }
   };
 
-  // Üyelik limiti kontrolü
+  // Üyelik limiti kontrolü - Sadece PostgreSQL'den
   const checkCameraLimit = (): boolean => {
-    const userStr = localStorage.getItem('business_user');
-    if (!userStr) return false;
+    console.log('🔍 ===== CAMERA LIMIT CHECK (DB ONLY) =====');
+    
+    console.log('📊 Database user info:', {
+      businessUser: businessUser ? { id: businessUser.id, email: businessUser.email, membership: businessUser.membership_type } : 'missing',
+      storeProfile: storeProfile ? { name: storeProfile.business_name } : 'missing',
+      planInfo
+    });
+    
+    if (!businessUser) {
+      console.log('❌ No user data from database');
+      toast.error('Kullanıcı bilgisi yükleniyor, lütfen bekleyin...');
+      return false;
+    }
 
-    try {
-      const user = JSON.parse(userStr);
-      const membership = user.membership_type || 'free';
+    const membership = businessUser.membership_type || 'free';
+    
+    // PlanInfo'yu öncelikle kullan (API'den gelen güncel data)
+    if (planInfo) {
+      console.log('📊 Using planInfo from API:', planInfo);
       
-      // Üyelik limitlheri
-      const limits: { [key: string]: number } = {
-        'free': 1,
-        'premium': 10,
-        'enterprise': 50,
-        'business': 10 // business tier de 10 kamera
-      };
-
-      const maxCameras = limits[membership] || 1;
-      const currentCount = cameras.length;
-
-      if (currentCount >= maxCameras) {
+      if (planInfo.remainingSlots <= 0) {
+        console.log('❌ No remaining slots:', planInfo);
         toast.error(
-          `${membership.toUpperCase()} üyelikte maksimum ${maxCameras} kamera ekleyebilirsiniz.\nŞu anda ${currentCount} kameranız var.`,
+          `${membership.toUpperCase()} üyelikte maksimum ${planInfo.maxCameras} kamera ekleyebilirsiniz.\nŞu anda ${planInfo.currentCount} kameranız var.`,
           { duration: 5000 }
         );
         return false;
       }
-
+      
+      console.log('✅ Camera limit check passed via planInfo');
       return true;
-    } catch (error) {
+    }
+    
+    // Fallback: Local calculation
+    const limits: { [key: string]: number } = {
+      'free': 1,
+      'premium': 10,
+      'enterprise': 30,
+      'business': 10
+    };
+
+    const maxCameras = limits[membership] || 1;
+    const currentCount = cameras.length;
+    
+    console.log('📊 Fallback limit calculation:', {
+      membership,
+      maxCameras,
+      currentCount
+    });
+
+    if (currentCount >= maxCameras) {
+      console.log('❌ Camera limit exceeded (fallback):', { currentCount, maxCameras });
+      toast.error(
+        `${membership.toUpperCase()} üyelikte maksimum ${maxCameras} kamera ekleyebilirsiniz.\nŞu anda ${currentCount} kameranız var.`,
+        { duration: 5000 }
+      );
       return false;
     }
+
+    console.log('✅ Camera limit check passed (fallback)');
+    return true;
   };
 
   const handleAddCamera = async (cameraData: any) => {
+    console.log('🎯 ===== HANDLE ADD CAMERA START =====');
+    console.log('📋 Input camera data:', cameraData);
+    
     // Limit kontrolü
     if (!checkCameraLimit()) {
+      console.log('❌ Camera limit exceeded');
       return;
     }
 
     try {
       const token = authStorage.getToken();
-      const user = authStorage.getUser();
+      
+      // Sadece database'den al - localStorage yok
+      const userId = businessUser?.id || businessProfile?.user_id;
+      
+      console.log('🔐 Auth info (DB ONLY):', {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        businessUser: businessUser ? { id: businessUser.id, email: businessUser.email, membership: businessUser.membership_type } : null,
+        businessProfile: businessProfile ? { user_id: businessProfile.user_id } : null,
+        finalUserId: userId
+      });
+      
+      if (!userId) {
+        console.log('❌ No userId found from database sources');
+        toast.error('Kullanıcı kimliği bulunamadı. Lütfen yeniden giriş yapın.');
+        return;
+      }
       
       // GEÇİCİ: userId de gönder
-      const dataWithUserId = { ...cameraData, userId: user?.id };
+      const dataWithUserId = { ...cameraData, userId: userId };
+      console.log('📤 Final payload:', dataWithUserId);
       
+      console.log('🌐 Making API call to /api/business/cameras');
       const response = await fetch('/api/business/cameras', {
         method: 'POST',
         headers: {
@@ -185,20 +250,33 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
         body: JSON.stringify(dataWithUserId)
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+      
       const data = await response.json();
+      console.log('📥 Response data:', data);
 
       if (data.success) {
+        console.log('✅ Camera added successfully');
         toast.success('✅ Kamera başarıyla eklendi!');
         setShowAddModal(false);
         setEditingCamera(null); // Düzenleme modunu sıfırla
         loadCameras();
       } else {
+        console.log('❌ API returned error:', data.error);
         toast.error(data.error || 'Kamera eklenemedi');
       }
     } catch (error) {
-      console.error('Add camera error:', error);
+      console.error('❌ Add camera error:', error);
+      console.error('❌ Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
       toast.error('Bir hata oluştu');
     }
+    
+    console.log('🎯 ===== HANDLE ADD CAMERA END =====');
   };
 
   const handleDeleteCamera = async (cameraId: number) => {
@@ -268,10 +346,37 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
   const handleUpdateCamera = async (cameraData: any) => {
     if (!editingCamera) return;
 
+    console.log('🔄 ===== HANDLE UPDATE CAMERA START =====');
+    console.log('📋 Camera data to update:', cameraData);
+    console.log('📋 Editing camera:', editingCamera);
+
     try {
       const token = authStorage.getToken();
-      const user = authStorage.getUser();
       
+      // Database-first approach: businessUser hook'undan al
+      const userId = businessUser?.id || businessProfile?.user_id;
+      
+      console.log('🔐 Update auth info (DB ONLY):', {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        businessUser: businessUser ? { id: businessUser.id, email: businessUser.email, membership: businessUser.membership_type } : null,
+        businessProfile: businessProfile ? { user_id: businessProfile.user_id } : null,
+        finalUserId: userId
+      });
+      
+      if (!userId) {
+        console.log('❌ No userId found from database sources');
+        toast.error('Kullanıcı bilgisi bulunamadı');
+        return;
+      }
+      
+      if (!token) {
+        console.log('❌ No auth token');
+        toast.error('Oturum süresi dolmuş, lütfen tekrar giriş yapın');
+        return;
+      }
+      
+      console.log('📤 Sending PUT request to API...');
       const response = await fetch('/api/business/cameras', {
         method: 'PUT',
         headers: {
@@ -280,23 +385,28 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
         },
         body: JSON.stringify({
           id: editingCamera.id,
-          userId: user?.id,
+          userId: userId,
           ...cameraData
         })
       });
 
+      console.log('📥 API response status:', response.status);
       const data = await response.json();
+      console.log('📥 API response data:', data);
 
       if (data.success) {
+        console.log('✅ Camera update successful');
         toast.success('✅ Kamera güncellendi!');
         setShowAddModal(false);
         setEditingCamera(null);
         loadCameras();
+        updatePlanInfo(); // Plan bilgisini güncelle
       } else {
+        console.log('❌ Camera update failed:', data.error);
         toast.error(data.error || 'Kamera güncellenemedi');
       }
     } catch (error) {
-      console.error('Update camera error:', error);
+      console.error('❌ Update camera error:', error);
       toast.error('Bir hata oluştu');
     }
   };
@@ -515,9 +625,18 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
                   <button
                     onClick={() => openLiveView(camera)}
                     className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                    title={networkInfo.type === 'remote' ? 'Uzak erişim ile canlı izleme' : 'Yerel ağ canlı izleme'}
                   >
                     <Eye className="w-4 h-4" />
-                    Canlı İzle
+                    {networkInfo.type === 'remote' ? (
+                      <span className="flex items-center gap-1">
+                        🌐 Uzaktan İzle
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        🏠 Canlı İzle
+                      </span>
+                    )}
                   </button>
                   <button
                     onClick={() => handleEditCamera(camera)}

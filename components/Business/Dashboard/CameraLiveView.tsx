@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Maximize2, RefreshCw, Wifi, Activity, Eye, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCameraStreamUrl, addCacheBusting } from '@/lib/streamUtils';
+import { getCameraStreamUrl, addCacheBusting, getFallbackStreamUrl } from '@/lib/streamUtils';
 
 interface DetectedObject {
   class: string;
@@ -16,6 +16,7 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
   const [error, setError] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [useFallback, setUseFallback] = useState(false);
   const [detections, setDetections] = useState<DetectedObject[]>([]);
   const [showDetections, setShowDetections] = useState(true);
   const [counting, setCounting] = useState<any>(null);
@@ -49,9 +50,11 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
   const streamUrl = getCameraStreamUrl(camera);
   
   // Remote access ise proxy kullan
-  const finalStreamUrl = isRemoteAccess() 
-    ? addCacheBusting(`/api/business/cameras/stream-proxy?url=${encodeURIComponent(streamUrl)}`)
-    : addCacheBusting(streamUrl);
+  const finalStreamUrl = useFallback 
+    ? getFallbackStreamUrl()
+    : (isRemoteAccess() 
+      ? addCacheBusting(`/api/business/cameras/stream-proxy?url=${encodeURIComponent(streamUrl)}`)
+      : addCacheBusting(streamUrl));
   
   console.log('📹 Stream mode:', isRemoteAccess() ? 'REMOTE (via proxy)' : 'LOCAL (direct)');
   console.log('📹 Final URL:', finalStreamUrl);
@@ -139,13 +142,24 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
   };
 
   const handleImageError = () => {
+    console.log('📹 Stream error, trying fallback...');
     setIsLoading(false);
-    setError(true);
+    
+    if (!useFallback) {
+      // İlk hata: fallback stream'e geç
+      setUseFallback(true);
+      setError(false);
+      setIsLoading(true);
+    } else {
+      // Fallback'te de hata: error göster
+      setError(true);
+    }
   };
 
   const handleRefresh = () => {
     setIsLoading(true);
     setError(false);
+    setUseFallback(false); // Reset fallback
     setRefreshKey(prev => prev + 1);
   };
 
@@ -193,6 +207,12 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
                 {camera.status === 'active' ? 'CANLI' : 'OFFLINE'}
               </span>
             </div>
+            {useFallback && (
+              <div className="ml-3 flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                <span className="text-xs font-medium text-yellow-400">DEMO STREAM</span>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center gap-2">
@@ -250,9 +270,14 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
               <div className="text-center">
                 <Activity className="w-16 h-16 text-red-500 mx-auto mb-4 opacity-50" />
                 <p className="text-white font-medium mb-2">Kamera Bağlantısı Kurulamadı</p>
-                <p className="text-gray-400 text-sm mb-4">
-                  {streamUrl}
+                <p className="text-gray-400 text-sm mb-2">
+                  {finalStreamUrl}
                 </p>
+                {useFallback && (
+                  <p className="text-yellow-400 text-sm mb-4">
+                    ⚠️ Fallback stream de başarısız oldu
+                  </p>
+                )}
                 <button
                   onClick={handleRefresh}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -266,6 +291,7 @@ export default function CameraLiveView({ camera, onClose }: { camera: any; onClo
           <div className="relative w-full h-full">
             <img
               ref={imageRef}
+              key={`${refreshKey}-${useFallback ? 'fallback' : 'camera'}`}
               src={finalStreamUrl}
               alt={`${camera.camera_name} canlı görüntü`}
               className={`w-full h-auto ${isLoading || error ? 'hidden' : 'block'}`}

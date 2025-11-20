@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Location } from '@/types';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import { useBusinessIoTData } from '@/lib/hooks/useBusinessIoTData';
 
 interface LocationGridProps {
   locations: Location[];
@@ -19,6 +20,27 @@ export default function LocationGrid({
   showRoute = true
 }: LocationGridProps) {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  
+  // Business IoT verilerini yükle
+  const { businessIoTData, loading: iotLoading } = useBusinessIoTData(true);
+  
+  // Business IoT verilerini location ID ile eşleştir
+  const businessIoTMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    businessIoTData.forEach(business => {
+      if (business.location_id && business.summary) {
+        map[business.location_id] = {
+          currentPeople: business.summary.currentPeople || 0,
+          averageOccupancy: business.summary.averageOccupancy || 0,
+          crowdLevel: business.summary.crowdLevel || 'low',
+          hasRealtimeData: business.summary.hasRealtimeData || false,
+          businessName: business.name
+        };
+      }
+    });
+    console.log('🗺️ Business IoT Map:', map);
+    return map;
+  }, [businessIoTData]);
 
   // Crowd level renkleri
   const getCrowdColor = (level: string) => {
@@ -128,19 +150,39 @@ export default function LocationGrid({
                 </p>
               )}
 
-              {/* Current People */}
-              {(location as any).currentPeople !== undefined && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">👥 Anlık Kişi:</span>
-                  <span className={`font-semibold ${
-                    ((location as any).crowdLevel === 'empty' || (location as any).crowdLevel === 'low') ? 'text-green-600' :
-                    (location as any).crowdLevel === 'moderate' ? 'text-yellow-600' :
-                    'text-red-600'
-                  }`}>
-                    {(location as any).currentPeople}
-                  </span>
-                </div>
-              )}
+              {/* Current People - Real IoT Data */}
+              {(() => {
+                const iotData = businessIoTMap[location.id];
+                const currentPeople = iotData?.currentPeople ?? (location as any).currentPeople;
+                const hasRealData = iotData?.hasRealtimeData;
+                
+                if (currentPeople !== undefined) {
+                  return (
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-1">
+                        <span className="text-gray-600">👥 Anlık Kişi:</span>
+                        {hasRealData && (
+                          <span className="text-xs bg-green-100 text-green-600 px-1 rounded-full font-medium animate-pulse">
+                            CANLI
+                          </span>
+                        )}
+                        {iotLoading && (
+                          <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                        )}
+                      </div>
+                      <span className={`font-semibold flex items-center gap-1 ${
+                        (iotData?.crowdLevel === 'low' || (location as any).crowdLevel === 'low') ? 'text-green-600' :
+                        (iotData?.crowdLevel === 'medium' || (location as any).crowdLevel === 'moderate') ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                        {currentPeople}
+                        {hasRealData && <span className="text-xs text-gray-400">📡</span>}
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Business Data */}
               {location.businessData && (

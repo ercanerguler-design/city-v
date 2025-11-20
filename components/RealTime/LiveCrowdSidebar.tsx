@@ -33,6 +33,8 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisCount, setAnalysisCount] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [locationStats, setLocationStats] = useState<Record<string, any>>({});
+  const [statsLoading, setStatsLoading] = useState(false);
   const analysisInterval = useRef<NodeJS.Timeout>();
   
   // isOpen değişkenini state'lerden sonra tanımla
@@ -59,6 +61,30 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
   const [selectedBusinessId, setSelectedBusinessId] = useState<number | null>(null);
   const [selectedBusinessName, setSelectedBusinessName] = useState('');
   
+  // Location stats yükleme fonksiyonu
+  const loadLocationStats = async () => {
+    if (!locations || locations.length === 0) return;
+    
+    try {
+      setStatsLoading(true);
+      const locationIds = locations.map(loc => loc.id).join(',');
+      
+      const response = await fetch(`/api/locations/stats?locationIds=${locationIds}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setLocationStats(data.stats);
+        console.log('📊 Location stats loaded:', Object.keys(data.stats).length, 'locations');
+      } else {
+        console.error('❌ Location stats API error:', data.error);
+      }
+    } catch (error) {
+      console.error('❌ Location stats load error:', error);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
   const loadBusinessIoTData = async () => {
     try {
       setIotLoading(true);
@@ -107,6 +133,18 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
       setIotLoading(false);
     }
   };
+
+  // Location stats yükle
+  useEffect(() => {
+    if (isOpen && locations && locations.length > 0) {
+      loadLocationStats();
+      
+      // Her 60 saniyede bir stats'i güncelle
+      const statsInterval = setInterval(loadLocationStats, 60000);
+      
+      return () => clearInterval(statsInterval);
+    }
+  }, [isOpen, locations]);
 
   // Gerçek business locations ile analiz (mock data YOK)
   useEffect(() => {
@@ -412,32 +450,40 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
 
         {/* Content */}
         <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-3' : 'p-2'}`}>
-          {/* Business Locations with IoT Data from Map */}
-          {locations && locations.filter((loc: any) => loc.source === 'business' && loc.currentPeopleCount !== undefined).length > 0 ? (
+          {/* Business IoT Data Locations */}
+          {businessIoTData.length > 0 ? (
             <>
               <div className="mb-3 px-2">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                   <h4 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
-                    Canlı İşletmeler ({locations.filter((loc: any) => loc.source === 'business' && loc.currentPeopleCount !== undefined).length})
+                    Canlı İşletmeler ({businessIoTData.length})
                   </h4>
                 </div>
               </div>
               
               <div className={`${isMobile ? 'space-y-3' : 'space-y-2'} mb-4`}>
-                {locations.filter((loc: any) => loc.source === 'business' && loc.currentPeopleCount !== undefined).map((location: any) => {
-                  const { isOpen: isBusinessOpen } = isLocationOpen(location);
+                {businessIoTData.map((business: any) => {
+                  // Business location verisini locations'dan bul (isOpen kontrolü için)
+                  const locationData = locations?.find((loc: any) => loc.id === business.location_id);
+                  const { isOpen: isBusinessOpen } = locationData ? isLocationOpen(locationData) : { isOpen: true };
+                  
+                  // Business IoT summary verilerini kullan
+                  const currentPeopleCount = business.summary?.currentPeople || 0;
+                  const averageOccupancy = business.summary?.averageOccupancy || 0;
+                  const crowdLevel = business.summary?.crowdLevel || 'low';
+                  const hasRealtimeData = business.summary?.hasRealtimeData || false;
                   
                   return (
                   <div
-                    key={location.id}
+                    key={business.id}
                     className={`${isMobile ? 'p-4' : 'p-3'} bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-800 hover:shadow-md transition-all`}
                   >
                     <div className={`flex justify-between items-start ${isMobile ? 'mb-3' : 'mb-2'}`}>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className={`font-semibold ${isMobile ? 'text-base' : 'text-sm'} text-gray-900 dark:text-white`}>
-                            {location.name}
+                            {business.name}
                           </h4>
                           {/* Açık/Kapalı Badge */}
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -478,48 +524,70 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
                           <Heart className={cn('w-4 h-4', isFavorite(location.id) && 'fill-current')} />
                         </button>
                         
-                        {/* Yoğunluk Badge */}
+                        {/* Yoğunluk Badge - Real IoT Data */}
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          location.currentCrowdLevel === 'high' || location.currentCrowdLevel === 'overcrowded' 
+                          crowdLevel === 'high' || crowdLevel === 'very_high' 
                             ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
-                            : location.currentCrowdLevel === 'medium'
+                            : crowdLevel === 'medium' || crowdLevel === 'moderate'
                             ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                             : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                         }`}>
-                          {location.currentCrowdLevel === 'high' ? '🔴 Yoğun' :
-                           location.currentCrowdLevel === 'medium' ? '🟡 Orta' :
-                           location.currentCrowdLevel === 'overcrowded' ? '🔴 Çok Yoğun' : '🟢 Sakin'}
+                          {crowdLevel === 'high' || crowdLevel === 'very_high' ? '🔴 Yoğun' :
+                           crowdLevel === 'medium' || crowdLevel === 'moderate' ? '🟡 Orta' : '🟢 Sakin'}
                         </span>
                       </div>
                     </div>
                     
                     <div className={`grid grid-cols-3 gap-2 ${isMobile ? 'mb-3' : 'mb-2'}`}>
                       <div className="text-center">
-                        <div className={`${isMobile ? 'text-lg' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
-                          {location.currentPeopleCount || 0}
+                        <div className={`${isMobile ? 'text-lg' : 'text-base'} font-bold text-gray-900 dark:text-white flex items-center justify-center gap-1`}>
+                          {iotLoading ? (
+                            <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <>
+                              {currentPeopleCount}
+                              {hasRealtimeData && <span className="text-xs text-green-500 animate-pulse">●</span>}
+                            </>
+                          )}
                         </div>
-                        <div className="text-xs text-gray-500">Kişi</div>
+                        <div className="text-xs text-gray-500">
+                          Kişi {hasRealtimeData && <span className="text-green-600">(Canlı)</span>}
+                        </div>
                       </div>
                       <div className="text-center">
-                        <div className={`${isMobile ? 'text-lg' : 'text-base'} font-bold text-blue-600 dark:text-blue-400`}>
-                          {location.rating ? location.rating.toFixed(1) : '-'}
+                        <div className={`${isMobile ? 'text-lg' : 'text-base'} font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1`}>
+                          {statsLoading ? (
+                            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <>
+                              {locationStats[business.location_id]?.rating ? locationStats[business.location_id].rating.toFixed(1) : '0.0'}
+                              <span className="text-yellow-500 text-sm">★</span>
+                            </>
+                          )}
                         </div>
                         <div className="text-xs text-gray-500">Puan</div>
                       </div>
                       <div className="text-center">
-                        <div className={`${isMobile ? 'text-lg' : 'text-base'} font-bold text-purple-600 dark:text-purple-400`}>
-                          {location.reviewCount || 0}
+                        <div className={`${isMobile ? 'text-lg' : 'text-base'} font-bold text-purple-600 dark:text-purple-400 flex items-center justify-center gap-1`}>
+                          {statsLoading ? (
+                            <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <>
+                              {locationStats[business.location_id]?.reviewCount ?? 0}
+                              <span className="text-gray-400 text-xs">💬</span>
+                            </>
+                          )}
                         </div>
                         <div className="text-xs text-gray-500">Yorum</div>
                       </div>
                     </div>
                     
                     {/* Fiyatları Gör Butonu - Business Profile ID varsa */}
-                    {location.businessProfileId && (
+                    {business.business_profile_id && (
                       <button
                         onClick={() => {
-                          setSelectedBusinessId(location.businessProfileId); // Profile ID (15) kullan, User ID (20) değil!
-                          setSelectedBusinessName(location.name);
+                          setSelectedBusinessId(business.business_profile_id); // Profile ID kullan
+                          setSelectedBusinessName(business.name);
                           setMenuModalOpen(true);
                         }}
                         className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all font-medium shadow-sm hover:shadow-md"
@@ -532,11 +600,22 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
                     <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        <span>{new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>
+                          {business.summary?.lastUpdate 
+                            ? new Date(business.summary.lastUpdate).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+                            : new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+                          }
+                        </span>
                       </div>
-                      <span className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full text-xs">
-                        ● Canlı
-                      </span>
+                      {hasRealtimeData ? (
+                        <span className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full text-xs">
+                          ● Canlı
+                        </span>
+                      ) : (
+                        <span className="bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full text-xs">
+                          ○ Offline
+                        </span>
+                      )}
                     </div>
                   </div>
                   );

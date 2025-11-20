@@ -74,7 +74,13 @@ export default function HeatmapVisualizer({ businessId, width = 1200, height = 6
         if (data.hourlyData && data.hourlyData.length > 0) {
           data.hourlyData.forEach((item: any) => {
             const hour = parseInt(item.hour);
-            const intensity = parseFloat(item.avg_occupancy) / 100; // 0-1 arası normalize et
+            let intensity = parseFloat(item.avg_occupancy) / 100; // 0-1 arası normalize et
+            
+            // Intensity güvenlik kontrolü
+            if (!intensity || isNaN(intensity) || intensity < 0) {
+              intensity = 0;
+            }
+            intensity = Math.min(Math.max(intensity, 0), 1); // 0-1 arası clamp
             
             // Canvas üzerinde yatay dağıtım (saat bazlı)
             const x = (hour / 24) * width;
@@ -83,7 +89,7 @@ export default function HeatmapVisualizer({ businessId, width = 1200, height = 6
             points.push({
               x,
               y,
-              intensity: Math.min(intensity, 1),
+              intensity,
               timestamp: `${hour}:00`,
               location: item.location_name || 'Genel Alan'
             });
@@ -169,32 +175,48 @@ export default function HeatmapVisualizer({ businessId, width = 1200, height = 6
       const radius = 80; // Larger heat radius for better visualization
       const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius);
 
-      // Enhanced color scheme based on intensity
-      const intensity = Math.min(point.intensity, 1);
+      // Enhanced color scheme based on intensity - Safe validation
+      let intensity = point.intensity;
+      
+      // Validate and normalize intensity
+      if (!intensity || isNaN(intensity) || intensity < 0) {
+        intensity = 0;
+      }
+      intensity = Math.min(Math.max(intensity, 0), 1); // Clamp between 0-1
+      
+      // Ensure alpha values are valid (0-1 range)
+      const alpha1 = Math.min(Math.max(intensity * 0.9, 0), 1);
+      const alpha2 = Math.min(Math.max(intensity * 0.6, 0), 1);
+      const alpha3 = Math.min(Math.max(intensity * 0.3, 0), 1);
+      const alpha4 = Math.min(Math.max(intensity * 0.7, 0), 1);
+      const alpha5 = Math.min(Math.max(intensity * 0.4, 0), 1);
+      const alpha6 = Math.min(Math.max(intensity * 0.2, 0), 1);
+      const alpha7 = Math.min(Math.max(intensity * 0.8, 0), 1);
+      const alpha8 = Math.min(Math.max(intensity * 0.5, 0), 1);
       
       if (intensity > 0.75) {
         // Critical - Red
-        gradient.addColorStop(0, `rgba(239, 68, 68, ${intensity * 0.9})`);
-        gradient.addColorStop(0.4, `rgba(239, 68, 68, ${intensity * 0.6})`);
-        gradient.addColorStop(0.7, `rgba(220, 38, 38, ${intensity * 0.3})`);
+        gradient.addColorStop(0, `rgba(239, 68, 68, ${alpha1})`);
+        gradient.addColorStop(0.4, `rgba(239, 68, 68, ${alpha2})`);
+        gradient.addColorStop(0.7, `rgba(220, 38, 38, ${alpha3})`);
         gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
       } else if (intensity > 0.5) {
         // High - Orange
-        gradient.addColorStop(0, `rgba(251, 146, 60, ${intensity * 0.9})`);
-        gradient.addColorStop(0.4, `rgba(251, 146, 60, ${intensity * 0.6})`);
-        gradient.addColorStop(0.7, `rgba(249, 115, 22, ${intensity * 0.3})`);
+        gradient.addColorStop(0, `rgba(251, 146, 60, ${alpha1})`);
+        gradient.addColorStop(0.4, `rgba(251, 146, 60, ${alpha2})`);
+        gradient.addColorStop(0.7, `rgba(249, 115, 22, ${alpha3})`);
         gradient.addColorStop(1, 'rgba(251, 146, 60, 0)');
       } else if (intensity > 0.3) {
         // Medium - Yellow
-        gradient.addColorStop(0, `rgba(234, 179, 8, ${intensity * 0.8})`);
-        gradient.addColorStop(0.4, `rgba(234, 179, 8, ${intensity * 0.5})`);
-        gradient.addColorStop(0.7, `rgba(202, 138, 4, ${intensity * 0.2})`);
+        gradient.addColorStop(0, `rgba(234, 179, 8, ${alpha7})`);
+        gradient.addColorStop(0.4, `rgba(234, 179, 8, ${alpha8})`);
+        gradient.addColorStop(0.7, `rgba(202, 138, 4, ${alpha6})`);
         gradient.addColorStop(1, 'rgba(234, 179, 8, 0)');
       } else {
         // Low - Green
-        gradient.addColorStop(0, `rgba(34, 197, 94, ${intensity * 0.7})`);
-        gradient.addColorStop(0.4, `rgba(34, 197, 94, ${intensity * 0.4})`);
-        gradient.addColorStop(0.7, `rgba(22, 163, 74, ${intensity * 0.2})`);
+        gradient.addColorStop(0, `rgba(34, 197, 94, ${alpha4})`);
+        gradient.addColorStop(0.4, `rgba(34, 197, 94, ${alpha5})`);
+        gradient.addColorStop(0.7, `rgba(22, 163, 74, ${alpha6})`);
         gradient.addColorStop(1, 'rgba(34, 197, 94, 0)');
       }
 

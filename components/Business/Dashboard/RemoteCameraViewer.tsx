@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useMemo, memo } from 'react';
 import { X, Maximize2, RefreshCw, Wifi, WifiOff, Activity, Eye, Zap, Globe, Expand } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCameraStreamUrl, addCacheBusting } from '@/lib/streamUtils';
+import { useRemoteAccess } from '@/lib/hooks/useRemoteAccess';
+import RemoteCameraStream from '../RemoteAccess/RemoteCameraStream';
 import HeatMapOverlay from './HeatMapOverlay';
 import TensorFlowAIAnalysis from './TensorFlowAIAnalysis';
 import * as tf from '@tensorflow/tfjs';
@@ -28,10 +30,15 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [connectionMode, setConnectionMode] = useState<'local' | 'remote' | 'detecting'>('detecting');
   const [showAI, setShowAI] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true); // Enable heatmap by default
   const [useTensorFlow, setUseTensorFlow] = useState(true); // Use TensorFlow.js analysis
+  const [connectionMode, setConnectionMode] = useState<'local' | 'remote' | 'detecting'>('detecting');
+  
+  // Remote access integration
+  const { networkInfo } = useRemoteAccess();
+  const isRemoteAccess = networkInfo.type === 'remote';
+  
   const [stats, setStats] = useState({ 
     in: 0, 
     out: 0, 
@@ -711,21 +718,27 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
 
             {/* Camera Info */}
             <div>
-              <h3 className="text-white font-bold text-sm sm:text-lg">{camera.camera_name}</h3>
+              <h3 className="text-white font-bold text-sm sm:text-lg flex items-center gap-2">
+                {camera.camera_name}
+                {isRemoteAccess && (
+                  <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                    <Globe className="w-3 h-3" />
+                    UZAK
+                  </span>
+                )}
+              </h3>
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <span className="flex items-center gap-1">
-                  {connectionMode === 'remote' ? (
+                  {isRemoteAccess ? (
                     <>
                       <Globe className="w-3 h-3" />
-                      <span>Uzaktan Erişim</span>
+                      <span>Uzaktan Erişim - {networkInfo.location}</span>
                     </>
-                  ) : connectionMode === 'local' ? (
+                  ) : (
                     <>
                       <Wifi className="w-3 h-3" />
                       <span>Yerel Ağ</span>
                     </>
-                  ) : (
-                    <span className="animate-pulse">Bağlantı kontrol ediliyor...</span>
                   )}
                 </span>
                 <span className="hidden sm:inline">•</span>
