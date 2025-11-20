@@ -1,6 +1,5 @@
 import { sql } from '@vercel/postgres';
 import { NextRequest, NextResponse } from 'next/server';
-import { sendStaffWelcomeEmail, sendOwnerStaffNotification } from '@/lib/businessEmail';
 
 // GET - Personel listesi
 export async function GET(request: NextRequest) {
@@ -12,14 +11,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Business ID gerekli' }, { status: 400 });
     }
 
+    console.log('📋 Personel listesi isteniyor, businessId:', businessId);
+
     const result = await sql`
       SELECT 
         id, full_name, email, phone, role, position, 
-        hire_date, status, permissions, working_hours
+        hire_date, status, permissions, working_hours,
+        created_at, updated_at
       FROM business_staff
       WHERE business_id = ${businessId}
       ORDER BY created_at DESC
     `;
+
+    console.log('✅ Personel listesi bulundu:', result.rows.length, 'personel');
 
     return NextResponse.json({
       success: true,
@@ -28,7 +32,10 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Personel listesi hatası:', error);
-    return NextResponse.json({ error: 'Personel listelenemedi' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Personel listelenemedi',
+      details: error.message 
+    }, { status: 500 });
   }
 }
 
@@ -36,6 +43,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('📋 Personel ekleme isteği:', body);
+
     const {
       businessId,
       full_name,
@@ -55,68 +64,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('💾 Veritabanına kayıt yapılıyor...');
+
     const result = await sql`
       INSERT INTO business_staff (
         business_id, full_name, email, phone, role, position, 
-        salary, permissions, working_hours, status
+        salary, permissions, working_hours, status, created_at, updated_at
       ) VALUES (
         ${businessId}, ${full_name}, ${email}, ${phone || null}, 
         ${role || 'employee'}, ${position || null}, ${salary || null},
         ${JSON.stringify(permissions) || '{"cameras": false, "menu": false, "reports": false, "settings": false}'},
         ${JSON.stringify(working_hours) || null},
-        'active'
+        'active', NOW(), NOW()
       )
       RETURNING *
     `;
 
-    // İşletme bilgisini al (email için)
-    const businessProfile = await sql`
-      SELECT bp.business_name, bp.user_id, bu.email as owner_email, bu.full_name as owner_name
-      FROM business_profiles bp
-      JOIN business_users bu ON bp.user_id = bu.id
-      WHERE bp.id = ${businessId}
-    `;
+    console.log('✅ Personel başarıyla eklendi:', result.rows[0]);
 
-    // Email gönder (asenkron, hata olsa da personel kaydı başarılı)
-    if (businessProfile.rows.length > 0) {
-      const business = businessProfile.rows[0];
-      
-      // Personele hoş geldin emaili
-      sendStaffWelcomeEmail({
-        fullName: full_name,
-        email: email,
-        businessName: business.business_name,
-        position: position,
-        dashboardUrl: 'https://city-v.com/business/dashboard'
-      }).catch(err => console.error('Email send error:', err));
-
-      // İşletme sahibine bildirim
-      if (business.owner_email) {
-        sendOwnerStaffNotification({
-          ownerEmail: business.owner_email,
-          ownerName: business.owner_name || 'İşletme Sahibi',
-          staffName: full_name,
-          staffEmail: email,
-          staffPosition: position,
-          businessName: business.business_name
-        }).catch(err => console.error('Owner notification error:', err));
-      }
-    }
+    // Email gönderme kısmını şimdilik devre dışı bırakıyoruz
+    console.log('📧 Email gönderimi atlandı (debug mode)');
 
     return NextResponse.json({
       success: true,
       staff: result.rows[0],
-      message: 'Personel eklendi ve email gönderildi'
+      message: 'Personel başarıyla eklendi'
     });
 
   } catch (error: any) {
     console.error('❌ Personel ekleme hatası:', error);
     
-    if (error.message.includes('duplicate key')) {
+    if (error.message.includes('duplicate key') || error.message.includes('already exists')) {
       return NextResponse.json({ error: 'Bu email zaten kayıtlı' }, { status: 400 });
     }
+
+    if (error.message.includes('business_staff')) {
+      return NextResponse.json({ 
+        error: 'Personel tablosu bulunamadı',
+        details: error.message 
+      }, { status: 500 });
+    }
     
-    return NextResponse.json({ error: 'Personel eklenemedi' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Personel eklenemedi',
+      details: error.message 
+    }, { status: 500 });
   }
 }
 
@@ -124,6 +116,8 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('🔄 Personel güncelleme isteği:', body);
+
     const {
       id,
       full_name,
@@ -162,6 +156,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Personel bulunamadı' }, { status: 404 });
     }
 
+    console.log('✅ Personel güncellendi:', result.rows[0]);
+
     return NextResponse.json({
       success: true,
       staff: result.rows[0],
@@ -170,7 +166,10 @@ export async function PUT(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Personel güncelleme hatası:', error);
-    return NextResponse.json({ error: 'Personel güncellenemedi' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Personel güncellenemedi',
+      details: error.message 
+    }, { status: 500 });
   }
 }
 
@@ -184,7 +183,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Personel ID gerekli' }, { status: 400 });
     }
 
-    await sql`DELETE FROM business_staff WHERE id = ${id}`;
+    console.log('🗑️ Personel siliniyor, id:', id);
+
+    const deleteResult = await sql`DELETE FROM business_staff WHERE id = ${id} RETURNING *`;
+
+    if (deleteResult.rows.length === 0) {
+      return NextResponse.json({ error: 'Personel bulunamadı' }, { status: 404 });
+    }
+
+    console.log('✅ Personel silindi:', deleteResult.rows[0]);
 
     return NextResponse.json({
       success: true,
@@ -193,6 +200,9 @@ export async function DELETE(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Personel silme hatası:', error);
-    return NextResponse.json({ error: 'Personel silinemedi' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Personel silinemedi',
+      details: error.message 
+    }, { status: 500 });
   }
 }
