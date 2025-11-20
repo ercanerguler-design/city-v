@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Camera, Wifi, MapPin } from 'lucide-react';
+import { X, Camera, Wifi, MapPin, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AddCameraModalProps {
@@ -54,16 +54,31 @@ export default function AddCameraModal({ isOpen, onClose, onAdd, planInfo }: Add
       return;
     }
 
-    // IP formatı kontrolü - 192.168.1.100 veya 192.168.1.100/stream
-    const ipPattern = /^(\d{1,3}\.){3}\d{1,3}(\/\w+)?$/;
-    if (!ipPattern.test(formData.ip_address)) {
-      setError('Geçerli bir IP adresi girin (örn: 192.168.1.100 veya 192.168.1.100/stream)');
+    // RTSP URL'ini HTTP'ye dönüştür
+    let processedIpAddress = formData.ip_address;
+    if (processedIpAddress.toLowerCase().startsWith('rtsp://')) {
+      // RTSP URL'ini HTTP'ye çevir: rtsp://user:pass@192.168.1.2:80/stream -> 192.168.1.2:80/stream
+      const lastAtIndex = processedIpAddress.lastIndexOf('@');
+      const afterAt = lastAtIndex !== -1
+        ? processedIpAddress.substring(lastAtIndex + 1)
+        : processedIpAddress.replace(/^rtsp:\/\//i, '');
+      processedIpAddress = afterAt;
+      console.log('🔄 RTSP URL HTTP formatına dönüştürüldü:', processedIpAddress);
+    }
+
+    // IP formatı kontrolü - 192.168.1.100 veya 192.168.1.100/stream veya URL
+    const ipPattern = /^((\d{1,3}\.){3}\d{1,3}(\/\w+)?|https?:\/\/.+)$/;
+    if (!ipPattern.test(processedIpAddress)) {
+      setError('Geçerli bir IP adresi veya URL girin (örn: 192.168.1.100/stream)');
       return;
     }
 
+    // İşlenmiş IP adresini kullan
+    const finalFormData = { ...formData, ip_address: processedIpAddress };
+
     setLoading(true);
     try {
-      await onAdd(formData);
+      await onAdd(finalFormData);
       // Reset form
       setFormData({
         camera_name: '',
@@ -152,6 +167,30 @@ export default function AddCameraModal({ isOpen, onClose, onAdd, planInfo }: Add
                 />
               </div>
 
+              {/* RTSP Uyarısı */}
+              {formData.ip_address.toLowerCase().includes('rtsp://') && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-yellow-50 border border-yellow-200 rounded-lg p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                      <AlertCircle className="w-4 h-4 text-yellow-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-yellow-900">⚠️ RTSP Protokol Uyarısı</p>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        Web tarayıcılar RTSP protokolünü desteklemez. Kamera HTTP MJPEG stream'i destekliyorsa otomatik olarak dönüştürülecek.
+                      </p>
+                      <p className="text-xs text-yellow-600 mt-2 font-mono">
+                        Örnek: {formData.ip_address.replace(/^rtsp:\/\/[^@]*@?/, 'http://')}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               {/* IP ve Port */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2">
@@ -169,6 +208,9 @@ export default function AddCameraModal({ isOpen, onClose, onAdd, planInfo }: Add
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Örn: 192.168.1.100/stream veya sadece 192.168.1.100
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    ✅ ESP32-CAM için: http://192.168.1.100/stream (port 80)
                   </p>
                 </div>
                 <div>

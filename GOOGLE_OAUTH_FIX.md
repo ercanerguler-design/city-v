@@ -100,7 +100,7 @@ Ekstra scope ekleme!
 
 - [ ] OAuth Consent Screen > User Type: **External** ✅
 - [ ] Authorized domains: `localhost`, `vercel.app` ✅
-- [ ] OAuth Client ID > JavaScript origins: `http://localhost:3000`, `https://cityv.vercel.app` ✅
+- [ ] OAuth Client ID > JavaScript origins: `http://localhost:3000`, `https://city-v-chi.vercel.app` ✅
 - [ ] Publishing status: **Testing** (ilk 100 kullanıcı) ✅
 - [ ] Test users: Kendi email'in ekli ✅
 

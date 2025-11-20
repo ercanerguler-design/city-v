@@ -197,21 +197,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // RTSP URL'lerini HTTP'ye çevir (tarayıcılar RTSP desteklemez)
+    let processedIpAddress = ip_address;
+    if (ip_address.toLowerCase().startsWith('rtsp://')) {
+      console.log('🔄 RTSP URL detected, converting to HTTP format:', ip_address);
+      // RTSP URL'ini HTTP'ye çevir: rtsp://user:pass@192.168.1.2:80/stream -> 192.168.1.2:80/stream
+      const lastAtIndex = ip_address.lastIndexOf('@');
+      const afterAt = lastAtIndex !== -1
+        ? ip_address.substring(lastAtIndex + 1)
+        : ip_address.replace(/^rtsp:\/\//i, '');
+      processedIpAddress = afterAt;
+      console.log('✅ RTSP converted to:', processedIpAddress);
+    }
+
     // IP'den stream path'i ayır (eğer / varsa)
-    let cleanIp = ip_address;
+    let cleanIp = processedIpAddress;
     let actualStreamPath = stream_path;
     
-    if (ip_address.includes('/')) {
-      const parts = ip_address.split('/');
+    if (processedIpAddress.includes('/')) {
+      const parts = processedIpAddress.split('/');
       cleanIp = parts[0];
       actualStreamPath = '/' + parts.slice(1).join('/');
+    }
+
+    // Port'u IP'den ayır (eğer : varsa)
+    let finalPort = port;
+    if (cleanIp.includes(':')) {
+      const [ipPart, portPart] = cleanIp.split(':');
+      cleanIp = ipPart;
+      finalPort = parseInt(portPart) || port;
     }
 
     // Stream URL oluştur
     // ESP32-CAM için her zaman HTTP stream kullan (username/password URL'de olmamalı)
     // Format: http://192.168.1.100:80/stream
     // Username/password ayrı sütunlarda saklanır (gerekirse)
-    const streamUrl = `http://${cleanIp}:${port}${actualStreamPath}`;
+    const streamUrl = `http://${cleanIp}:${finalPort}${actualStreamPath}`;
+    console.log('📹 Generated stream URL:', streamUrl);
 
     // Kamerayı ekle
     const result = await sql`
@@ -229,7 +251,7 @@ export async function POST(request: NextRequest) {
         ${user.userId}, 
         ${camera_name}, 
         ${cleanIp}, 
-        ${port}, 
+        ${finalPort}, 
         ${username || null}, 
         ${password || null},
         ${streamUrl},
@@ -239,7 +261,8 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `;
 
-    console.log(`✅ Kamera eklendi: ${camera_name} (${cleanIp}:${port}${actualStreamPath})`);
+    console.log(`✅ Kamera eklendi: ${camera_name} (${cleanIp}:${finalPort}${actualStreamPath})`);
+    console.log(`📹 Stream URL: ${streamUrl}`);
 
     return NextResponse.json({
       success: true,

@@ -211,15 +211,31 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     // Base URL (stream_url varsa onu kullan, yoksa IP:PORT/stream)
     let baseUrl = camera.stream_url || `http://${camera.ip_address}:${camera.port}/stream`;
     
+    // RTSP URL'ini HTTP'ye çevir (tarayıcılar RTSP desteklemez)
+    if (baseUrl.toLowerCase().startsWith('rtsp://')) {
+      console.log('🔄 RTSP URL detected, converting to HTTP:', baseUrl);
+      // RTSP URL'ini HTTP'ye çevir: rtsp://user:pass@192.168.1.2:80/stream -> http://192.168.1.2:80/stream
+      const lastAtIndex = baseUrl.lastIndexOf('@');
+      const afterAt = lastAtIndex !== -1
+        ? baseUrl.substring(lastAtIndex + 1)
+        : baseUrl.replace(/^rtsp:\/\//i, '');
+      baseUrl = `http://${afterAt}`;
+      console.log('✅ RTSP converted to HTTP:', baseUrl);
+    }
+    
     // Username/password varsa URL'e ekle (HTTP Basic Auth format)
     if (camera.username && camera.password) {
       // URL'yi parse et
-      const urlObj = new URL(baseUrl);
-      // Username ve password'ü encode et ve ekle
-      urlObj.username = camera.username;
-      urlObj.password = camera.password;
-      baseUrl = urlObj.toString();
-      console.log('🔐 Auth eklendi (username gizli)');
+      try {
+        const urlObj = new URL(baseUrl);
+        // Username ve password'ü encode et ve ekle
+        urlObj.username = camera.username;
+        urlObj.password = camera.password;
+        baseUrl = urlObj.toString();
+        console.log('🔐 Auth eklendi (username gizli)');
+      } catch (error) {
+        console.warn('⚠️ URL parse error for auth, using basic URL');
+      }
     }
     
     const finalUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
@@ -528,12 +544,18 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     // Profesyonel hata mesajı
     let errorMsg = '';
     
-    if (connectionMode === 'remote') {
+    // RTSP URL kontrolü
+    const originalUrl = camera.stream_url || '';
+    const isRtspInOriginal = originalUrl.toLowerCase().includes('rtsp://');
+    
+    if (isRtspInOriginal) {
+      errorMsg = `⚠️ RTSP protokolü tarayıcıda çalışmaz - HTTP MJPEG gerekli (${camera.ip_address})`;
+    } else if (connectionMode === 'remote') {
       errorMsg = '🌐 Uzaktan erişim başarısız. Kamera yerel ağda çalışıyor olabilir.';
     } else if (connectionMode === 'local') {
-      errorMsg = `🏠 Yerel kameraya bağlanılamadı (${camera.ip_address}:${camera.port})`;
+      errorMsg = `🏠 Yerel kameraya bağlanılamadı (${camera.ip_address}:${camera.port}) - IP ve port kontrol edin`;
     } else {
-      errorMsg = '🔍 Bağlantı türü tespit edilemiyor...';
+      errorMsg = `📹 Kamera bağlantısı başarısız (${camera.ip_address}) - Stream URL kontrol edin`;
     }
     
     setError(errorMsg);
