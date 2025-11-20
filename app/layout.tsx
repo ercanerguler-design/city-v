@@ -19,7 +19,6 @@ export const metadata: Metadata = {
   title: "CityView - Akıllı Şehir Yoğunluk Haritası",
   description: "Gerçek zamanlı şehir yoğunluk takibi ve akıllı rota önerileri",
   manifest: "/manifest.json",
-  themeColor: "#667eea",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -50,7 +49,8 @@ export const viewport = {
   initialScale: 1.0,
   maximumScale: 1.0,
   userScalable: false,
-  viewportFit: 'cover'
+  viewportFit: 'cover',
+  themeColor: "#667eea"
 };
 
 export default function RootLayout({
