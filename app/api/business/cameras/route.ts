@@ -170,7 +170,9 @@ export async function POST(request: NextRequest) {
       stream_path = '/stream',
       username, 
       password,
-      location_description 
+      location_description,
+      public_ip,
+      public_port
     } = body;
 
     console.log('🔍 Extracted fields:', {
@@ -180,7 +182,10 @@ export async function POST(request: NextRequest) {
       stream_path,
       username: username ? '***' : 'none',
       password: password ? '***' : 'none',
-      location_description
+      location_description,
+      public_ip,
+      public_port,
+      hasPublicAccess: !!(public_ip && public_port)
     });
 
     // Validasyon
@@ -260,7 +265,11 @@ export async function POST(request: NextRequest) {
         password,
         stream_url,
         location_description,
-        status
+        status,
+        public_ip,
+        public_port,
+        stream_path,
+        is_public_access
       ) VALUES (
         ${user.userId}, 
         ${camera_name}, 
@@ -270,7 +279,11 @@ export async function POST(request: NextRequest) {
         ${password || null},
         ${streamUrl},
         ${location_description || null},
-        'active'
+        'active',
+        ${public_ip || null},
+        ${public_port || null},
+        ${stream_path || '/stream'},
+        ${!!(public_ip && public_port)}
       )
       RETURNING *
     `;

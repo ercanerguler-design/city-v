@@ -220,8 +220,24 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
   const streamUrl = useMemo(() => {
     console.log('📹 RAW Camera Object:', camera);
     
-    // Base URL (stream_url varsa onu kullan, yoksa IP:PORT/stream)
-    let baseUrl = camera.stream_url || `http://${camera.ip_address}:${camera.port}/stream`;
+    // 🌐 PUBLIC IP Priority - Production erişim için
+    let baseUrl = '';
+    
+    // 1. Public IP varsa onu kullan (Production için)
+    if (camera.public_ip && camera.public_port) {
+      baseUrl = `http://${camera.public_ip}:${camera.public_port}${camera.stream_path || '/stream'}`;
+      console.log('🌐 Using PUBLIC IP for production access:', baseUrl);
+    }
+    // 2. Stream URL varsa onu kullan
+    else if (camera.stream_url) {
+      baseUrl = camera.stream_url;
+      console.log('🔗 Using provided stream_url:', baseUrl);
+    }
+    // 3. Fallback: Local IP (sadece development için)
+    else {
+      baseUrl = `http://${camera.ip_address}:${camera.port}${camera.stream_path || '/stream'}`;
+      console.log('🏠 Using LOCAL IP (development only):', baseUrl);
+    }
     
     // RTSP URL'ini HTTP'ye çevir (tarayıcılar RTSP desteklemez)
     if (baseUrl.toLowerCase().startsWith('rtsp://')) {
@@ -267,7 +283,7 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     });
     
     return proxyUrl;
-  }, [camera.id, camera.device_id, camera.ip_address, camera.port, camera.stream_url, camera.username, camera.password, refreshKey]); // camera ID değişince yeniden oluştur
+  }, [camera.id, camera.device_id, camera.ip_address, camera.port, camera.stream_url, camera.username, camera.password, camera.public_ip, camera.public_port, camera.stream_path, refreshKey]); // camera ID değişince yeniden oluştur
 
   // 📡 ENHANCED STREAM LOAD HANDLER WITH HEALTH MONITORING
   const handleImageLoad = () => {
