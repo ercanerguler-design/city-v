@@ -168,6 +168,7 @@ export async function POST(request: NextRequest) {
       ip_address, 
       port = 80,
       stream_path = '/stream',
+      stream_url, // Tam stream URL'i (Ngrok için)
       username, 
       password,
       location_description,
@@ -248,11 +249,34 @@ export async function POST(request: NextRequest) {
     }
 
     // Stream URL oluştur
-    // ESP32-CAM için her zaman HTTP stream kullan (username/password URL'de olmamalı)
-    // Format: http://192.168.1.100:80/stream
-    // Username/password ayrı sütunlarda saklanır (gerekirse)
-    const streamUrl = `http://${cleanIp}:${finalPort}${actualStreamPath}`;
-    console.log('📹 Generated stream URL:', streamUrl);
+    let finalStreamUrl;
+    
+    // 1. Öncelik: Eğer tam stream_url geldiyse (Ngrok için), onu kullan
+    if (stream_url && (stream_url.startsWith('http://') || stream_url.startsWith('https://'))) {
+      finalStreamUrl = stream_url;
+      console.log('📹 Using provided stream URL:', finalStreamUrl);
+    } else {
+      // 2. IP'den stream URL oluştur
+      // Ngrok URL'leri için HTTPS, diğerleri için HTTP kullan
+      let protocol = 'http';
+      let finalStreamPort = finalPort;
+      
+      // Ngrok URL tespiti
+      if (cleanIp.includes('ngrok') || cleanIp.includes('.dev') || finalPort === 443) {
+        protocol = 'https';
+        // HTTPS için port 443'ü URL'de belirtmeye gerek yok
+        if (finalPort === 443) {
+          finalStreamPort = '';
+        }
+      }
+      
+      // Stream URL'i oluştur
+      finalStreamUrl = finalStreamPort 
+        ? `${protocol}://${cleanIp}:${finalStreamPort}${actualStreamPath}`
+        : `${protocol}://${cleanIp}${actualStreamPath}`;
+      
+      console.log('📹 Generated stream URL:', finalStreamUrl);
+    }
 
     // Kamerayı ekle
     const result = await sql`
@@ -277,7 +301,7 @@ export async function POST(request: NextRequest) {
         ${finalPort}, 
         ${username || null}, 
         ${password || null},
-        ${streamUrl},
+        ${finalStreamUrl},
         ${location_description || null},
         'active',
         ${public_ip || null},
@@ -289,7 +313,7 @@ export async function POST(request: NextRequest) {
     `;
 
     console.log(`✅ Kamera eklendi: ${camera_name} (${cleanIp}:${finalPort}${actualStreamPath})`);
-    console.log(`📹 Stream URL: ${streamUrl}`);
+    console.log(`📹 Stream URL: ${finalStreamUrl}`);
 
     return NextResponse.json({
       success: true,

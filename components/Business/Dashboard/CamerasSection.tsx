@@ -15,6 +15,7 @@ import ZoneDrawingModalPro from './ZoneDrawingModalPro';
 import CameraLiveView from './CameraLiveView';
 import RemoteCameraViewer from './RemoteCameraViewer';
 import RemoteCameraStream from '../RemoteAccess/RemoteCameraStream';
+import NgrokQuickSetup from './NgrokQuickSetup';
 import { useRemoteAccess } from '@/lib/hooks/useRemoteAccess';
 
 interface Camera {
@@ -105,6 +106,19 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
   useEffect(() => {
     updatePlanInfo();
   }, [cameras]);
+
+  // Ngrok kamera ekleme listener
+  useEffect(() => {
+    const handleNgrokCamera = (event: MessageEvent) => {
+      if (event.data.type === 'ADD_NGROK_CAMERA') {
+        const cameraData = event.data.data;
+        handleAddCamera(cameraData);
+      }
+    };
+
+    window.addEventListener('message', handleNgrokCamera);
+    return () => window.removeEventListener('message', handleNgrokCamera);
+  }, []);
 
   const loadCameras = async () => {
     try {
@@ -483,6 +497,11 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
             </div>
           </div>
         </div>
+      )}
+
+      {/* Ngrok Quick Setup for Production & Local Camera Access */}
+      {typeof window !== 'undefined' && (
+        <NgrokQuickSetup />
       )}
 
       {/* Header + Add Button */}
