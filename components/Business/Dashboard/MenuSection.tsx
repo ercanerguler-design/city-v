@@ -17,12 +17,41 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
 
   const loadMenu = async () => {
     try {
+      console.log('📋 Menü kategorileri yükleniyor...');
+      
+      // TEMPORARY: Mock data for testing
+      console.log('🧪 TESTING MODE: Mock menu data kullanılıyor');
+      const mockCategories = [
+        {
+          id: 1,
+          name: 'Ana Yemekler',
+          items: [
+            { id: 1, name: 'Döner', price: 25.00, description: 'Tavuk döner' },
+            { id: 2, name: 'Köfte', price: 30.00, description: 'Izgara köfte' }
+          ]
+        },
+        {
+          id: 2,
+          name: 'İçecekler',
+          items: [
+            { id: 3, name: 'Çay', price: 5.00, description: 'Sıcak çay' },
+            { id: 4, name: 'Kola', price: 10.00, description: 'Soğuk kola' }
+          ]
+        }
+      ];
+      
+      setCategories(mockCategories);
+      console.log('✅ Mock menu kategorileri yüklendi:', mockCategories.length, 'kategori');
+      
+      /*
+      // REAL API CALL (temporarily disabled)
       const response = await fetch(`/api/business/menu?businessId=${businessProfile.id}`);
       const data = await response.json();
       
       if (data.success) {
         setCategories(data.categories || []);
       }
+      */
     } catch (error) {
       console.error('Menu load error:', error);
     } finally {
@@ -35,6 +64,20 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
     if (!name) return;
 
     try {
+      console.log('➕ Kategori ekleniyor (TEST MODE):', name);
+      
+      // TEMPORARY: Mock add operation
+      const newCategory = {
+        id: categories.length + 1,
+        name: name,
+        items: []
+      };
+      
+      setCategories([...categories, newCategory]);
+      toast.success('✅ Kategori eklendi! (TEST MODE)');
+      
+      /*
+      // REAL API CALL (temporarily disabled)
       const response = await fetch('/api/business/menu/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,8 +92,9 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
         toast.success('Kategori eklendi');
         loadMenu();
       }
+      */
     } catch (error) {
-      toast.error('Eklenemedi');
+      toast.error('Eklenemedi (TEST MODE)');
     }
   };
 
@@ -59,6 +103,20 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
     if (!name || name === currentName) return;
 
     try {
+      console.log('✏️ Kategori düzenleniyor (TEST MODE):', categoryId, name);
+      
+      // TEMPORARY: Mock edit operation
+      const updatedCategories = categories.map(cat => 
+        cat.id === categoryId 
+          ? { ...cat, name: name }
+          : cat
+      );
+      
+      setCategories(updatedCategories);
+      toast.success('✅ Kategori güncellendi! (TEST MODE)');
+      
+      /*
+      // REAL API CALL (temporarily disabled)
       const response = await fetch('/api/business/menu/categories', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -75,8 +133,9 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
       } else {
         toast.error(data.error || 'Güncellenemedi');
       }
+      */
     } catch (error) {
-      toast.error('Güncellenemedi');
+      toast.error('Güncellenemedi (TEST MODE)');
     }
   };
 
@@ -86,6 +145,15 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
     }
 
     try {
+      console.log('🗑️ Kategori siliniyor (TEST MODE):', categoryId, categoryName);
+      
+      // TEMPORARY: Mock delete operation
+      const updatedCategories = categories.filter(cat => cat.id !== categoryId);
+      setCategories(updatedCategories);
+      toast.success('✅ Kategori silindi! (TEST MODE)');
+      
+      /*
+      // REAL API CALL (temporarily disabled)
       const response = await fetch(`/api/business/menu/categories?categoryId=${categoryId}`, {
         method: 'DELETE'
       });
@@ -97,8 +165,9 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
       } else {
         toast.error(data.error || 'Silinemedi');
       }
+      */
     } catch (error) {
-      toast.error('Silinemedi');
+      toast.error('Silinemedi (TEST MODE)');
     }
   };
 
@@ -117,6 +186,30 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
     }
 
     try {
+      console.log('➕ Ürün ekleniyor (TEST MODE):', name, price);
+      
+      // TEMPORARY: Mock add item operation
+      const updatedCategories = categories.map(cat => {
+        if (cat.id === categoryId) {
+          const newItem = {
+            id: Date.now(), // Unique ID
+            name: name,
+            description: description,
+            price: price
+          };
+          return {
+            ...cat,
+            items: [...(cat.items || []), newItem]
+          };
+        }
+        return cat;
+      });
+      
+      setCategories(updatedCategories);
+      toast.success('✅ Ürün eklendi! (TEST MODE)');
+      
+      /*
+      // REAL API CALL (temporarily disabled)
       const response = await fetch('/api/business/menu/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -135,8 +228,9 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
       } else {
         toast.error(data.error || 'Eklenemedi');
       }
+      */
     } catch (error) {
-      toast.error('Eklenemedi');
+      toast.error('Eklenemedi (TEST MODE)');
     }
   };
 
@@ -146,6 +240,19 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
     }
 
     try {
+      console.log('🗑️ Ürün siliniyor (TEST MODE):', itemId, itemName);
+      
+      // TEMPORARY: Mock delete item operation
+      const updatedCategories = categories.map(cat => ({
+        ...cat,
+        items: cat.items ? cat.items.filter(item => item.id !== itemId) : []
+      }));
+      
+      setCategories(updatedCategories);
+      toast.success('✅ Ürün silindi! (TEST MODE)');
+      
+      /*
+      // REAL API CALL (temporarily disabled)
       const response = await fetch(`/api/business/menu/items?itemId=${itemId}`, {
         method: 'DELETE'
       });
@@ -157,8 +264,9 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
       } else {
         toast.error(data.error || 'Silinemedi');
       }
+      */
     } catch (error) {
-      toast.error('Silinemedi');
+      toast.error('Silinemedi (TEST MODE)');
     }
   };
 
