@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+const sql = neon(process.env.DATABASE_URL!);
 const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 export async function POST(request: NextRequest) {
@@ -29,11 +30,11 @@ export async function POST(request: NextRequest) {
     `;
 
     console.log('📋 Query result:', {
-      found: result.rows.length > 0,
-      rowCount: result.rows.length
+      found: result.length > 0,
+      rowCount: result.length
     });
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       console.log('❌ User not found or inactive');
       return NextResponse.json(
         { error: 'Kullanıcı bulunamadı veya hesap aktif değil' },
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = result.rows[0];
+    const user = result[0];
     console.log('👤 User found:', {
       id: user.id,
       email: user.email,

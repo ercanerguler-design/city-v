@@ -1,5 +1,7 @@
+import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+
+const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * 💬 Location Reviews API
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest) {
     console.log('💬 Adding review:', { locationId, userId, sentiment, priceRating });
 
     // Insert review - WITHOUT tags (column doesn't exist)
-    const result = await query(
+    const result = await sql(
       `INSERT INTO location_reviews (
         location_id, user_id, user_email, user_name,
         rating, comment, sentiment, price_rating
@@ -105,8 +107,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      reviewId: result.rows[0].id,
-      createdAt: result.rows[0].created_at,
+      reviewId: result[0].id,
+      createdAt: result[0].created_at,
       message: 'Yorum başarıyla eklendi!'
     });
 
@@ -184,12 +186,12 @@ export async function GET(req: NextRequest) {
 
     if (getSummary) {
       // Summary view
-      const summaryResult = await query(
+      const summaryResult = await sql(
         `SELECT * FROM location_review_summary WHERE location_id = $1`,
         [locationId]
       );
 
-      const summary = summaryResult.rows[0] || {
+      const summary = summaryResult[0] || {
         location_id: locationId,
         total_reviews: 0,
         avg_rating: 0,

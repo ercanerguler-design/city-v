@@ -283,7 +283,7 @@ export default function ReviewsAndSentiments({ businessUserId }: ReviewsStatsPro
               {review.price_rating && (
                 <div className="mt-2 inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded text-xs">
                   <span className="text-blue-600 dark:text-blue-400">
-                    Fiyat: {review.price_rating.replace('_', ' ')}
+                    Fiyat: {typeof review.price_rating === 'string' ? review.price_rating.replace('_', ' ') : review.price_rating}
                   </span>
                 </div>
               )}

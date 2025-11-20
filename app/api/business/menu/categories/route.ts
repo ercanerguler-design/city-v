@@ -1,5 +1,9 @@
+import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import jwt from 'jsonwebtoken';
+
+const sql = neon(process.env.DATABASE_URL!);
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 /**
  * Business Menü Kategori Yönetimi API
@@ -8,6 +12,22 @@ import { query } from '@/lib/db';
 // GET - Kategorileri listele
 export async function GET(request: NextRequest) {
   try {
+    // JWT token authentication
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    let user;
+    
+    try {
+      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const businessId = searchParams.get('businessId');
 

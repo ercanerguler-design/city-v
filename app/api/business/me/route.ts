@@ -3,7 +3,7 @@ import { neon } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 
 const sql = neon(process.env.DATABASE_URL!);
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 export async function GET(request: NextRequest) {
   try {

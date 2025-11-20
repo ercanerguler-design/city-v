@@ -1,5 +1,9 @@
+import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import jwt from 'jsonwebtoken';
+
+const sql = neon(process.env.DATABASE_URL!);
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,10 +18,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // JWT token authentication
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    let user;
+    
+    try {
+      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     console.log(`📊 Günlük özet verisi sorgulanıyor: User ${businessUserId}, Tarih ${date}`);
 
     // Belirtilen tarihteki özet verileri al
-    const summaryResult = await query(
+    const summaryResult = await sql(
       `SELECT 
         id,
         business_user_id,
@@ -44,7 +64,7 @@ export async function GET(request: NextRequest) {
       [businessUserId, date]
     );
 
-    if (summaryResult.rows.length === 0) {
+    if (summaryResult.length === 0) {
       console.log(`⚠️ ${date} tarihli günlük özet verisi bulunamadı`);
       return NextResponse.json({
         success: false,
@@ -53,7 +73,7 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
 
-    const summary = summaryResult.rows[0];
+    const summary = summaryResult[0];
 
     console.log(`✅ Günlük özet verisi bulundu: ${summary.total_visitors} ziyaretçi`);
 

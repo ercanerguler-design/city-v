@@ -1,8 +1,9 @@
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-2024';
+const sql = neon(process.env.DATABASE_URL!);
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 // Plan limitleri - Membership based
 const CAMERA_LIMITS: Record<string, number> = {
@@ -43,7 +44,7 @@ async function getUserPlan(userId: number) {
       WHERE id = ${userId}
     `;
     
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       console.log(`⚠️ User ${userId} not found in business_users, using free plan`);
       return {
         planType: 'free',
@@ -51,7 +52,7 @@ async function getUserPlan(userId: number) {
       };
     }
 
-    const membershipType = (result.rows[0].membership_type || 'free').toLowerCase();
+    const membershipType = (result[0].membership_type || 'free').toLowerCase();
     
     // Membership'e göre limit belirle
     const maxCameras = CAMERA_LIMITS[membershipType] || CAMERA_LIMITS.free;
@@ -111,8 +112,8 @@ export async function GET(request: NextRequest) {
       ORDER BY created_at DESC
     `;
     
-    console.log('📋 Found cameras:', cameras.rows.length);
-    cameras.rows.forEach(cam => {
+    console.log('📋 Found cameras:', cameras.length);
+    cameras.forEach(cam => {
       console.log(`  - Camera ${cam.id}: ${cam.camera_name}, stream_url: ${cam.stream_url}`);
     });
 
@@ -121,12 +122,12 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      cameras: cameras.rows,
+      cameras: cameras,
       plan: {
         type: planInfo.planType,
         maxCameras: planInfo.maxCameras,
-        currentCount: cameras.rows.length,
-        remainingSlots: planInfo.maxCameras - cameras.rows.length
+        currentCount: cameras.length,
+        remainingSlots: planInfo.maxCameras - cameras.length
       }
     });
 
@@ -186,11 +187,11 @@ export async function POST(request: NextRequest) {
       WHERE business_user_id = ${user.userId}
     `;
 
-    if (parseInt(currentCount.rows[0].count) >= planInfo.maxCameras) {
+    if (parseInt(currentCount[0].count) >= planInfo.maxCameras) {
       return NextResponse.json(
         { 
           error: `${planInfo.planType.toUpperCase()} planınızda maksimum ${planInfo.maxCameras} kamera ekleyebilirsiniz`,
-          currentCount: currentCount.rows[0].count,
+          currentCount: currentCount[0].count,
           maxCameras: planInfo.maxCameras
         },
         { status: 400 }
@@ -266,7 +267,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      camera: result.rows[0],
+      camera: result[0],
       message: 'Kamera başarıyla eklendi'
     });
 

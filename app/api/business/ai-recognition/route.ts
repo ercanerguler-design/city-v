@@ -1,5 +1,9 @@
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
+
+const sql = neon(process.env.DATABASE_URL!);
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 /**
  * AI Recognition API
@@ -9,6 +13,22 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   try {
+    // JWT token authentication
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    let user;
+    
+    try {
+      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const businessId = searchParams.get('businessId');
     const detectionType = searchParams.get('detectionType') || 'all';
@@ -22,7 +42,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let query = `
+    console.log('🔍 AI Recognition query:', { businessId, detectionType, minConfidence, limit });
+
+    // Check for actual data first
+    let whereClause = `business_id = $1 AND confidence_score >= $2`;
+    let params = [businessId, minConfidence];
+    
+    if (detectionType !== 'all') {
+      whereClause += ` AND detection_type = $3`;
+      params.push(detectionType);
+    }
+
+    const query = `
       SELECT 
         id,
         detection_type,
@@ -31,23 +62,43 @@ export async function GET(request: NextRequest) {
         bounding_box,
         person_id,
         timestamp,
-        device_id
+        device_id,
+        business_id
       FROM ai_recognition_logs
-      WHERE business_id = ${businessId}
-        AND confidence_score >= ${minConfidence}
+      WHERE ${whereClause}
+      ORDER BY timestamp DESC 
+      LIMIT $${params.length + 1}
     `;
+    
+    params.push(limit.toString());
 
-    if (detectionType !== 'all') {
-      query += ` AND detection_type = '${detectionType}'`;
+    const recognitionLogs = await sql(query, params);
+
+    // If no real data found, return empty result
+    if (recognitionLogs.length === 0) {
+      console.log('⚠️ No AI recognition data found');
+      
+      return NextResponse.json({
+        success: true,
+        filters: {
+          detectionType,
+          minConfidence,
+          limit
+        },
+        stats: {
+          totalDetections: 0,
+          byType: [],
+          uniquePersons: 0
+        },
+        detections: {},
+        recentDetections: []
+      });
     }
 
-    query += ` ORDER BY timestamp DESC LIMIT ${limit}`;
-
-    const recognitionLogs = await sql.query(query);
-
+    // Process real data
     // Group by detection type
     const groupedByType: { [key: string]: any[] } = {};
-    recognitionLogs.rows.forEach((log: any) => {
+    recognitionLogs.forEach((log: any) => {
       if (!groupedByType[log.detection_type]) {
         groupedByType[log.detection_type] = [];
       }
@@ -66,7 +117,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate statistics
     const stats = {
-      totalDetections: recognitionLogs.rows.length,
+      totalDetections: recognitionLogs.length,
       byType: Object.entries(groupedByType).map(([type, detections]) => ({
         type,
         count: detections.length,
@@ -75,7 +126,7 @@ export async function GET(request: NextRequest) {
         )
       })),
       uniquePersons: new Set(
-        recognitionLogs.rows
+        recognitionLogs
           .filter((r: any) => r.person_id)
           .map((r: any) => r.person_id)
       ).size
@@ -90,7 +141,7 @@ export async function GET(request: NextRequest) {
       },
       stats,
       detections: groupedByType,
-      recentDetections: recognitionLogs.rows.slice(0, 20).map((log: any) => ({
+      recentDetections: recognitionLogs.slice(0, 20).map((log: any) => ({
         id: log.id,
         type: log.detection_type,
         object: log.object_class,
