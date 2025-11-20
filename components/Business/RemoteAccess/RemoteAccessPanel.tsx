@@ -20,6 +20,15 @@ export default function RemoteAccessPanel() {
 
   const [tokenStatus, setTokenStatus] = useState<'none' | 'creating' | 'active' | 'expired'>('none');
 
+  // Debug business user data
+  useEffect(() => {
+    console.log('🔍 RemoteAccessPanel - Business User Debug:');
+    console.log('  - businessUser:', businessUser);
+    console.log('  - businessUser.id:', businessUser?.id);
+    console.log('  - businessUser keys:', Object.keys(businessUser || {}));
+    console.log('  - typeof businessUser.id:', typeof businessUser?.id);
+  }, [businessUser]);
+
   useEffect(() => {
     checkTokenStatus();
   }, [remoteToken]);
@@ -34,16 +43,39 @@ export default function RemoteAccessPanel() {
   };
 
   const handleEnableRemoteAccess = async () => {
+    console.log('🔍 Debug - Enable remote access triggered');
+    console.log('📊 Business user data:', businessUser);
+    console.log('🏢 Business user ID:', businessUser?.id);
+    console.log('🌐 Network info:', networkInfo);
+    console.log('📱 Device info:', deviceInfo);
+    
     if (!businessUser?.id) {
-      console.log('❌ No business user ID');
+      console.log('❌ No business user ID found');
+      console.log('🔍 Available business user fields:', Object.keys(businessUser || {}));
+      
+      // Try to get user ID from different sources
+      const alternativeUserId = businessUser?.user_id || businessUser?.business_user_id;
+      if (alternativeUserId) {
+        console.log('🔄 Using alternative user ID:', alternativeUserId);
+        const userId = parseInt(alternativeUserId.toString());
+        await proceedWithRemoteAccess(userId);
+        return;
+      }
+      
+      console.log('❌ Cannot find any user ID to proceed');
+      setTokenStatus('none');
       return;
     }
 
-    console.log('🔐 Enabling remote access for user:', businessUser.id);
+    await proceedWithRemoteAccess(businessUser.id);
+  };
+
+  const proceedWithRemoteAccess = async (userId: number) => {
+    console.log('🔐 Enabling remote access for user:', userId);
     setTokenStatus('creating');
     
     try {
-      const token = await createRemoteToken(businessUser.id);
+      const token = await createRemoteToken(userId);
       
       if (token) {
         setTokenStatus('active');

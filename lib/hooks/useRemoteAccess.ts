@@ -79,10 +79,16 @@ export function useRemoteAccess() {
 
   const createRemoteToken = async (businessUserId: number): Promise<string | null> => {
     try {
+      console.log('🔐 Creating remote token - start');
+      console.log('  - businessUserId:', businessUserId);
+      console.log('  - deviceInfo:', deviceInfo);
+      
       if (!deviceInfo) {
-        throw new Error('Device info not available');
+        throw new Error('Device info not available - network detection may not be complete');
       }
 
+      console.log('📡 Sending request to /api/auth/remote-token...');
+      
       const response = await fetch('/api/auth/remote-token', {
         method: 'POST',
         headers: {
@@ -94,20 +100,34 @@ export function useRemoteAccess() {
         })
       });
 
+      console.log('📤 Response status:', response.status);
+      console.log('📤 Response ok:', response.ok);
+
       if (!response.ok) {
-        throw new Error('Token creation failed');
+        const errorText = await response.text();
+        console.error('❌ API Response error:', errorText);
+        throw new Error(`Token creation failed: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('📥 API Response data:', data);
+      
+      if (!data.token) {
+        throw new Error('No token received in response');
+      }
+      
       setRemoteToken(data.token);
       
       // Store in localStorage for persistence
       localStorage.setItem('cityv_remote_token', data.token);
       
+      console.log('✅ Remote token created and stored successfully');
       return data.token;
 
-    } catch (error) {
-      console.log('🚨 Remote token creation error:', error);
+    } catch (error: any) {
+      console.error('🚨 Remote token creation error:', error);
+      console.error('  - Error message:', error.message);
+      console.error('  - Error stack:', error.stack);
       return null;
     }
   };
