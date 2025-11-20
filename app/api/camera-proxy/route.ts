@@ -34,6 +34,8 @@ export async function GET(request: NextRequest) {
     const requestHeaders: HeadersInit = {
       'User-Agent': 'CityV-Camera-Proxy/1.0',
       'Accept': 'multipart/x-mixed-replace, image/jpeg, */*',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
     };
 
     // Basic Authentication ekle (eğer varsa)
@@ -42,12 +44,20 @@ export async function GET(request: NextRequest) {
       console.log('🔐 Basic Auth eklendi');
     }
 
+    // AbortController ile timeout control
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 saniye timeout
+
     // ESP32-CAM'dan stream çek
     const response = await fetch(streamUrl, {
+      method: 'GET',
       headers: requestHeaders,
+      signal: controller.signal,
       // @ts-ignore - Next.js fetch options
       cache: 'no-store',
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.error('❌ Stream hatası:', response.status, response.statusText);
@@ -73,9 +83,54 @@ export async function GET(request: NextRequest) {
       headers: responseHeaders,
     });
   } catch (error: any) {
-    console.error('❌ Camera proxy error:', error.message);
+    console.error('❌ Camera proxy error:', {
+      message: error.message,
+      name: error.name,
+      streamUrl: streamUrl
+    });
+
+    // Specific error handling
+    if (error.name === 'AbortError') {
+      return NextResponse.json(
+        { 
+          error: 'Camera connection timeout', 
+          details: `ESP32 camera at ${streamUrl} did not respond within 10 seconds`,
+          code: 'TIMEOUT'
+        },
+        { status: 408 }
+      );
+    }
+
+    if (error.message?.includes('ECONNREFUSED') || error.message?.includes('fetch')) {
+      return NextResponse.json(
+        { 
+          error: 'Camera connection refused', 
+          details: `Cannot connect to ESP32 camera at ${streamUrl}. Please check camera is online.`,
+          code: 'CONNECTION_REFUSED' 
+        },
+        { status: 503 }
+      );
+    }
+
+    if (error.message?.includes('ENOTFOUND')) {
+      return NextResponse.json(
+        { 
+          error: 'Camera not found', 
+          details: `ESP32 camera IP address not found: ${streamUrl}`,
+          code: 'NOT_FOUND'
+        },
+        { status: 404 }
+      );
+    }
+
+    // Generic error
     return NextResponse.json(
-      { error: 'Proxy hatası', details: error.message },
+      { 
+        error: 'Camera proxy error', 
+        details: error.message,
+        code: 'UNKNOWN',
+        streamUrl: streamUrl
+      },
       { status: 500 }
     );
   }

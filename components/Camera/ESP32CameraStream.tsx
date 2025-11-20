@@ -122,9 +122,38 @@ export default function ESP32CameraStream({
       startDetection();
     };
 
-    img.onerror = () => {
-      console.error(`❌ Stream hatası`);
-      setError(`Kameraya bağlanılamadı: ${cameraIp}`);
+    img.onerror = (event) => {
+      console.error(`❌ Stream hatası:`, event);
+      
+      // Proxy endpoint'ine test çağrısı yap
+      fetch(streamUrl)
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(errorData => {
+              console.error('❌ Proxy hatası:', errorData);
+              
+              // Specific error messages
+              switch (errorData.code) {
+                case 'TIMEOUT':
+                  setError(`Kamera zaman aşımı: ${cameraName} (${cameraIp}) 10 saniye içinde yanıt vermedi`);
+                  break;
+                case 'CONNECTION_REFUSED':
+                  setError(`Kamera bağlantısı reddedildi: ${cameraName} (${cameraIp}) çevrimdışı olabilir`);
+                  break;
+                case 'NOT_FOUND':
+                  setError(`Kamera bulunamadı: ${cameraIp} IP adresi geçersiz`);
+                  break;
+                default:
+                  setError(`Kamera hatası: ${errorData.details || 'Bilinmeyen hata'}`);
+              }
+            });
+          }
+        })
+        .catch(fetchError => {
+          console.error('❌ Proxy fetch hatası:', fetchError);
+          setError(`Kameraya bağlanılamadı: ${cameraName} (${cameraIp})`);
+        });
+      
       setIsStreaming(false);
     };
 
@@ -270,8 +299,20 @@ export default function ESP32CameraStream({
           ctx.fillRect(point.x - 50, point.y - 50, 100, 100);
         });
 
-      } catch (err) {
-        console.error('Detection error:', err);
+      } catch (detectionErr: any) {
+        console.error('❌ AI Detection hatası:', detectionErr);
+        
+        // Detection hatası varsa stream'i durdurmayı önle
+        if (detectionErr.message?.includes('Input tensor')) {
+          console.log('🔄 Video frame henüz hazır değil, bekleniyor...');
+        } else if (detectionErr.message?.includes('disposed')) {
+          console.log('🔄 Model dispose edilmiş, yeniden yükleniyor...');
+          setError('AI modeli yeniden yükleniyor...');
+          loadModel();
+        } else {
+          // Ciddi hata - error göster ama stream'i sürdür
+          setError(`AI Analiz Hatası: ${detectionErr.message}`);
+        }
       }
 
       requestAnimationFrame(detectFrame);

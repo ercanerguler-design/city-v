@@ -552,24 +552,61 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     console.error('  Image Complete:', imageElement?.complete);
     console.error('  Natural Size:', `${imageElement?.naturalWidth}x${imageElement?.naturalHeight}`);
     
-    // Profesyonel hata mesajı
-    let errorMsg = '';
+    // Proxy endpoint test - production hatalarını daha iyi handle et
+    const proxyUrl = `/api/camera-proxy?url=${encodeURIComponent(camera.stream_url || '')}`;
     
-    // RTSP URL kontrolü
-    const originalUrl = camera.stream_url || '';
-    const isRtspInOriginal = originalUrl.toLowerCase().includes('rtsp://');
+    console.log(`🔍 Testing proxy endpoint: ${proxyUrl}`);
     
-    if (isRtspInOriginal) {
-      errorMsg = `⚠️ RTSP protokolü tarayıcıda çalışmaz - HTTP MJPEG gerekli (${camera.ip_address})`;
-    } else if (connectionMode === 'remote') {
-      errorMsg = '🌐 Uzaktan erişim başarısız. Kamera yerel ağda çalışıyor olabilir.';
-    } else if (connectionMode === 'local') {
-      errorMsg = `🏠 Yerel kameraya bağlanılamadı (${camera.ip_address}:${camera.port}) - IP ve port kontrol edin`;
-    } else {
-      errorMsg = `📹 Kamera bağlantısı başarısız (${camera.ip_address}) - Stream URL kontrol edin`;
-    }
-    
-    setError(errorMsg);
+    fetch(proxyUrl)
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(errorData => {
+            console.error('❌ Proxy Error Details:', errorData);
+            
+            let errorMsg = '';
+            switch (errorData.code) {
+              case 'TIMEOUT':
+                errorMsg = `⏱️ Kamera zaman aşımı: ${camera.camera_name} (${camera.ip_address}) 10 saniye içinde yanıt vermedi`;
+                break;
+              case 'CONNECTION_REFUSED':
+                errorMsg = `🚫 Kamera bağlantısı reddedildi: ${camera.camera_name} (${camera.ip_address}) çevrimdışı olabilir`;
+                break;
+              case 'NOT_FOUND':
+                errorMsg = `❓ Kamera bulunamadı: ${camera.ip_address} IP adresi geçersiz`;
+                break;
+              default:
+                errorMsg = `⚠️ Kamera proxy hatası: ${errorData.details || 'Bilinmeyen hata'}`;
+            }
+            
+            setError(errorMsg);
+          });
+        } else {
+          console.log('✅ Proxy endpoint çalışıyor, farklı bir sorun var');
+          setError(`📹 Stream görüntüsü alınamadı: ${camera.camera_name} (Format hatası olabilir)`);
+        }
+      })
+      .catch(fetchError => {
+        console.error('❌ Proxy fetch hatası:', fetchError);
+        
+        // Fallback error message
+        let errorMsg = '';
+        
+        // RTSP URL kontrolü
+        const originalUrl = camera.stream_url || '';
+        const isRtspInOriginal = originalUrl.toLowerCase().includes('rtsp://');
+        
+        if (isRtspInOriginal) {
+          errorMsg = `⚠️ RTSP protokolü tarayıcıda çalışmaz - HTTP MJPEG gerekli (${camera.ip_address})`;
+        } else if (connectionMode === 'remote') {
+          errorMsg = '🌐 Uzaktan erişim başarısız. Kamera yerel ağda çalışıyor olabilir.';
+        } else if (connectionMode === 'local') {
+          errorMsg = `🏠 Yerel kameraya bağlanılamadı (${camera.ip_address}:${camera.port}) - IP ve port kontrol edin`;
+        } else {
+          errorMsg = `📹 Kamera bağlantısı başarısız (${camera.ip_address}) - Stream URL kontrol edin`;
+        }
+        
+        setError(errorMsg);
+      });
     
     setIsStreamHealthy(false);
     
