@@ -199,11 +199,16 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     
     const isLocal = localPatterns.some(pattern => pattern.test(cameraIp));
     
-    // Local kamera ise - direk bağlan (Mixed Content uyarısı olacak ama çalışır)
-    // Çünkü Vercel sunucuları local network'e erişemez
     if (isLocal) {
       setConnectionMode('local');
-      console.log('� Local kamera - Direkt bağlantı (Mixed Content expected)');
+      console.log('🏠 Local kamera - Production\'da erişim sorunu bekleniyor');
+      
+      // Production HTTPS'de local kameraya erişim imkansız
+      if (window.location.protocol === 'https:') {
+        setError(`🔒 HTTPS Production sitesi local kameraya (${cameraIp}) bağlanamaz.\n\nÇözümler:\n1️⃣ Local erişim: http://localhost:3000/business\n2️⃣ Kameraya public IP verin\n3️⃣ Kamera sunucusuna HTTPS sertifikası ekleyin`);
+        setIsLoading(false);
+        return;
+      }
     } else {
       // Public IP ise proxy kullan
       setConnectionMode('remote');

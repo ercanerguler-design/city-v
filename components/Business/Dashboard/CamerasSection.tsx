@@ -459,6 +459,32 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
 
   return (
     <div className="space-y-6">
+      {/* Mixed Content Warning for HTTPS Production */}
+      {typeof window !== 'undefined' && window.location.protocol === 'https:' && (
+        <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-medium text-orange-900">Local Kamera Erişim Uyarısı (HTTPS)</h3>
+              <p className="text-sm text-orange-700 mt-1">
+                Production HTTPS sitesinden local IP kameralar (192.168.x.x) browser security policy nedeniyle erişilemez.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <a 
+                  href="http://localhost:3000/business/dashboard" 
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-800 text-xs font-medium rounded-lg hover:bg-orange-200"
+                >
+                  🏠 Local Test (HTTP)
+                </a>
+                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-lg">
+                  🌐 Public IP önerisi
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header + Add Button */}
       <div className="flex items-center justify-between">
         <div>
