@@ -62,7 +62,7 @@ export default function NgrokQuickSetup() {
     window.postMessage({
       type: 'ADD_NGROK_CAMERA',
       data: {
-        camera_name: 'ESP32 via Ngrok',
+        camera_name: 'City-V Camera',
         stream_url: streamUrl, // Complete URL
         ip_address: hostname,
         port: port,
@@ -85,10 +85,10 @@ export default function NgrokQuickSetup() {
         </div>
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            🚀 Ngrok Hızlı Kurulum
+            🚀 City-V Hızlı Kurulum
           </h3>
           <p className="text-sm text-gray-600">
-            Port forwarding yerine 5 dakikada ESP32'yı internet'e açın
+            Port forwarding yerine 5 dakikada City-V'yi internet'e açın
           </p>
         </div>
       </div>
@@ -96,7 +96,7 @@ export default function NgrokQuickSetup() {
       <div className="space-y-4">
         {/* Step 1: Download */}
         <div className="bg-white rounded-lg p-4 border border-blue-100">
-          <h4 className="font-medium text-gray-900 mb-2">1️⃣ Ngrok İndir & Kurulu</h4>
+          <h4 className="font-medium text-gray-900 mb-2">1️⃣ City-V Tunnel İndir & Kurulu</h4>
           <div className="flex items-center gap-3">
             <code className="bg-gray-100 px-3 py-2 rounded text-sm flex-1">
               ngrok http 192.168.1.8:80
@@ -120,7 +120,7 @@ export default function NgrokQuickSetup() {
 
         {/* Step 2: Enter URL */}
         <div className="bg-white rounded-lg p-4 border border-blue-100">
-          <h4 className="font-medium text-gray-900 mb-2">2️⃣ Ngrok URL'ini Girin</h4>
+          <h4 className="font-medium text-gray-900 mb-2">2️⃣ City-V Tunnel URL'ini Girin</h4>
           <div className="flex items-center gap-2">
             <input
               type="url"

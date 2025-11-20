@@ -427,6 +427,13 @@ export default function BusinessDashboard() {
           {activeSection === 'analytics' && <AnalyticsSection businessProfile={businessProfile} />}
           {activeSection === 'settings' && <SettingsSection businessProfile={businessProfile} onUpdate={reloadUserData} />}
         </main>
+
+        {/* Footer */}
+        <footer className="border-t bg-white py-4 px-6">
+          <div className="text-center text-sm text-gray-500">
+            <p>City-V 2025 | SCE INNOVATION Her hakkı saklıdır.</p>
+          </div>
+        </footer>
       </div>
     </div>
   );

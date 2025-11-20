@@ -690,11 +690,11 @@ export default function BusinessProfessionalDashboard({ business }: BusinessProf
               <div>
                 <h3 className="text-lg font-semibold text-white mb-6">{language === 'tr' ? 'Canlı Kamera İzleme' : 'Live Camera Monitoring'}</h3>
                 
-                {/* ESP32-CAM Control Panel */}
+                {/* City-V Control Panel */}
                 <div className="mb-6 bg-white/5 rounded-lg p-6">
                   <h4 className="text-white font-medium mb-4 flex items-center">
                     <CameraIcon className="w-5 h-5 text-blue-400 mr-2" />
-                    {language === 'tr' ? 'ESP32-CAM Kontrol Paneli' : 'ESP32-CAM Control Panel'}
+                    {language === 'tr' ? 'City-V Kontrol Paneli' : 'City-V Control Panel'}
                   </h4>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

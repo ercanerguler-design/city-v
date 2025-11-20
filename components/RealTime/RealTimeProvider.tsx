@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import useSocketStore from '@/store/socketStore';
 
-import ChatFloatingButton from './ChatFloatingButton';
+import WhatsAppFloatingButton from './WhatsAppButton';
 import NotificationsPanel from './NotificationsPanel';
 import LiveLocationSharing from './LiveLocationSharing';
 import LiveEventTracker from './LiveEventTracker';
@@ -93,11 +93,8 @@ export default function RealTimeProvider({
         </button>
       </div>
 
-      {/* Chat Floating Button - Always visible */}
-      <ChatFloatingButton
-        currentUserId={currentUserId}
-        currentUserName={currentUserName}
-      />
+      {/* WhatsApp Floating Button - Always visible */}
+      <WhatsAppFloatingButton />
 
       {/* Panels */}
       <NotificationsPanel
