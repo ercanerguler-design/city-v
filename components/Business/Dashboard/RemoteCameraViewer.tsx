@@ -247,17 +247,21 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     
     const finalUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
     
+    // HTTPS Mixed Content sorunu için proxy kullan
+    const proxyUrl = `/api/camera-proxy?url=${encodeURIComponent(finalUrl)}`;
+    
     console.log('🚀 DIRECT ESP32 Stream:', finalUrl.replace(/(username|password)=[^&]*/g, '$1=***'));
+    console.log('🔒 HTTPS Proxy Stream:', proxyUrl);
     console.log('📹 Camera Details:', {
       id: camera.id || camera.device_id,
       name: camera.camera_name,
       ip: camera.ip_address,
       port: camera.port,
       hasAuth: !!(camera.username && camera.password),
-      mode: 'DIRECT_24/7_NO_PROXY'
+      mode: 'HTTPS_PROXY_FOR_MIXED_CONTENT'
     });
     
-    return finalUrl;
+    return proxyUrl;
   }, [camera.id, camera.device_id, camera.ip_address, camera.port, camera.stream_url, camera.username, camera.password, refreshKey]); // camera ID değişince yeniden oluştur
 
   // 📡 ENHANCED STREAM LOAD HANDLER WITH HEALTH MONITORING

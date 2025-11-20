@@ -68,11 +68,13 @@ export default function ESP32CameraStream({
     }
   };
 
-  // ESP32-CAM stream başlat - BASİT VE ÇALIŞAN YÖNTEM
+  // ESP32-CAM stream başlat - HTTPS PROXY İLE
   useEffect(() => {
     if (!model) return;
 
-    const streamUrl = `http://${cameraIp}/stream`;
+    // Mixed Content sorununu proxy ile çöz
+    const originalStreamUrl = `http://${cameraIp}/stream`;
+    const streamUrl = `/api/camera-proxy?url=${encodeURIComponent(originalStreamUrl)}`;
     const video = videoRef.current;
     
     if (!video) return;

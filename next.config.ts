@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
             key: 'Cache-Control',
             value: 'public, max-age=0, must-revalidate',
           },
+          // Mixed Content bypass için development
+          {
+            key: 'Content-Security-Policy',
+            value: "img-src 'self' data: blob: http: https:; media-src 'self' data: blob: http: https:;"
+          },
         ],
       },
     ]
