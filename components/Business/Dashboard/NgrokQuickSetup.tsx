@@ -20,7 +20,9 @@ export default function NgrokQuickSetup() {
     
     setIsTesting(true);
     try {
-      const testUrl = ngrokUrl.endsWith('/stream') ? ngrokUrl : `${ngrokUrl}/stream`;
+      // Clean and validate URL
+      const cleanUrl = ngrokUrl.trim().replace(/\s+/g, '');
+      const testUrl = cleanUrl.endsWith('/stream') ? cleanUrl : `${cleanUrl}/stream`;
       
       // Test the URL
       const response = await fetch(testUrl, { 
@@ -41,13 +43,15 @@ export default function NgrokQuickSetup() {
   const addToCameraSystem = () => {
     if (!ngrokUrl) return;
     
-    const streamUrl = ngrokUrl.endsWith('/stream') ? ngrokUrl : `${ngrokUrl}/stream`;
+    // Clean and validate URL
+    const cleanUrl = ngrokUrl.trim().replace(/\s+/g, '');
+    const streamUrl = cleanUrl.endsWith('/stream') ? cleanUrl : `${cleanUrl}/stream`;
     
     // Parse hostname from ngrok URL
     let hostname = 'ngrok-tunnel';
     let port = 443;
     try {
-      const urlObj = new URL(ngrokUrl);
+      const urlObj = new URL(cleanUrl);
       hostname = urlObj.hostname;
       port = urlObj.port ? parseInt(urlObj.port) : (urlObj.protocol === 'https:' ? 443 : 80);
     } catch (error) {
@@ -121,7 +125,7 @@ export default function NgrokQuickSetup() {
             <input
               type="url"
               value={ngrokUrl}
-              onChange={(e) => setNgrokUrl(e.target.value)}
+              onChange={(e) => setNgrokUrl(e.target.value.trim())}
               placeholder="https://abc123.ngrok.io"
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
