@@ -2,12 +2,6 @@
   "name": "city-v-chi",
   "buildCommand": "npm install --legacy-peer-deps && npm run build",
   "installCommand": "npm install --legacy-peer-deps",
-  "functions": {
-    "app/**/*.{ts,tsx}": {
-      "runtime": "nodejs20.x",
-      "maxDuration": 60
-    }
-  },
   "build": {
     "env": {
       "NODE_OPTIONS": "--max-old-space-size=4096"
