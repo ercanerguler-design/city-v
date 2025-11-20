@@ -22,10 +22,30 @@ const WorkingHoursEdit: React.FC<WorkingHoursEditProps> = ({ business, onClose }
     { key: 'sunday', label: 'Pazar' },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateBusiness({ workingHours });
-    onClose();
+    
+    try {
+      console.log('⏰ Çalışma saatleri kaydediliyor...');
+      
+      // Local state'i güncelle
+      updateBusiness({ workingHours });
+      
+      // SYNC TO MAIN SITE: Real-time sync simulation
+      console.log('🔄 Ana siteye sync yapılıyor (DEMO MODE)...');
+      console.log('📋 Güncellenen çalışma saatleri:', workingHours);
+      
+      // Simulate instant update notification
+      setTimeout(() => {
+        console.log('✅ SIMÜLE SYNC TAMAMLANDI!');
+        console.log('🌐 Ana site anlık güncellendi (demo)');
+        console.log('📍 Harita üzerinde business saatleri güncel');
+      }, 1000);
+      
+      onClose();
+    } catch (error) {
+      console.error('❌ Çalışma saati kaydetme hatası:', error);
+    }
   };
 
   const handleDayChange = (day: string, hours: string) => {
