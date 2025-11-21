@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
       if (!businessMap.has(businessId)) {
         businessMap.set(businessId, {
           id: businessId,
+          business_profile_id: businessId, // Menu modal için profile ID ekle
           name: row.business_name || row.company_name,
           type: row.business_type,
           address: row.address,
