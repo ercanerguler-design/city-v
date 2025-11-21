@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
 // POST - Yeni kategori ekle
 export async function POST(request: NextRequest) {
   try {
-    // JWT token authentication
+    // JWT token authentication - ÖNCE KONTROL ET
     const authHeader = request.headers.get('authorization');
     
     if (!authHeader?.startsWith('Bearer ')) {
@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
+    // Authentication başarılı, body'yi parse et
     const body = await request.json();
     const { businessId, name, icon = '📦', displayOrder = 0 } = body;
 
@@ -91,8 +92,8 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await query(
-      `INSERT INTO business_menu_categories (business_id, name, icon, display_order)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO business_menu_categories (business_id, name, icon, display_order, is_active)
+       VALUES ($1, $2, $3, $4, true)
        RETURNING *`,
       [businessId, name, icon, displayOrder]
     );
