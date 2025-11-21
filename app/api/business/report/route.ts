@@ -1,5 +1,7 @@
+import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+
+const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * 📊 Date Range Report API
@@ -28,8 +30,8 @@ export async function GET(req: NextRequest) {
     end.setHours(23, 59, 59, 999); // End of day
 
     // Get analytics for date range
-    const analyticsResult = await query(
-      `SELECT 
+    const analytics = await sql`
+      SELECT 
         ia.id,
         ia.camera_id,
         ia.person_count,
@@ -40,15 +42,13 @@ export async function GET(req: NextRequest) {
         bc.location as camera_location
        FROM iot_ai_analysis ia
        JOIN business_cameras bc ON bc.id = ia.camera_id
-       WHERE bc.business_user_id = $1
-         AND ia.created_at >= $2
-         AND ia.created_at <= $3
-       ORDER BY ia.created_at DESC`,
-      [businessUserId, start.toISOString(), end.toISOString()]
-    );
+       WHERE bc.business_user_id = ${businessUserId}
+         AND ia.created_at >= ${start.toISOString()}
+         AND ia.created_at <= ${end.toISOString()}
+       ORDER BY ia.created_at DESC
+    `;
 
     // Calculate summary stats
-    const analytics = analyticsResult.rows;
     const totalRecords = analytics.length;
     
     const summaryStats = {

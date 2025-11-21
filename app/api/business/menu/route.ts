@@ -16,24 +16,26 @@ const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 // GET - Menüyü getir
 export async function GET(request: NextRequest) {
   try {
-    // JWT token authentication
+    console.log('🍽️ Business Menu GET API başladı');
+    
+    // JWT token authentication - optional for menu viewing
     const authHeader = request.headers.get('authorization');
+    let user = null;
     
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    let user;
-    
-    try {
-      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      try {
+        user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+        console.log('✅ Token doğrulandı:', user.email);
+      } catch (error) {
+        console.log('⚠️ Token geçersiz, anonim erişim');
+      }
     }
 
     const { searchParams } = new URL(request.url);
     const businessId = searchParams.get('businessId');
+
+    console.log('📋 Menu GET request:', { businessId, hasAuth: !!user });
 
     if (!businessId) {
       return NextResponse.json(
@@ -42,18 +44,44 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Business sahibi kontrolü (sadece authenticated users için)
+    if (user) {
+      const ownershipCheck = await sql`
+        SELECT id FROM business_users 
+        WHERE id = ${user.userId}
+      `;
+
+      if (ownershipCheck.length === 0) {
+        console.log('❌ Business user not found');
+        return NextResponse.json(
+          { error: 'Business kullanıcısı bulunamadı' },
+          { status: 403 }
+        );
+      }
+      
+      // businessId parametresi ile JWT userId eşleşmeli
+      if (parseInt(businessId) !== user.userId) {
+        console.log('❌ Business ID mismatch:', { businessId, userId: user.userId });
+        return NextResponse.json(
+          { error: 'Bu menüyü görme yetkiniz yok' },
+          { status: 403 }
+        );
+      }
+    }
+
+    console.log('🔍 Menu kategorileri alınıyor...');
+
     // Kategorileri getir
-    const categoriesResult = await sql(
-      `SELECT id, name, display_order, is_active, icon
-       FROM business_menu_categories
-       WHERE business_id = $1
-       ORDER BY display_order ASC, name ASC`,
-      [businessId]
-    );
+    const categoriesResult = await sql`
+      SELECT id, name, display_order, is_active, icon
+      FROM business_menu_categories
+      WHERE business_user_id = ${businessId}
+      ORDER BY display_order ASC, name ASC
+    `;
 
     // Tüm ürünleri getir (category_id üzerinden)
-    const itemsResult = await sql(
-      `SELECT 
+    const itemsResult = await sql`
+      SELECT 
         mi.id,
         mi.category_id,
         mi.name,
@@ -71,10 +99,11 @@ export async function GET(request: NextRequest) {
         mi.display_order
        FROM business_menu_items mi
        INNER JOIN business_menu_categories mc ON mi.category_id = mc.id
-       WHERE mc.business_id = $1
-       ORDER BY mi.display_order ASC, mi.name ASC`,
-      [businessId]
-    );
+       WHERE mc.business_user_id = ${businessId}
+       ORDER BY mi.display_order ASC, mi.name ASC
+    `;
+
+    console.log(`✅ Menu data loaded: ${categoriesResult.length} categories, ${itemsResult.length} items`);
 
     // Kategorilere ürünleri grupla
     const categoriesWithItems = categoriesResult.map(category => ({
@@ -140,8 +169,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await sql(
-      `INSERT INTO business_menu_items (
+    const result = await sql`
+      INSERT INTO business_menu_items (
         business_id,
         category_id,
         name,
@@ -154,23 +183,22 @@ export async function POST(request: NextRequest) {
         preparation_time,
         calories,
         is_featured
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING *`,
-      [
-        businessId,
-        categoryId,
-        name,
-        description,
-        price,
-        originalPrice,
-        imageUrl,
-        allergens,
-        dietaryInfo,
-        preparationTime,
-        calories,
-        isFeatured
-      ]
-    );
+      ) VALUES (
+        ${businessId},
+        ${categoryId},
+        ${name},
+        ${description},
+        ${price},
+        ${originalPrice},
+        ${imageUrl},
+        ${allergens},
+        ${dietaryInfo},
+        ${preparationTime},
+        ${calories},
+        ${isFeatured}
+      )
+      RETURNING *
+    `;
 
     return NextResponse.json({
       success: true,

@@ -896,7 +896,7 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
               {analytics.hourlyData.reduce((sum, h) => sum + h.visitors, 0) === 0 ? (
                 <div className="space-y-2">
                   <p className="text-sm text-indigo-800">
-                    🔄 <strong>Veri toplama başlatıldı:</strong> AI analizi için ESP32-CAM cihazlarınızdan gerçek zamanlı veri bekleniyor.
+                    🔄 <strong>Veri toplama başlatıldı:</strong> AI analizi için City-V Kamera cihazlarınızdan gerçek zamanlı veri bekleniyor.
                   </p>
                   <p className="text-xs text-indigo-600 bg-indigo-100 p-2 rounded">
                     ⚡ <em>İlk analiz sonuçları 5-10 dakika içinde hazır olacak.</em>
@@ -984,7 +984,7 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
                 
                 <h3 className="text-lg font-bold text-gray-900 mb-2">Sistem Hazır, Veri Bekleniyor</h3>
                 <p className="text-sm text-gray-600 mb-4 max-w-md mx-auto">
-                  ESP32-CAM cihazlarınız aktif olduğunda gerçek zamanlı aktiviteler burada görünecek
+                  City-V Kamera cihazlarınız aktif olduğunda gerçek zamanlı aktiviteler burada görünecek
                 </p>
                 
                 {/* Status indicators */}

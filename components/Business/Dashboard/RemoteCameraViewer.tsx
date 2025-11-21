@@ -271,7 +271,7 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     // HTTPS Mixed Content sorunu için proxy kullan
     const proxyUrl = `/api/camera-proxy?url=${encodeURIComponent(finalUrl)}`;
     
-    console.log('🚀 DIRECT ESP32 Stream:', finalUrl.replace(/(username|password)=[^&]*/g, '$1=***'));
+    console.log('🚀 DIRECT City-V Stream:', finalUrl.replace(/(username|password)=[^&]*/g, '$1=***'));
     console.log('🔒 HTTPS Proxy Stream:', proxyUrl);
     console.log('📹 Camera Details:', {
       id: camera.id || camera.device_id,

@@ -34,35 +34,33 @@ export async function POST(req: NextRequest) {
     console.log('💬 Adding review:', { locationId, userId, sentiment, priceRating });
 
     // Insert review - WITHOUT tags (column doesn't exist)
-    const result = await sql(
-      `INSERT INTO location_reviews (
+    const result = await sql`
+      INSERT INTO location_reviews (
         location_id, user_id, user_email, user_name,
         rating, comment, sentiment, price_rating
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, created_at`,
-      [
-        locationId,
-        userId || null,
-        userEmail || null,
-        userName || 'Anonim Kullanıcı',
-        rating || null,
-        comment || null,
-        sentiment || null,
-        priceRating || null
-      ]
-    );
+      ) VALUES (
+        ${locationId},
+        ${userId || null},
+        ${userEmail || null},
+        ${userName || 'Anonim Kullanıcı'},
+        ${rating || null},
+        ${comment || null},
+        ${sentiment || null},
+        ${priceRating || null}
+      )
+      RETURNING id, created_at
+    `;
 
     console.log('✅ Review added:', result[0]);
 
     // 🔔 Create notification for business owner
     try {
       // Find business_user_id from location_id
-      const businessResult = await sql(
-        `SELECT bp.user_id, bp.business_name
-         FROM business_profiles bp
-         WHERE bp.location_id = $1`,
-        [locationId]
-      );
+      const businessResult = await sql`
+        SELECT bp.user_id, bp.business_name
+        FROM business_profiles bp
+        WHERE bp.id = ${locationId}
+      `;
 
       if (businessResult.length > 0) {
         const businessUserId = businessResult[0].user_id;
@@ -76,16 +74,15 @@ export async function POST(req: NextRequest) {
         // Create rating stars
         const ratingStars = rating ? '⭐'.repeat(rating) : '';
 
-        await sql(
-          `INSERT INTO business_notifications (
+        await sql`
+          INSERT INTO business_notifications (
             business_user_id, type, title, message, data
-          ) VALUES ($1, $2, $3, $4, $5)`,
-          [
-            businessUserId,
-            'review',
-            'Yeni Yorum Aldınız!',
-            `${userName} ${businessName} için ${ratingStars} ${sentimentEmoji} yorum yaptı`,
-            JSON.stringify({
+          ) VALUES (
+            ${businessUserId},
+            ${'review'},
+            ${'Yeni Yorum Aldınız!'},
+            ${`${userName} ${businessName} için ${ratingStars} ${sentimentEmoji} yorum yaptı`},
+            ${JSON.stringify({
               locationId,
               userId,
               userName,
@@ -94,9 +91,9 @@ export async function POST(req: NextRequest) {
               priceRating,
               comment: comment ? comment.substring(0, 100) : null,
               reviewId: result[0].id
-            })
-          ]
-        );
+            })}
+          )
+        `;
 
         console.log(`🔔 Notification created for business user ${businessUserId}`);
       }
@@ -147,15 +144,14 @@ export async function GET(req: NextRequest) {
     if (businessUserId) {
       console.log('🔍 Business reviews query for user ID:', businessUserId);
       
-      const businessResult = await sql(
-        `SELECT lr.*, bp.business_name
-         FROM location_reviews lr
-         JOIN business_profiles bp ON lr.location_id = bp.location_id
-         WHERE bp.user_id = $1
-         ORDER BY lr.created_at DESC
-         LIMIT $2`,
-        [businessUserId, parseInt(limit)]
-      );
+      const businessResult = await sql`
+        SELECT lr.*, bp.business_name
+        FROM location_reviews lr
+        JOIN business_profiles bp ON lr.location_id = bp.id
+        WHERE bp.user_id = ${businessUserId}
+        ORDER BY lr.created_at DESC
+        LIMIT ${parseInt(limit)}
+      `;
 
       console.log('📊 Found reviews:', businessResult.length);
       if (businessResult.length > 0) {
@@ -199,10 +195,9 @@ export async function GET(req: NextRequest) {
 
     if (getSummary) {
       // Summary view
-      const summaryResult = await sql(
-        `SELECT * FROM location_review_summary WHERE location_id = $1`,
-        [locationId]
-      );
+      const summaryResult = await sql`
+        SELECT * FROM location_review_summary WHERE location_id = ${locationId}
+      `;
 
       const summary = summaryResult[0] || {
         location_id: locationId,
@@ -228,8 +223,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Full reviews
-    const result = await sql(
-      `SELECT 
+    const result = await sql`
+      SELECT 
         id,
         user_name,
         rating,
@@ -241,11 +236,10 @@ export async function GET(req: NextRequest) {
         created_at,
         is_verified
        FROM location_reviews
-       WHERE location_id = $1
+       WHERE location_id = ${locationId}
        ORDER BY created_at DESC
-       LIMIT $2`,
-      [locationId, parseInt(limit)]
-    );
+       LIMIT ${parseInt(limit)}
+    `;
 
     console.log(`📊 Found ${result.length} reviews for ${locationId}`);
 

@@ -128,7 +128,7 @@ function LiveAnalyticsSummary({ businessUserId }: { businessUserId: number }) {
         <div className="flex-1">
           <p className="text-sm font-medium text-blue-900">Gerçek Zamanlı Veri Akışı Aktif</p>
           <p className="text-xs text-blue-700 mt-1">
-            ESP32-CAM cihazlarınızdan gelen canlı veriler gösteriliyor. Günlük özet raporu gün sonunda otomatik oluşturulacak.
+            City-V Kamera cihazlarınızdan gelen canlı veriler gösteriliyor. Günlük özet raporu gün sonunda otomatik oluşturulacak.
           </p>
         </div>
       </div>

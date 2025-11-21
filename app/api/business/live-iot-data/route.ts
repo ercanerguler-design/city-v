@@ -44,9 +44,23 @@ export async function GET(request: NextRequest) {
         bc.is_active as camera_active,
         bc.created_at as camera_created_at
         
+        -- Crowd analysis bilgileri (son 5 dakika)
+        , ca.people_count
+        , ca.crowd_level
+        , ca.current_occupancy
+        , ca.timestamp as analysis_timestamp
+        
       FROM business_profiles bp
       INNER JOIN business_users bu ON bp.user_id = bu.id
       LEFT JOIN business_cameras bc ON bu.id = bc.business_user_id
+      LEFT JOIN LATERAL (
+        SELECT people_count, crowd_level, current_occupancy, timestamp
+        FROM crowd_analysis
+        WHERE camera_id = bc.id
+        AND timestamp >= NOW() - INTERVAL '5 minutes'
+        ORDER BY timestamp DESC
+        LIMIT 1
+      ) ca ON true
       
       WHERE bu.is_active = true
         AND bc.id IS NOT NULL
@@ -109,8 +123,13 @@ export async function GET(request: NextRequest) {
           isActive: row.camera_active,
           createdAt: row.camera_created_at,
           
-          // Crowd analysis verisi (şimdilik null - tablo henüz yok)
-          analysis: null
+          // Crowd analysis verisi (son 5 dakika)
+          analysis: row.people_count !== null ? {
+            personCount: row.people_count || 0,
+            crowdDensity: row.crowd_level || 'empty',
+            currentOccupancy: row.current_occupancy || 0,
+            timestamp: row.analysis_timestamp
+          } : null
         });
       }
     });
@@ -123,14 +142,25 @@ export async function GET(request: NextRequest) {
       const activeCameras = business.cameras.filter((c: any) => c.status === 'active' || c.isActive);
       const camerasWithData = business.cameras.filter((c: any) => c.analysis !== null);
       
-      // Şimdilik mock veriler (crowd_analysis tablosu olmadığı için)
-      const totalPeople = 0;
-      const avgOccupancy = 0;
-      const maxCrowdLevel = 'empty';
+      // Gerçek crowd analysis verilerinden hesapla
+      const totalPeople = camerasWithData.reduce((sum: number, cam: any) => 
+        sum + (cam.analysis?.personCount || 0), 0);
       
-      // Son güncelleme zamanı (kamera last_seen veya created_at)
+      const avgOccupancy = camerasWithData.length > 0 
+        ? Math.round(totalPeople / camerasWithData.length) 
+        : 0;
+      
+      // En yüksek crowd level'ı bul
+      const crowdLevels = camerasWithData.map((c: any) => c.analysis?.crowdDensity || 'empty');
+      const maxCrowdLevel = crowdLevels.includes('overcrowded') ? 'overcrowded'
+        : crowdLevels.includes('high') ? 'high'
+        : crowdLevels.includes('medium') ? 'medium'
+        : crowdLevels.includes('low') ? 'low'
+        : 'empty';
+      
+      // Son güncelleme zamanı (analysis timestamp veya camera last_seen)
       const lastUpdate = business.cameras.reduce((latest: any, cam: any) => {
-        const camTime = cam.lastSeen || cam.createdAt;
+        const camTime = cam.analysis?.timestamp || cam.lastSeen || cam.createdAt;
         if (!camTime) return latest;
         return !latest || new Date(camTime) > new Date(latest) ? camTime : latest;
       }, null);

@@ -90,7 +90,7 @@ export default function RealTimeAIDisplay({
           Henüz AI Analizi Yok
         </h3>
         <p className="text-gray-500">
-          ESP32-CAM kameranız fotoğraf göndermeye başladığında analizler burada görünecek.
+          City-V Kamera kameranız fotoğraf göndermeye başladığında analizler burada görünecek.
         </p>
       </div>
     );

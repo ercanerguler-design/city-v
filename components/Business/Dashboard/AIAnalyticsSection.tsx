@@ -236,7 +236,7 @@ export default function AIAnalyticsSection({ businessId }: AIAnalyticsSectionPro
             <h4 className="font-semibold text-white">Gerçek Zamanlı</h4>
           </div>
           <p className="text-sm text-gray-400">
-            ESP32-CAM sisteminden 10 saniyede bir güncellenen canlı veriler
+            City-V Kamera sisteminden 10 saniyede bir güncellenen canlı veriler
           </p>
         </div>
 

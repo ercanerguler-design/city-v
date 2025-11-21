@@ -21,12 +21,9 @@ export async function GET(request: NextRequest) {
     // Convert comma-separated IDs to array
     const locationIdArray = locationIds.split(',').map(id => id.trim());
     
-    // Prepare placeholders for SQL query
-    const placeholders = locationIdArray.map((_, index) => `$${index + 1}`).join(',');
-    
-    // Get review stats for all locations at once - Direct query from location_reviews
-    const stats = await sql(
-      `SELECT 
+    // Get review stats for all locations at once - Using tagged template
+    const stats = await sql`
+      SELECT 
         location_id,
         COUNT(*) as total_reviews,
         COALESCE(ROUND(AVG(CASE WHEN rating > 0 THEN rating END), 1), 0) as avg_rating,
@@ -36,10 +33,9 @@ export async function GET(request: NextRequest) {
         COUNT(CASE WHEN sentiment = 'neutral' THEN 1 END) as neutral_count,
         MAX(created_at) as last_review_at
       FROM location_reviews
-      WHERE location_id = ANY($1)
-      GROUP BY location_id`,
-      [locationIdArray]
-    );
+      WHERE location_id = ANY(${locationIdArray})
+      GROUP BY location_id
+    `;
 
     console.log(`✅ Found stats for ${stats.length} locations`);
 

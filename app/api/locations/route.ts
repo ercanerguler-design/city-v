@@ -10,43 +10,9 @@ const sql = neon(process.env.DATABASE_URL!);
  */
 export async function GET(req: NextRequest) {
   try {
-    console.log('🗺️ Locations API - Business + Static locations');
+    console.log('🗺️ Locations API - Emergency Static Mode');
 
-    // Business locations
-    const businessResult = await sql`
-      SELECT 
-        bp.location_id as id,
-        bp.name as business_name,
-        bp.business_type as category,
-        bp.coordinates_lat as latitude,
-        bp.coordinates_lng as longitude,
-        bp.address,
-        bp.phone,
-        bp.visible_on_map,
-        bp.created_at
-       FROM business_profiles bp
-       WHERE bp.visible_on_map = true
-         AND bp.coordinates_lat IS NOT NULL
-         AND bp.coordinates_lng IS NOT NULL
-    `;
-
-    console.log('✅ Business locations found:', businessResult.length);
-
-    const businessLocations = businessResult.map(row => ({
-      id: row.id,
-      name: row.business_name,
-      coordinates: [parseFloat(row.latitude), parseFloat(row.longitude)],
-      category: row.category || 'business',
-      address: row.address || '',
-      phone: row.phone || '',
-      currentCrowdLevel: 'moderate',
-      source: 'business',
-      isBusiness: true,
-      visible_on_map: row.visible_on_map,
-      created_at: row.created_at
-    }));
-
-    // Static locations (ankaraData'dan)
+    // Önce static location'ları al (ankaraData'dan)
     const { ankaraLocations } = await import('@/lib/ankaraData');
     const staticLocations = ankaraLocations.map(loc => ({
       ...loc,
@@ -54,10 +20,52 @@ export async function GET(req: NextRequest) {
       isBusiness: false
     }));
 
+    console.log('📍 Static locations loaded:', staticLocations.length);
+
+    // Business locations'ı almayı dene, hata olursa static ile devam et
+    let businessLocations: any[] = [];
+    
+    try {
+      const businessResult = await sql`
+        SELECT 
+          bp.id as location_id,
+          bp.business_name as name,
+          bp.business_type as category,
+          bp.latitude,
+          bp.longitude,
+          bp.address,
+          bp.phone,
+          bp.working_hours,
+          bp.created_at
+         FROM business_profiles bp
+         WHERE bp.latitude IS NOT NULL
+           AND bp.longitude IS NOT NULL
+      `;
+
+      businessLocations = businessResult.map(row => ({
+        id: row.location_id,
+        name: row.name,
+        coordinates: [parseFloat(row.latitude), parseFloat(row.longitude)],
+        category: row.category || 'business',
+        address: row.address || '',
+        phone: row.phone || '',
+        working_hours: row.working_hours || null,
+        currentCrowdLevel: 'moderate',
+        source: 'business',
+        isBusiness: true,
+        created_at: row.created_at
+      }));
+
+      console.log('✅ Business locations loaded:', businessLocations.length);
+    } catch (dbError) {
+      console.error('⚠️ Database error, using static only:', dbError);
+      // Business location'lar alınamazsa sadece static kullan
+    }
+
     // Combine both
     const allLocations = [...businessLocations, ...staticLocations];
 
-    console.log('📊 Total locations:', allLocations.length);
+    console.log('📊 Total locations returned:', allLocations.length);
     console.log('   ↳ Business:', businessLocations.length);
     console.log('   ↳ Static:', staticLocations.length);
 
@@ -66,7 +74,8 @@ export async function GET(req: NextRequest) {
       locations: allLocations,
       total: allLocations.length,
       business: businessLocations.length,
-      static: staticLocations.length
+      static: staticLocations.length,
+      mode: businessLocations.length > 0 ? 'full' : 'static-only'
     });
 
   } catch (error: any) {

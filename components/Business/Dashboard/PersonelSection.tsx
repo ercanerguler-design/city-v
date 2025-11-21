@@ -387,7 +387,7 @@ export default function PersonelSection({ businessProfile }: { businessProfile: 
                             />
                           </div>
                           <div className="text-xs text-gray-500 mt-2 text-center">
-                            ESP32-CAM kameraya gösterin
+                            City-V Kamera kameraya gösterin
                           </div>
                           <button
                             onClick={() => toast.dismiss(t.id)}

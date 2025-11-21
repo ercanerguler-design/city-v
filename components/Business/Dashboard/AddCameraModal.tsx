@@ -52,7 +52,7 @@ export default function AddCameraModal({ onClose, onSubmit, editMode = false, in
     setTestStatus('testing');
     
     try {
-      console.log('🔍 ESP32-CAM bağlantısı test ediliyor:', {
+      console.log('🔍 City-V Kamera bağlantısı test ediliyor:', {
         ip: formData.ip_address,
         port: formData.port || 80
       });
@@ -67,11 +67,11 @@ export default function AddCameraModal({ onClose, onSubmit, editMode = false, in
       });
 
       const data = await response.json();
-      console.log('📡 ESP32 doğrulama yanıtı:', data);
+      console.log('📡 City-V doğrulama yanıtı:', data);
 
       if (response.ok && data.success) {
         setTestStatus('success');
-        toast.success('✅ ESP32-CAM başarıyla tanındı!');
+        toast.success('✅ City-V Kamera başarıyla tanındı!');
         
         // Stream URL'i otomatik doldur
         if (data.streamUrl && !formData.stream_url) {
@@ -82,7 +82,7 @@ export default function AddCameraModal({ onClose, onSubmit, editMode = false, in
         }
       } else {
         setTestStatus('error');
-        toast.error(data.message || 'ESP32-CAM bulunamadı');
+        toast.error(data.message || 'City-V Kamera bulunamadı');
       }
     } catch (error) {
       console.error('❌ Bağlantı test hatası:', error);
@@ -336,7 +336,7 @@ export default function AddCameraModal({ onClose, onSubmit, editMode = false, in
                 {testStatus === 'testing' && (
                   <>
                     <span className="animate-spin">🔄</span>
-                    <span>ESP32 Aranıyor...</span>
+                    <span>City-V Aranıyor...</span>
                   </>
                 )}
                 {testStatus === 'success' && (
@@ -356,13 +356,13 @@ export default function AddCameraModal({ onClose, onSubmit, editMode = false, in
             </div>
             {testStatus === 'success' && formData.stream_url && (
               <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm font-medium text-green-800">✓ ESP32-CAM başarıyla tanındı!</p>
+                <p className="text-sm font-medium text-green-800">✓ City-V Kamera başarıyla tanındı!</p>
                 <p className="text-xs text-green-600 mt-1">Stream URL otomatik ayarlandı</p>
               </div>
             )}
             {testStatus === 'error' && (
               <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm font-medium text-red-800">✗ ESP32-CAM bulunamadı</p>
+                <p className="text-sm font-medium text-red-800">✗ City-V Kamera bulunamadı</p>
                 <p className="text-xs text-red-600 mt-1">
                   • Cihazın açık ve ağa bağlı olduğundan emin olun<br/>
                   • IP adresini ve port numarasını kontrol edin<br/>

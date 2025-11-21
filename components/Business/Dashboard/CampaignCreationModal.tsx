@@ -82,13 +82,23 @@ export default function CampaignCreationModal({ businessProfile, onClose, onSucc
     setLoading(true);
 
     try {
-      console.log('📤 Kampanya oluşturuluyor, businessId:', businessProfile.id);
+      const businessId = businessProfile.id || businessProfile.business_profile_id || businessProfile.user_id;
+      console.log('📤 Kampanya oluşturuluyor, businessProfile:', businessProfile);
+      console.log('📤 Kullanılan businessId:', businessId);
+      
+      if (!businessId) {
+        toast.error('Business ID bulunamadı!');
+        return;
+      }
       
       const response = await fetch('/api/business/campaigns', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('business_token')}`
+        },
         body: JSON.stringify({
-          businessId: businessProfile.id,
+          businessId: businessId,
           title: formData.title,
           description: formData.description,
           discountPercent: formData.discount_percent ? parseFloat(formData.discount_percent) : null,
@@ -100,7 +110,10 @@ export default function CampaignCreationModal({ businessProfile, onClose, onSucc
         })
       });
 
+      console.log('📡 Campaign API response status:', response.status);
+      
       const data = await response.json();
+      console.log('📦 Campaign API response data:', data);
 
       if (data.success) {
         toast.success(data.message || `Kampanya oluşturuldu! ${data.creditsUsed} kredi kullanıldı. Kalan: ${data.creditsRemaining}`);
