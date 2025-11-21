@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-2024';
 
 /**
  * Business Menü Ürünleri Yönetimi API - With Authentication
