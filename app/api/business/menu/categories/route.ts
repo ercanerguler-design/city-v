@@ -1,7 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import { query } from '@/lib/db';
 
 const sql = neon(process.env.DATABASE_URL!);
 const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
@@ -39,17 +38,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = await query(
-      `SELECT id, name, display_order, is_active, icon, created_at
-       FROM business_menu_categories
-       WHERE business_id = $1
-       ORDER BY display_order ASC, name ASC`,
-      [businessId]
-    );
+    const result = await sql`
+      SELECT id, name, display_order, is_active, icon, created_at
+      FROM business_menu_categories
+      WHERE business_id = ${businessId}
+      ORDER BY display_order ASC, name ASC
+    `;
 
     return NextResponse.json({
       success: true,
-      categories: result.rows
+      categories: result
     });
 
   } catch (error: any) {
@@ -91,16 +89,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await query(
-      `INSERT INTO business_menu_categories (business_id, name, icon, display_order, is_active)
-       VALUES ($1, $2, $3, $4, true)
-       RETURNING *`,
-      [businessId, name, icon, displayOrder]
-    );
+    const result = await sql`
+      INSERT INTO business_menu_categories (business_id, name, icon, display_order, is_active)
+      VALUES (${businessId}, ${name}, ${icon}, ${displayOrder}, true)
+      RETURNING *
+    `;
 
     return NextResponse.json({
       success: true,
-      category: result.rows[0],
+      category: result[0],
       message: 'Kategori başarıyla eklendi'
     });
 
@@ -142,49 +139,47 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const updateFields: string[] = [];
-    const updateValues: any[] = [];
-    let paramCount = 1;
-
-    if (name !== undefined) {
-      updateFields.push(`name = $${paramCount++}`);
-      updateValues.push(name);
-    }
-    if (icon !== undefined) {
-      updateFields.push(`icon = $${paramCount++}`);
-      updateValues.push(icon);
-    }
-    if (displayOrder !== undefined) {
-      updateFields.push(`display_order = $${paramCount++}`);
-      updateValues.push(displayOrder);
-    }
-    if (isActive !== undefined) {
-      updateFields.push(`is_active = $${paramCount++}`);
-      updateValues.push(isActive);
-    }
-
-    updateFields.push(`updated_at = NOW()`);
-    updateValues.push(categoryId);
-
-    const sqlQuery = `
-      UPDATE business_menu_categories
-      SET ${updateFields.join(', ')}
-      WHERE id = $${paramCount}
-      RETURNING *
+    // Önce mevcut kategoriyi bul
+    const existing = await sql`
+      SELECT * FROM business_menu_categories WHERE id = ${categoryId}
     `;
 
-    const result = await query(sqlQuery, updateValues);
-
-    if (result.rows.length === 0) {
+    if (existing.length === 0) {
       return NextResponse.json(
         { error: 'Kategori bulunamadı' },
         { status: 404 }
       );
     }
 
+    // Update yapılacak değerleri hazırla
+    const updateData = {
+      name: name !== undefined ? name : existing[0].name,
+      icon: icon !== undefined ? icon : existing[0].icon,
+      display_order: displayOrder !== undefined ? displayOrder : existing[0].display_order,
+      is_active: isActive !== undefined ? isActive : existing[0].is_active
+    };
+
+    const result = await sql`
+      UPDATE business_menu_categories
+      SET name = ${updateData.name}, 
+          icon = ${updateData.icon}, 
+          display_order = ${updateData.display_order}, 
+          is_active = ${updateData.is_active}, 
+          updated_at = NOW()
+      WHERE id = ${categoryId}
+      RETURNING *
+    `;
+
+    if (result.length === 0) {
+      return NextResponse.json(
+        { error: 'Kategori güncellenemedi' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      category: result.rows[0],
+      category: result[0],
       message: 'Kategori başarıyla güncellendi'
     });
 
@@ -227,24 +222,22 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Kategori altında ürün var mı kontrol et
-    const itemsCheck = await query(
-      'SELECT COUNT(*) as count FROM business_menu_items WHERE category_id = $1',
-      [categoryId]
-    );
+    const itemsCheck = await sql`
+      SELECT COUNT(*) as count FROM business_menu_items WHERE category_id = ${categoryId}
+    `;
 
-    if (parseInt(itemsCheck.rows[0].count) > 0) {
+    if (parseInt(itemsCheck[0].count) > 0) {
       return NextResponse.json(
         { error: 'Bu kategoride ürünler var. Önce ürünleri silmelisiniz.' },
         { status: 400 }
       );
     }
 
-    const result = await query(
-      'DELETE FROM business_menu_categories WHERE id = $1 RETURNING name',
-      [categoryId]
-    );
+    const result = await sql`
+      DELETE FROM business_menu_categories WHERE id = ${categoryId} RETURNING name
+    `;
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return NextResponse.json(
         { error: 'Kategori bulunamadı' },
         { status: 404 }
@@ -253,7 +246,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `${result.rows[0].name} kategorisi silindi`
+      message: `${result[0].name} kategorisi silindi`
     });
 
   } catch (error: any) {
