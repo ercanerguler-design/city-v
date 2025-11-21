@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.DATABASE_URL!);
 
 // GET - Business mekanlarını harita için getir
 export async function GET(request: NextRequest) {
   try {
     // Active business profiles'ı ve user bilgilerini getir
-    const result = await query(`
+    const result = await sql`
       SELECT 
         bp.id,
         bp.business_name as name,
@@ -33,10 +35,10 @@ export async function GET(request: NextRequest) {
         AND bp.longitude IS NOT NULL
       GROUP BY bp.id, bu.is_active, bu.membership_type
       ORDER BY bp.created_at DESC
-    `);
+    `;
 
     // Location formatına dönüştür
-    const locations = result.rows.map((row: any) => ({
+    const locations = result.map((row: any) => ({
       id: `business-${row.id}`,
       name: row.name,
       category: mapBusinessTypeToCategory(row.category),

@@ -71,24 +71,39 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 Menu kategorileri alınıyor...');
 
-    // Get business profile's business_id from business_profiles
-    const businessProfileResult = await sql`
+    // Get business profile from business_users.id → business_profiles.user_id
+    // businessId can be either business_users.id OR business_profiles.id
+    // Try both to support backward compatibility
+    let profileId = businessId;
+    
+    // First check if it's a business_profiles.id
+    const directProfileCheck = await sql`
       SELECT id FROM business_profiles WHERE id = ${businessId}
     `;
     
-    if (businessProfileResult.length === 0) {
-      console.log('❌ Business profile not found:', businessId);
-      return NextResponse.json(
-        { error: 'İşletme bulunamadı' },
-        { status: 404 }
-      );
+    if (directProfileCheck.length === 0) {
+      // If not found, try as business_users.id
+      const userToProfileResult = await sql`
+        SELECT id FROM business_profiles WHERE user_id = ${businessId}
+      `;
+      
+      if (userToProfileResult.length === 0) {
+        console.log('❌ Business profile not found for businessId:', businessId);
+        return NextResponse.json(
+          { error: 'İşletme bulunamadı' },
+          { status: 404 }
+        );
+      }
+      
+      profileId = userToProfileResult[0].id;
+      console.log(`✅ Converted business_users.id ${businessId} → business_profiles.id ${profileId}`);
     }
 
     // Kategorileri getir - business_id kullan (business_profiles.id ile aynı)
     const categoriesResult = await sql`
       SELECT id, name, display_order, is_active, icon
       FROM business_menu_categories
-      WHERE business_id = ${businessId}
+      WHERE business_id = ${profileId}
       ORDER BY display_order ASC, name ASC
     `;
 

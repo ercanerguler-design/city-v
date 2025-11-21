@@ -35,7 +35,10 @@ function checkRealWorkingHours(workingHours: any, now: Date): { isOpen: boolean,
   // Bugünkü çalışma saatleri
   const todayHours = workingHours[currentDayName];
   
-  if (!todayHours || !todayHours.isOpen) {
+  // Check if closed - support both 'closed: true' and 'isOpen: false' formats
+  const isClosed = todayHours?.closed === true || todayHours?.isOpen === false;
+  
+  if (!todayHours || isClosed) {
     const dayNamesTurkish = {
       sunday: 'Pazar',
       monday: 'Pazartesi', 
