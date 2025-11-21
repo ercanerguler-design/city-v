@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
     let businessLocations: any[] = [];
     
     if (includeBusiness) {
-      const result = await sql(
-        `SELECT 
+      const result = await sql`
+        SELECT 
           bp.location_id as id,
           bp.business_name as name,
           COALESCE(bp.category, 'other') as category,
@@ -49,13 +49,8 @@ export async function GET(req: NextRequest) {
            AND bp.latitude IS NOT NULL
            AND bp.longitude IS NOT NULL
            AND bp.auto_sync_to_cityv = true
-           ${category ? 'AND bp.category = $1' : ''}
-           ${city !== 'all' ? (category ? 'AND bp.city = $2' : 'AND bp.city = $1') : ''}
-         ORDER BY bp.created_at DESC`,
-        category && city !== 'all' ? [category, city] : 
-        category ? [category] : 
-        city !== 'all' ? [city] : []
-      );
+         ORDER BY bp.created_at DESC
+      `;
 
       businessLocations = result.map(row => ({
         id: row.id,
