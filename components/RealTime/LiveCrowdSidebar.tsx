@@ -88,36 +88,56 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
   const loadBusinessIoTData = async () => {
     try {
       setIotLoading(true);
-      console.log('📡 Business IoT verileri yükleniyor...');
-      console.log('👤 User durumu:', { 
-        isAuthenticated, 
-        hasUser: !!user, 
-        membershipTier: user?.membershipTier,
-        userId: user?.id 
+      console.log('🔥 LIVE CROWD SIDEBAR - Business IoT verileri yüklenmeye başlanıyor...');
+      console.log('🔧 Debug durumu:', {
+        isOpen,
+        hasLocations: !!locations,
+        locationsLength: locations?.length || 0,
+        isAuthenticated,
+        userDetails: user ? { id: user.id, email: user.email, tier: user.membershipTier } : null
       });
       
       const response = await fetch('/api/business/live-iot-data');
       
-      console.log('📡 API Response Status:', response.status);
+      console.log('📡 Business IoT API Response Status:', response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ API HTTP hatası:', response.status, errorText);
+        console.error('❌ Business IoT API HTTP hatası:', response.status, errorText);
         return;
       }
       
       const data = await response.json();
-      console.log('📦 API Response Data:', data);
+      console.log('📦 Business IoT API Full Response:', data);
       
       if (data.success) {
-        setBusinessIoTData(data.businesses || []);
-        console.log('✅ Business IoT verileri yüklendi:', data.businesses?.length || 0);
+        const businesses = data.businesses || [];
+        setBusinessIoTData(businesses);
+        console.log('✅ Business IoT verileri yüklendi:');
+        console.log('  - Toplam işletme sayısı:', businesses.length);
         
-        if (data.businesses && data.businesses.length > 0) {
-          console.log('📊 İlk business örneği:', {
-            name: data.businesses[0].name,
-            cameras: data.businesses[0].cameras?.length,
-            hasData: data.businesses[0].summary?.hasRealtimeData
+        if (businesses.length > 0) {
+          console.log('  - İlk işletme örneği:', {
+            id: businesses[0].id,
+            name: businesses[0].name,
+            type: businesses[0].type,
+            cameras: businesses[0].cameras?.length || 0,
+            hasData: businesses[0].summary?.hasRealtimeData,
+            location_id: businesses[0].location_id,
+            business_profile_id: businesses[0].business_profile_id
+          });
+          
+          // Tüm işletmeleri listele
+          businesses.forEach((biz: any, index: number) => {
+            console.log(`  ${index + 1}. ${biz.name} - ID: ${biz.id}, Location: ${biz.location_id}, Profile: ${biz.business_profile_id}`);
+          });
+        } else {
+          console.log('ℹ️ Hiç business IoT verisi bulunamadı');
+        }
+      } else {
+        console.error('❌ Business IoT API başarısız:', data.error);
+        console.error('📋 Detaylar:', data.details);
+      }
           });
         } else {
           console.log('ℹ️ Hiç business IoT verisi bulunamadı');
@@ -147,14 +167,21 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
 
   // Gerçek business locations ile analiz (mock data YOK)
   useEffect(() => {
+    console.log('🔥 LiveCrowdSidebar useEffect tetiklendi:', {
+      isOpen,
+      hasLocations: !!locations,
+      locationsLength: locations?.length || 0
+    });
+    
     if (isOpen && locations && locations.length > 0) {
-      console.log('🚀 Canlı kalabalık sistemi başlatılıyor...');
+      console.log('🚀 Canlı kalabalk sistemi başlatlıyor...');
       console.log('📊 Gerçek business sayısı:', locations.length);
       
       // İlk analizi hemen başlat - gerçek business locations ile
       analyzeOpenLocations(locations);
       
       // Business IoT verilerini de yükle
+      console.log('📡 Business IoT verileri yükleniyor...');
       loadBusinessIoTData();
       
       // Her 30 saniyede bir güncelle (API ile senkronize)
