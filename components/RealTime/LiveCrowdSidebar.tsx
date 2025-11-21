@@ -138,14 +138,6 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
         console.error('❌ Business IoT API başarısız:', data.error);
         console.error('📋 Detaylar:', data.details);
       }
-          });
-        } else {
-          console.log('ℹ️ Hiç business IoT verisi bulunamadı');
-        }
-      } else {
-        console.error('❌ API başarısız:', data.error);
-        console.error('📋 Detaylar:', data.details);
-      }
     } catch (error) {
       console.error('❌ Business IoT veri yükleme hatası:', error);
     } finally {
