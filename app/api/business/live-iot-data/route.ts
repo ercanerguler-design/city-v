@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * GET /api/business/live-iot-data
@@ -17,8 +19,8 @@ export async function GET(request: NextRequest) {
     console.log('📊 Business Live IoT Data API çağrıldı');
 
     // Business üyelerin aktif kameralarını getir
-    // Not: crowd_analysis tablosu henüz mevcut değil, sadece camera bilgilerini kullanıyoruz
-    const result = await query(`
+    // iot_crowd_analysis tablosundan gerçek verileri al
+    const result = await sql`
       SELECT 
         bp.id as business_id,
         bp.business_name,
@@ -38,63 +40,70 @@ export async function GET(request: NextRequest) {
         bc.id as camera_id,
         bc.camera_name,
         bc.ip_address,
+        bc.stream_url,
         bc.location_description,
-        bc.status as camera_status,
-        bc.last_seen,
         bc.is_active as camera_active,
-        bc.created_at as camera_created_at
+        bc.ai_enabled,
+        bc.created_at as camera_created_at,
         
-        -- Crowd analysis bilgileri (son 5 dakika)
-        , ca.people_count
-        , ca.crowd_level
-        , ca.current_occupancy
-        , ca.timestamp as analysis_timestamp
+        -- Crowd analysis bilgileri (son 5 dakika) - iot_crowd_analysis tablosu
+        ca.person_count,
+        ca.crowd_level,
+        ca.occupancy_rate,
+        ca.analysis_timestamp
         
       FROM business_profiles bp
       INNER JOIN business_users bu ON bp.user_id = bu.id
-      LEFT JOIN business_cameras bc ON bu.id = bc.business_user_id
+      LEFT JOIN business_cameras bc ON bp.id = bc.business_id AND bc.is_active = true
       LEFT JOIN LATERAL (
-        SELECT people_count, crowd_level, current_occupancy, timestamp
-        FROM crowd_analysis
+        SELECT person_count, crowd_level, occupancy_rate, analysis_timestamp
+        FROM iot_crowd_analysis
         WHERE camera_id = bc.id
-        AND timestamp >= NOW() - INTERVAL '5 minutes'
-        ORDER BY timestamp DESC
+          AND analysis_timestamp >= NOW() - INTERVAL '5 minutes'
+        ORDER BY analysis_timestamp DESC
         LIMIT 1
       ) ca ON true
       
       WHERE bu.is_active = true
         AND bc.id IS NOT NULL
-        AND (bc.status = 'active' OR bc.is_active = true)
       
-      ORDER BY bc.last_seen DESC NULLS LAST, bc.created_at DESC
-    `);
+      ORDER BY ca.analysis_timestamp DESC NULLS LAST, bc.created_at DESC
+    `;
 
-    console.log(`✅ ${result.rows.length} aktif business IoT cihazı bulundu`);
+    console.log(`✅ ${result.length} aktif business IoT cihazı bulundu`);
     
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       console.log('⚠️ Hiç IoT cihazı bulunamadı. Veritabanı kontrol edin:');
       console.log('   - business_users tablosunda added_by_admin=true kayıt var mı?');
       console.log('   - business_cameras tablosunda kayıt var mı?');
     } else {
       console.log('📊 İlk kayıt örneği:', {
-        business_id: result.rows[0].business_id,
-        business_name: result.rows[0].business_name,
-        camera_id: result.rows[0].camera_id,
-        camera_name: result.rows[0].camera_name,
-        has_analysis: !!result.rows[0].analysis_timestamp
+        business_id: result[0].business_id,
+        business_name: result[0].business_name,
+        camera_id: result[0].camera_id,
+        camera_name: result[0].camera_name,
+        has_analysis: !!result[0].analysis_timestamp
       });
     }
 
     // Verileri business bazında grupla
     const businessMap = new Map();
     
-    result.rows.forEach(row => {
+    result.forEach(row => {
       const businessId = row.business_id;
       
       if (!businessMap.has(businessId)) {
+        // Menu bilgisi için ayrı sorgu - profile_id ile
+        const menuQuery = sql`
+          SELECT COUNT(*) as category_count 
+          FROM business_menu_categories 
+          WHERE business_id = ${businessId} AND is_active = true
+        `;
+        
         businessMap.set(businessId, {
           id: businessId,
           business_profile_id: businessId, // Menu modal için profile ID ekle
+          location_id: `business-${businessId}`, // Map üzerinde eşleşmesi için
           name: row.business_name || row.company_name,
           type: row.business_type,
           address: row.address,
@@ -105,8 +114,7 @@ export async function GET(request: NextRequest) {
           phone: row.phone,
           isActive: row.business_active,
           cameras: [],
-          hasMenu: Math.random() > 0.5, // Şimdilik random - gerçek menu kontrolü eklenecek
-          menuCategoryCount: Math.floor(Math.random() * 5) + 1 // 1-5 arası kategori
+          menuPromise: menuQuery // Menu bilgisi promise olarak sakla
         });
       }
       
@@ -118,16 +126,16 @@ export async function GET(request: NextRequest) {
           id: row.camera_id,
           name: row.camera_name,
           location: row.location_description,
-          status: row.camera_status,
-          lastSeen: row.last_seen,
+          streamUrl: row.stream_url,
           isActive: row.camera_active,
+          aiEnabled: row.ai_enabled,
           createdAt: row.camera_created_at,
           
-          // Crowd analysis verisi (son 5 dakika)
-          analysis: row.people_count !== null ? {
-            personCount: row.people_count || 0,
+          // Crowd analysis verisi (son 5 dakika) - iot_crowd_analysis'ten
+          analysis: row.person_count !== null ? {
+            personCount: row.person_count || 0,
             crowdDensity: row.crowd_level || 'empty',
-            currentOccupancy: row.current_occupancy || 0,
+            currentOccupancy: row.occupancy_rate || 0,
             timestamp: row.analysis_timestamp
           } : null
         });
@@ -137,9 +145,26 @@ export async function GET(request: NextRequest) {
     // Map'i array'e çevir
     const businesses = Array.from(businessMap.values());
 
+    // Menu bilgilerini çöz (Promise.all ile)
+    const businessesWithMenu = await Promise.all(
+      businesses.map(async (business) => {
+        const menuResult = await business.menuPromise;
+        const categoryCount = parseInt(menuResult[0]?.category_count || '0');
+        
+        console.log(`  ${business.name}: ${categoryCount} menu categories`);
+        
+        return {
+          ...business,
+          hasMenu: categoryCount > 0,
+          menuCategoryCount: categoryCount,
+          menuPromise: undefined // Promise'i temizle
+        };
+      })
+    );
+
     // Her business için özet istatistikler
-    const enrichedBusinesses = businesses.map(business => {
-      const activeCameras = business.cameras.filter((c: any) => c.status === 'active' || c.isActive);
+    const enrichedBusinesses = businessesWithMenu.map(business => {
+      const activeCameras = business.cameras.filter((c: any) => c.isActive);
       const camerasWithData = business.cameras.filter((c: any) => c.analysis !== null);
       
       // Gerçek crowd analysis verilerinden hesapla
@@ -158,12 +183,14 @@ export async function GET(request: NextRequest) {
         : crowdLevels.includes('low') ? 'low'
         : 'empty';
       
-      // Son güncelleme zamanı (analysis timestamp veya camera last_seen)
+      // Son güncelleme zamanı (analysis timestamp veya camera createdAt)
       const lastUpdate = business.cameras.reduce((latest: any, cam: any) => {
-        const camTime = cam.analysis?.timestamp || cam.lastSeen || cam.createdAt;
+        const camTime = cam.analysis?.timestamp || cam.createdAt;
         if (!camTime) return latest;
         return !latest || new Date(camTime) > new Date(latest) ? camTime : latest;
       }, null);
+      
+      console.log(`  ${business.name}: ${camerasWithData.length}/${activeCameras.length} cameras with data, ${totalPeople} people, level: ${maxCrowdLevel}`);
 
       return {
         ...business,
