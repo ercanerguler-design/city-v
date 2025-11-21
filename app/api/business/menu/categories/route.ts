@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { query } from '@/lib/db';
 
 const sql = neon(process.env.DATABASE_URL!);
 const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
@@ -63,6 +64,22 @@ export async function GET(request: NextRequest) {
 // POST - Yeni kategori ekle
 export async function POST(request: NextRequest) {
   try {
+    // JWT token authentication
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized - Token gerekli' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    let user;
+    
+    try {
+      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { businessId, name, icon = '📦', displayOrder = 0 } = body;
 
