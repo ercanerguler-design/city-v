@@ -43,14 +43,7 @@ export async function GET(req: NextRequest) {
           bp.photos,
           bp.business_type as "businessType",
           bp.user_id as "businessUserId",
-          bp.id as "businessProfileId",
-          COALESCE((
-            SELECT SUM(ia.person_count)
-            FROM iot_ai_analysis ia
-            JOIN business_cameras bc ON ia.camera_id = bc.id
-            WHERE bc.business_user_id = bp.user_id
-              AND ia.created_at >= NOW() - INTERVAL '5 minutes'
-          ), 0) as "currentPeopleCount"
+          bp.id as "businessProfileId"
          FROM business_profiles bp
          WHERE bp.is_visible_on_map = true
            AND bp.latitude IS NOT NULL
@@ -84,7 +77,7 @@ export async function GET(req: NextRequest) {
         businessType: row.businessType,
         businessUserId: row.businessUserId, // user_id (20)
         businessProfileId: row.businessProfileId, // profile id (15) - for menu API
-        currentPeopleCount: parseInt(row.currentPeopleCount || 0),
+        currentPeopleCount: 0, // Simplified - no real-time data for now
         source: 'business' // Business kaynaklı
       }));
     }
