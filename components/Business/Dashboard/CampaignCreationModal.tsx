@@ -82,19 +82,21 @@ export default function CampaignCreationModal({ businessProfile, onClose, onSucc
     setLoading(true);
 
     try {
-      console.log('📤 Kampanya oluşturuluyor, business_id:', businessProfile.id);
+      console.log('📤 Kampanya oluşturuluyor, businessId:', businessProfile.id);
       
       const response = await fetch('/api/business/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          business_id: businessProfile.id,
-          ...formData,
-          discount_percent: formData.discount_percent ? parseFloat(formData.discount_percent) : null,
-          discount_amount: formData.discount_amount ? parseFloat(formData.discount_amount) : null,
-          radius_km: parseFloat(formData.radius_km),
-          min_age: formData.min_age ? parseInt(formData.min_age) : null,
-          max_age: formData.max_age ? parseInt(formData.max_age) : null
+          businessId: businessProfile.id,
+          title: formData.title,
+          description: formData.description,
+          discountPercent: formData.discount_percent ? parseFloat(formData.discount_percent) : null,
+          discountAmount: formData.discount_amount ? parseFloat(formData.discount_amount) : null,
+          startDate: formData.start_date,
+          endDate: formData.end_date,
+          targetAudience: formData.target_audience,
+          imageUrl: formData.banner_url || null
         })
       });
 
