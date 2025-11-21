@@ -115,6 +115,22 @@ export async function POST(request: NextRequest) {
 // PUT - Kategori güncelle
 export async function PUT(request: NextRequest) {
   try {
+    // JWT token authentication
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized - Token gerekli' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    let user;
+    
+    try {
+      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { categoryId, name, icon, displayOrder, isActive } = body;
 
@@ -183,6 +199,22 @@ export async function PUT(request: NextRequest) {
 // DELETE - Kategori sil
 export async function DELETE(request: NextRequest) {
   try {
+    // JWT token authentication
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized - Token gerekli' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    let user;
+    
+    try {
+      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const categoryId = searchParams.get('categoryId');
 
