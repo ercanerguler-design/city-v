@@ -174,14 +174,6 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
       toast.error('Bağlantı hatası');
     }
   };
-        loadMenu();
-      } else {
-        toast.error(data.error || 'Eklenemedi');
-      }
-    } catch (error) {
-      toast.error('Eklenemedi');
-    }
-  };
 
   const deleteItem = async (itemId: number, itemName: string) => {
     if (!confirm(`"${itemName}" ürününü silmek istediğinize emin misiniz?`)) {
