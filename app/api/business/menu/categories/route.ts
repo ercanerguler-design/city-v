@@ -11,17 +11,31 @@ const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-2024';
 
 // Authentication helper function
 async function verifyBusinessUser(request: NextRequest) {
-  const token = request.headers.get('Authorization')?.replace('Bearer ', '') || 
-                request.cookies.get('business_token')?.value;
+  console.log('🔍 Auth verification started');
+  
+  const authHeader = request.headers.get('Authorization');
+  const cookieToken = request.cookies.get('business_token')?.value;
+  
+  console.log('📋 Auth debug:', {
+    authHeader: authHeader ? authHeader.substring(0, 30) + '...' : null,
+    hasCookie: !!cookieToken,
+    cookieValue: cookieToken ? cookieToken.substring(0, 30) + '...' : null
+  });
+  
+  const token = authHeader?.replace('Bearer ', '') || cookieToken;
 
   if (!token) {
     throw new Error('Token bulunamadı');
   }
 
+  console.log('🎫 Using token:', token.substring(0, 30) + '...');
+
   let decoded: any;
   try {
     decoded = jwt.verify(token, JWT_SECRET);
+    console.log('✅ Token verified, userId:', decoded.userId);
   } catch (error) {
+    console.log('❌ Token verification failed:', error.message);
     throw new Error('Geçersiz token');
   }
 
