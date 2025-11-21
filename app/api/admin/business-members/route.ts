@@ -1,7 +1,9 @@
+import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { sendBusinessWelcomeEmail } from '@/lib/emailService';
+
+const sql = neon(process.env.DATABASE_URL!);
 
 // Lisans anahtarı oluşturucu
 function generateLicenseKey(): string {
@@ -16,7 +18,7 @@ function generateLicenseKey(): string {
 // GET - Business üyeleri listele (YENİ SİSTEM)
 export async function GET(request: NextRequest) {
   try {
-    const result = await query(`
+    const result = await sql`
       SELECT 
         bu.id,
         bu.email,
@@ -41,11 +43,11 @@ export async function GET(request: NextRequest) {
       FROM business_users bu
       WHERE bu.added_by_admin = true
       ORDER BY bu.created_at DESC
-    `);
+    `;
 
     return NextResponse.json({
       success: true,
-      members: result.rows
+      members: result
     });
   } catch (error) {
     console.error('❌ Business members list error:', error);
@@ -112,12 +114,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Email kontrolü - SADECE AKTIF admin eklentilerini kontrol et
-    const existingUser = await query(
-      'SELECT id, added_by_admin FROM business_users WHERE email = $1 AND added_by_admin = true',
-      [email]
-    );
+    const existingUser = await sql`
+      SELECT id, added_by_admin FROM business_users WHERE email = ${email} AND added_by_admin = true
+    `;
 
-    if (existingUser.rows.length > 0) {
+    if (existingUser.length > 0) {
       return NextResponse.json(
         { success: false, error: 'Bu email adresi zaten aktif business üye!' },
         { status: 400 }
@@ -127,26 +128,24 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Email ${email} kullanılabilir (added_by_admin=true olan kayıt yok)`);
 
     // Ek kontrol: Herhangi bir business_users kaydı var mı?
-    const anyUser = await query(
-      'SELECT id, email, added_by_admin FROM business_users WHERE email = $1',
-      [email]
-    );
+    const anyUser = await sql`
+      SELECT id, email, added_by_admin FROM business_users WHERE email = ${email}
+    `;
     
-    if (anyUser.rows.length > 0) {
-      console.log(`⚠️ UYARI: ${email} için business_users kaydı mevcut ama added_by_admin=false:`, anyUser.rows[0]);
+    if (anyUser.length > 0) {
+      console.log(`⚠️ UYARI: ${email} için business_users kaydı mevcut ama added_by_admin=false:`, anyUser[0]);
       // Bu durumda eski kaydı sil
-      await query('DELETE FROM business_users WHERE email = $1 AND added_by_admin = false', [email]);
+      await sql`DELETE FROM business_users WHERE email = ${email} AND added_by_admin = false`;
       console.log(`🗑️ Eski (added_by_admin=false) kayıt silindi`);
     }
 
     // BACKUP kontrolü - Daha önce silinmiş mi?
-    const backupProfiles = await query(
-      'SELECT * FROM business_profiles_backup WHERE user_email = $1 ORDER BY deleted_at DESC',
-      [email]
-    );
+    const backupProfiles = await sql`
+      SELECT * FROM business_profiles_backup WHERE user_email = ${email} ORDER BY deleted_at DESC
+    `;
 
-    const hasBackup = backupProfiles.rows.length > 0;
-    console.log(hasBackup ? `📦 ${email} için ${backupProfiles.rows.length} backup bulundu` : '🆕 Yeni kullanıcı, backup yok');
+    const hasBackup = backupProfiles.length > 0;
+    console.log(hasBackup ? `📦 ${email} için ${backupProfiles.length} backup bulundu` : '🆕 Yeni kullanıcı, backup yok');
 
     // Admin'in belirlediği şifreyi hash'le
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -155,7 +154,7 @@ export async function POST(request: NextRequest) {
     const licenseKey = generateLicenseKey();
 
     // 1. Business user oluştur (YENİ SİSTEM: membership_type ile)
-    const userResult = await query(`
+    const userResult = await sql`
       INSERT INTO business_users (
         email,
         password_hash,
@@ -177,117 +176,120 @@ export async function POST(request: NextRequest) {
         membership_expiry_date,
         max_cameras,
         license_key
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true, $13, true, true, $14, $15, $16, $17)
+      ) VALUES (
+        ${email},
+        ${hashedPassword},
+        ${fullName},
+        ${phone},
+        ${companyName},
+        ${companyType},
+        ${companyAddress},
+        ${companyCity},
+        ${companyDistrict},
+        ${taxNumber},
+        ${taxOffice},
+        ${authorizedPerson},
+        true,
+        ${adminNotes},
+        true,
+        true,
+        ${actualPlanType},
+        ${actualEndDate},
+        ${actualMaxUsers},
+        ${licenseKey}
+      )
       RETURNING id
-    `, [
-      email,
-      hashedPassword,
-      fullName,
-      phone,
-      companyName,
-      companyType,
-      companyAddress,
-      companyCity,
-      companyDistrict,
-      taxNumber,
-      taxOffice,
-      authorizedPerson,
-      adminNotes,
-      actualPlanType, // membership_type
-      actualEndDate, // membership_expiry_date - otomatik atanan veya gelen tarih
-      actualMaxUsers, // max_cameras (premium=10, enterprise=50)
-      licenseKey // license_key
-    ]);
+    `;
 
-    const userId = userResult.rows[0].id;
+    const userId = userResult[0].id;
 
     // 2. Business profile oluştur (veya backup'tan restore et)
     let profileId;
     
     if (hasBackup) {
       // BACKUP varsa restore et
-      const backup = backupProfiles.rows[0];
-      const profileResult = await query(`
+      const backup = backupProfiles[0];
+      const profileResult = await sql`
         INSERT INTO business_profiles (
           user_id, business_name, business_type, logo_url, description,
           address, city, district, postal_code, latitude, longitude,
           phone, email, website, working_hours, social_media, photos
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        ) VALUES (
+          ${userId}, ${backup.business_name}, ${backup.business_type}, ${backup.logo_url},
+          ${backup.description}, ${backup.address}, ${backup.city}, ${backup.district},
+          ${backup.postal_code}, ${backup.latitude}, ${backup.longitude}, ${backup.phone},
+          ${backup.email}, ${backup.website}, ${backup.working_hours}, ${backup.social_media},
+          ${backup.photos}
+        )
         RETURNING id
-      `, [
-        userId, backup.business_name, backup.business_type, backup.logo_url,
-        backup.description, backup.address, backup.city, backup.district,
-        backup.postal_code, backup.latitude, backup.longitude, backup.phone,
-        backup.email, backup.website, backup.working_hours, backup.social_media,
-        backup.photos
-      ]);
-      profileId = profileResult.rows[0].id;
+      `;
+      profileId = profileResult[0].id;
       
       // Backup kaydını güncelle
-      await query(`
+      await sql`
         UPDATE business_profiles_backup 
         SET restore_count = restore_count + 1, last_restored_at = NOW()
-        WHERE id = $1
-      `, [backup.id]);
+        WHERE id = ${backup.id}
+      `;
       
       console.log(`✅ Profile backup'tan restore edildi (ID: ${profileId})`);
     } else {
       // Yeni profil oluştur
-      const profileResult = await query(`
+      const profileResult = await sql`
         INSERT INTO business_profiles (
           user_id, business_name, business_type, address, city, district, phone, email
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ) VALUES (
+          ${userId}, ${companyName}, ${companyType}, ${companyAddress}, ${companyCity},
+          ${companyDistrict}, ${phone}, ${email}
+        )
         RETURNING id
-      `, [
-        userId, companyName, companyType, companyAddress, companyCity,
-        companyDistrict, phone, email
-      ]);
-      profileId = profileResult.rows[0].id;
+      `;
+      profileId = profileResult[0].id;
       console.log(`✅ Yeni profile oluşturuldu (ID: ${profileId})`);
     }
 
     // 2.1. Eğer backup varsa cameras ve campaigns'i de restore et
     if (hasBackup) {
       // Cameras restore
-      const backupCameras = await query(`
-        SELECT * FROM business_cameras_backup WHERE user_email = $1
-      `, [email]);
+      const backupCameras = await sql`
+        SELECT * FROM business_cameras_backup WHERE user_email = ${email}
+      `;
       
-      for (const cam of backupCameras.rows) {
-        await query(`
+      for (const cam of backupCameras) {
+        await sql`
           INSERT INTO business_cameras (
             business_id, camera_name, ip_address, port, location_description,
             stream_url, resolution, ai_enabled, zones, calibration_line, is_active
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
-        `, [
-          profileId, cam.camera_name, cam.ip_address, cam.port,
-          cam.location_description, cam.stream_url, cam.resolution,
-          cam.ai_enabled, cam.zones, cam.calibration_line
-        ]);
+          ) VALUES (
+            ${profileId}, ${cam.camera_name}, ${cam.ip_address}, ${cam.port},
+            ${cam.location_description}, ${cam.stream_url}, ${cam.resolution},
+            ${cam.ai_enabled}, ${cam.zones}, ${cam.calibration_line}, true
+          )
+        `;
       }
-      console.log(`✅ ${backupCameras.rows.length} kamera restore edildi`);
+      console.log(`✅ ${backupCameras.length} kamera restore edildi`);
       
       // Campaigns restore
-      const backupCampaigns = await query(`
-        SELECT * FROM business_campaigns_backup WHERE user_email = $1
-      `, [email]);
+      const backupCampaigns = await sql`
+        SELECT * FROM business_campaigns_backup WHERE user_email = ${email}
+      `;
       
-      for (const camp of backupCampaigns.rows) {
-        await query(`
+      for (const camp of backupCampaigns) {
+        await sql`
           INSERT INTO business_campaigns (
             business_id, title, description, discount_percent, discount_amount,
             start_date, end_date, target_audience, is_active
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
-        `, [
-          profileId, camp.title, camp.description, camp.discount_percent,
-          camp.discount_amount, camp.start_date, camp.end_date, camp.target_audience
-        ]);
+          ) VALUES (
+            ${profileId}, ${camp.title}, ${camp.description}, ${camp.discount_percent},
+            ${camp.discount_amount}, ${camp.start_date}, ${camp.end_date}, ${camp.target_audience}, true
+          )
+        `;
       }
-      console.log(`✅ ${backupCampaigns.rows.length} kampanya restore edildi`);
+      console.log(`✅ ${backupCampaigns.length} kampanya restore edildi`);
     }
 
     // 3. Subscription oluştur
-    await query(`
+    await sql`
       INSERT INTO business_subscriptions (
         user_id,
         plan_type,
@@ -299,37 +301,37 @@ export async function POST(request: NextRequest) {
         max_users,
         is_trial,
         features
-      ) VALUES ($1, $2, $3, $4, true, $5, $6, $7, $8, $9)
-    `, [
-      userId,
-      actualPlanType,
-      actualStartDate, // otomatik atanan başlangıç tarihi
-      actualEndDate, // otomatik atanan bitiş tarihi
-      monthlyPrice,
-      licenseKey,
-      actualMaxUsers,
-      isTrial,
-      JSON.stringify(features)
-    ]);
+      ) VALUES (
+        ${userId},
+        ${actualPlanType},
+        ${actualStartDate},
+        ${actualEndDate},
+        true,
+        ${monthlyPrice},
+        ${licenseKey},
+        ${actualMaxUsers},
+        ${isTrial},
+        ${JSON.stringify(features)}
+      )
+    `;
 
     // 4. Normal users tablosunda bu email'e sahip kullanıcı varsa membership_tier'ı güncelle
-    const normalUserCheck = await query(
-      'SELECT id FROM users WHERE email = $1',
-      [email]
-    );
+    const normalUserCheck = await sql`
+      SELECT id FROM users WHERE email = ${email}
+    `;
 
-    if (normalUserCheck.rows.length > 0) {
-      const normalUserId = normalUserCheck.rows[0].id;
+    if (normalUserCheck.length > 0) {
+      const normalUserId = normalUserCheck[0].id;
       // actualPlanType = 'premium' → membership_tier = 'business'
       // actualPlanType = 'enterprise' → membership_tier = 'enterprise'
       const actualTier = actualPlanType === 'premium' ? 'business' : 'enterprise';
       
-      await query(`
+      await sql`
         UPDATE users
         SET 
-          membership_tier = $1
-        WHERE id = $2
-      `, [actualTier, normalUserId]);
+          membership_tier = ${actualTier}
+        WHERE id = ${normalUserId}
+      `;
       
       console.log(`✅ Normal user membership updated to: ${actualTier}`);
     }
@@ -429,59 +431,42 @@ export async function PUT(request: NextRequest) {
         console.log(`📸 ${membershipType} planı için ${maxCameras} kamera limiti otomatik atandı`);
       }
       
-      await query(`
+      await sql`
         UPDATE business_users
         SET 
-          membership_type = COALESCE($1, membership_type),
-          membership_expiry_date = COALESCE($2, membership_expiry_date),
-          max_cameras = COALESCE($3, max_cameras)
-        WHERE id = $4
-      `, [
-        membershipType,
-        updateData.membership.expiryDate,
-        maxCameras,
-        userId
-      ]);
+          membership_type = COALESCE(${membershipType}, membership_type),
+          membership_expiry_date = COALESCE(${updateData.membership.expiryDate}, membership_expiry_date),
+          max_cameras = COALESCE(${maxCameras}, max_cameras)
+        WHERE id = ${userId}
+      `;
       console.log(`✅ Membership bilgileri güncellendi - ${membershipType}: ${maxCameras} kamera`);
     }
 
     // Subscription güncelle
     if (updateData.subscription) {
-      await query(`
+      await sql`
         UPDATE business_subscriptions
         SET 
-          end_date = COALESCE($1, end_date),
-          is_active = COALESCE($2, is_active),
-          plan_type = COALESCE($3, plan_type),
-          monthly_price = COALESCE($4, monthly_price)
-        WHERE user_id = $5
-      `, [
-        updateData.subscription.endDate,
-        updateData.subscription.isActive,
-        updateData.subscription.planType,
-        updateData.subscription.monthlyPrice,
-        userId
-      ]);
+          end_date = COALESCE(${updateData.subscription.endDate}, end_date),
+          is_active = COALESCE(${updateData.subscription.isActive}, is_active),
+          plan_type = COALESCE(${updateData.subscription.planType}, plan_type),
+          monthly_price = COALESCE(${updateData.subscription.monthlyPrice}, monthly_price)
+        WHERE user_id = ${userId}
+      `;
       console.log(`✅ Subscription güncellendi`);
     }
 
     // User bilgilerini güncelle
     if (updateData.user) {
-      await query(`
+      await sql`
         UPDATE business_users
         SET 
-          is_active = COALESCE($1, is_active),
-          admin_notes = COALESCE($2, admin_notes),
-          full_name = COALESCE($3, full_name),
-          phone = COALESCE($4, phone)
-        WHERE id = $5
-      `, [
-        updateData.user.isActive,
-        updateData.user.adminNotes,
-        updateData.user.fullName,
-        updateData.user.phone,
-        userId
-      ]);
+          is_active = COALESCE(${updateData.user.isActive}, is_active),
+          admin_notes = COALESCE(${updateData.user.adminNotes}, admin_notes),
+          full_name = COALESCE(${updateData.user.fullName}, full_name),
+          phone = COALESCE(${updateData.user.phone}, phone)
+        WHERE id = ${userId}
+      `;
       console.log(`✅ User bilgileri güncellendi`);
     }
 
@@ -519,12 +504,11 @@ export async function DELETE(request: NextRequest) {
 
     // 1. Email'i al
     console.log(`📧 Email alınıyor...`);
-    const userResult = await query(
-      'SELECT email FROM business_users WHERE id = $1',
-      [userId]
-    );
+    const userResult = await sql`
+      SELECT email FROM business_users WHERE id = ${userId}
+    `;
 
-    if (userResult.rows.length === 0) {
+    if (userResult.length === 0) {
       console.error(`❌ Kullanıcı bulunamadı: ${userId}`);
       return NextResponse.json(
         { success: false, error: 'Kullanıcı bulunamadı' },
@@ -532,7 +516,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const email = userResult.rows[0].email;
+    const email = userResult[0].email;
     console.log(`✅ Email bulundu: ${email}`);
 
     // 2. İlişkili kayıtları sil (try-catch ile güvenli silme)
@@ -540,30 +524,24 @@ export async function DELETE(request: NextRequest) {
     
     // 1. Önce business_profiles'dan ID'leri al
     try {
-      const profiles = await query('SELECT id FROM business_profiles WHERE user_id = $1', [userId]);
-      const profileIds = profiles.rows.map((p: any) => p.id);
+      const profiles = await sql`SELECT id FROM business_profiles WHERE user_id = ${userId}`;
+      const profileIds = profiles.map((p: any) => p.id);
       console.log(`📋 ${profileIds.length} business profile bulundu`);
       
       // 2. Profile'a bağlı tabloları sil (varsa)
       if (profileIds.length > 0) {
         // Campaigns
         try {
-          const campaignsDeleted = await query(
-            'DELETE FROM business_campaigns WHERE business_id = ANY($1)',
-            [profileIds]
-          );
-          console.log(`✅ ${campaignsDeleted.rowCount || 0} kampanya silindi`);
+          const campaignsDeleted = await sql`DELETE FROM business_campaigns WHERE business_id = ANY(${profileIds})`;
+          console.log(`✅ ${campaignsDeleted.length || 0} kampanya silindi`);
         } catch (e: any) {
           console.log(`ℹ️ Campaigns silinemedi (tablo yok olabilir): ${e.message}`);
         }
         
         // Cameras (business_id field'ı ile)
         try {
-          const camerasByProfile = await query(
-            'DELETE FROM business_cameras WHERE business_id = ANY($1)',
-            [profileIds]
-          );
-          console.log(`✅ ${camerasByProfile.rowCount || 0} kamera (business_id) silindi`);
+          const camerasByProfile = await sql`DELETE FROM business_cameras WHERE business_id = ANY(${profileIds})`;
+          console.log(`✅ ${camerasByProfile.length || 0} kamera (business_id) silindi`);
         } catch (e: any) {
           console.log(`ℹ️ Cameras (business_id) silinemedi: ${e.message}`);
         }
@@ -574,56 +552,50 @@ export async function DELETE(request: NextRequest) {
     
     // 3. Business_user_id ile kameraları sil
     try {
-      const camerasByUser = await query(
-        'DELETE FROM business_cameras WHERE business_user_id = $1',
-        [userId]
-      );
-      console.log(`✅ ${camerasByUser.rowCount || 0} kamera (business_user_id) silindi`);
+      const camerasByUser = await sql`
+        DELETE FROM business_cameras WHERE business_user_id = ${userId}
+      `;
+      console.log(`✅ ${camerasByUser.length || 0} kamera (business_user_id) silindi`);
     } catch (e: any) {
       console.log(`ℹ️ Cameras (business_user_id) silinemedi: ${e.message}`);
     }
     
     // 4. Business subscriptions sil
     try {
-      const subscriptionsDeleted = await query(
-        'DELETE FROM business_subscriptions WHERE user_id = $1',
-        [userId]
-      );
-      console.log(`✅ ${subscriptionsDeleted.rowCount || 0} subscription silindi`);
+      const subscriptionsDeleted = await sql`
+        DELETE FROM business_subscriptions WHERE user_id = ${userId}
+      `;
+      console.log(`✅ ${subscriptionsDeleted.length || 0} subscription silindi`);
     } catch (e: any) {
       console.log(`ℹ️ Subscriptions silinemedi: ${e.message}`);
     }
     
     // 5. Business profiles sil
     try {
-      const profilesDeleted = await query(
-        'DELETE FROM business_profiles WHERE user_id = $1',
-        [userId]
-      );
-      console.log(`✅ ${profilesDeleted.rowCount || 0} profil silindi`);
+      const profilesDeleted = await sql`
+        DELETE FROM business_profiles WHERE user_id = ${userId}
+      `;
+      console.log(`✅ ${profilesDeleted.length || 0} profil silindi`);
     } catch (e: any) {
       console.log(`ℹ️ Profiles silinemedi: ${e.message}`);
     }
     
     // 6. Son olarak business_users'ı sil (bu MUTLAKA başarılı olmalı)
-    const userDeleted = await query(
-      'DELETE FROM business_users WHERE id = $1',
-      [userId]
-    );
-    console.log(`✅ Business user silindi (${userDeleted.rowCount || 0} satır)`);
+    const userDeleted = await sql`
+      DELETE FROM business_users WHERE id = ${userId}
+    `;
+    console.log(`✅ Business user silindi (${userDeleted.length || 0} satır)`);
     
     // 7. Normal users tablosunda varsa membership'i free yap
     try {
-      const normalUser = await query(
-        'SELECT id FROM users WHERE email = $1',
-        [email]
-      );
+      const normalUser = await sql`
+        SELECT id FROM users WHERE email = ${email}
+      `;
 
-      if (normalUser.rows.length > 0) {
-        await query(
-          'UPDATE users SET membership_tier = $1 WHERE email = $2',
-          ['free', email]
-        );
+      if (normalUser.length > 0) {
+        await sql`
+          UPDATE users SET membership_tier = 'free' WHERE email = ${email}
+        `;
         console.log(`✅ Normal user free üyeliğe dönüştürüldü`);
       }
     } catch (e) {

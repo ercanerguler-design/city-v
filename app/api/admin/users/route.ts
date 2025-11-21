@@ -1,5 +1,7 @@
+import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+
+const sql = neon(process.env.DATABASE_URL!);
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
     `;
 
     // Normal kullanıcıları formatla
-    const formattedUsers = normalUsers.rows.map((user: any) => ({
+    const formattedUsers = normalUsers.map((user: any) => ({
       id: `normal-${user.id}`, // Unique key için prefix ekle
       original_id: user.id,
       email: user.email,
@@ -122,30 +124,31 @@ export async function PATCH(request: NextRequest) {
     
     values.push(cleanUserId);
     
-    const query = `
+    // Neon SQL ile dinamik query oluştur
+    const queryText = `
       UPDATE users 
       SET ${updateFields.join(', ')}
       WHERE id = $${paramIndex}
       RETURNING *
     `;
     
-    console.log('📝 SQL Query:', query);
+    console.log('📝 SQL Query:', queryText);
     console.log('📝 SQL Values:', values);
     
-    const result = await sql.query(query, values);
+    const result = await sql(queryText, values);
     
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return NextResponse.json(
         { error: 'Kullanıcı bulunamadı' },
         { status: 404 }
       );
     }
     
-    console.log('✅ Kullanıcı güncellendi:', result.rows[0].email);
+    console.log('✅ Kullanıcı güncellendi:', result[0].email);
     
     return NextResponse.json({
       success: true,
-      user: result.rows[0]
+      user: result[0]
     });
     
   } catch (error) {
@@ -213,7 +216,7 @@ export async function DELETE(request: NextRequest) {
         RETURNING email
       `;
       
-      if (result.rows.length === 0) {
+      if (result.length === 0) {
         await sql`ROLLBACK`;
         return NextResponse.json(
           { error: 'Kullanıcı bulunamadı' },
@@ -222,7 +225,7 @@ export async function DELETE(request: NextRequest) {
       }
       
       await sql`COMMIT`;
-      console.log('✅ Kullanıcı ve tüm ilişkili kayıtlar silindi:', result.rows[0].email);
+      console.log('✅ Kullanıcı ve tüm ilişkili kayıtlar silindi:', result[0].email);
       
       return NextResponse.json({
         success: true,
