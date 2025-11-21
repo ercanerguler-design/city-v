@@ -7,10 +7,34 @@ const sql = neon(process.env.DATABASE_URL!);
  * 🗺️ Locations API
  * City-V anasayfa haritası için tüm lokasyonları getirir
  * Static locations + Business locations (otomatik entegrasyon)
+ * 
+ * Query Parameters:
+ * - lat: User latitude (for distance filtering)
+ * - lng: User longitude (for distance filtering)
+ * - radius: Search radius in km (default: 7km)
  */
+
+// Haversine formula for distance calculation
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
 export async function GET(req: NextRequest) {
   try {
-    console.log('🗺️ Locations API - Emergency Static Mode');
+    const { searchParams } = new URL(req.url);
+    const userLat = searchParams.get('lat');
+    const userLng = searchParams.get('lng');
+    const radius = parseFloat(searchParams.get('radius') || '7'); // Default 7km
+
+    console.log('🗺️ Locations API - Global Mode', { userLat, userLng, radius });
 
     // Önce static location'ları al (ankaraData'dan)
     const { ankaraLocations } = await import('@/lib/ankaraData');
@@ -63,11 +87,28 @@ export async function GET(req: NextRequest) {
     }
 
     // Combine both
-    const allLocations = [...businessLocations, ...staticLocations];
+    let allLocations = [...businessLocations, ...staticLocations];
+
+    // Apply distance filtering if user location provided
+    if (userLat && userLng) {
+      const lat = parseFloat(userLat);
+      const lng = parseFloat(userLng);
+      
+      allLocations = allLocations
+        .map(loc => {
+          const [locLat, locLng] = loc.coordinates;
+          const distance = calculateDistance(lat, lng, locLat, locLng);
+          return { ...loc, distance };
+        })
+        .filter(loc => loc.distance <= radius)
+        .sort((a, b) => a.distance - b.distance); // Sort by distance
+      
+      console.log(`📍 Filtered to ${allLocations.length} locations within ${radius}km of user`);
+    }
 
     console.log('📊 Total locations returned:', allLocations.length);
-    console.log('   ↳ Business:', businessLocations.length);
-    console.log('   ↳ Static:', staticLocations.length);
+    console.log('   ↳ Business:', businessLocations.filter(b => !userLat || allLocations.some(a => a.id === b.id)).length);
+    console.log('   ↳ Static:', staticLocations.filter(s => !userLat || allLocations.some(a => a.id === s.id)).length);
 
     return NextResponse.json({
       success: true,

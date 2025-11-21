@@ -205,14 +205,39 @@ export default function ProfessionalHome() {
     }
   }, [isAuthenticated, user?.id, isLoaded, loadFavorites]);
 
+  // Request user location on mount
+  useEffect(() => {
+    if (!userLocation) {
+      requestUserLocation().catch(err => {
+        console.log('⚠️ User location not available:', err);
+      });
+    }
+  }, [userLocation, requestUserLocation]);
+
+  // Center map on user location when available
+  useEffect(() => {
+    if (userLocation) {
+      setMapCenter(userLocation);
+      setMapZoom(14); // Zoom closer when showing user location
+      console.log('🗺️ Map centered on user location:', userLocation);
+    }
+  }, [userLocation]);
+
   // Tüm locations'ları çek (Business + Static) - City-V Anasayfa Entegrasyonu
   useEffect(() => {
     const fetchAllLocations = async () => {
       try {
         console.log('🗺️ City-V locations çekiliyor (Business + Static)...');
         
+        // Build API URL with optional location parameters
+        let apiUrl = `/api/locations?city=${selectedCity}`;
+        if (userLocation) {
+          apiUrl += `&lat=${userLocation[0]}&lng=${userLocation[1]}&radius=7`;
+          console.log(`📍 Filtering by user location: ${userLocation[0]}, ${userLocation[1]} (7km radius)`);
+        }
+        
         // Unified API endpoint - business profiles + static locations
-        const response = await fetch(`/api/locations?city=${selectedCity}`, {
+        const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -296,7 +321,7 @@ export default function ProfessionalHome() {
     const interval = setInterval(fetchAllLocations, 30000);
     
     return () => clearInterval(interval);
-  }, [selectedCity]);
+  }, [selectedCity, userLocation]); // Re-fetch when user location changes
 
   // Map popup event listeners
   useEffect(() => {
