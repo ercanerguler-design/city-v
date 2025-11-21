@@ -1,32 +1,16 @@
 import { neon } from '@neondatabase/serverless';
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
 
 const sql = neon(process.env.DATABASE_URL!);
-const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 /**
- * Business Menü Kategori Yönetimi API
+ * Business Menu Categories API - Simplified for production
  */
 
-// GET - Kategorileri listele
+// GET - List categories
 export async function GET(request: NextRequest) {
   try {
-    // JWT token authentication
-    const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    let user;
-    
-    try {
-      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    console.log('📋 Menu Categories GET started');
 
     const { searchParams } = new URL(request.url);
     const businessId = searchParams.get('businessId');
@@ -38,12 +22,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    console.log('🔍 Getting categories for business:', businessId);
+
     const result = await sql`
       SELECT id, name, display_order, is_active, icon, created_at
       FROM business_menu_categories
       WHERE business_id = ${businessId}
       ORDER BY display_order ASC, name ASC
     `;
+
+    console.log('✅ Found categories:', result.length);
 
     return NextResponse.json({
       success: true,
@@ -53,32 +41,17 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('❌ Categories GET error:', error);
     return NextResponse.json(
-      { error: 'Kategoriler getirilemedi' },
+      { error: 'Kategoriler getirilemedi', details: error.message },
       { status: 500 }
     );
   }
 }
 
-// POST - Yeni kategori ekle
+// POST - Create new category
 export async function POST(request: NextRequest) {
   try {
-    // JWT token authentication - ÖNCE KONTROL ET
-    const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized - Token gerekli' }, { status: 401 });
-    }
+    console.log('📝 Menu Categories POST started');
 
-    const token = authHeader.substring(7);
-    let user;
-    
-    try {
-      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    // Authentication başarılı, body'yi parse et
     const body = await request.json();
     const { businessId, name, icon = '📦', displayOrder = 0 } = body;
 
@@ -89,11 +62,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('📝 Creating category:', { businessId, name, icon, displayOrder });
+
     const result = await sql`
       INSERT INTO business_menu_categories (business_id, name, icon, display_order, is_active)
       VALUES (${businessId}, ${name}, ${icon}, ${displayOrder}, true)
       RETURNING *
     `;
+
+    console.log('✅ Category created:', result[0]);
 
     return NextResponse.json({
       success: true,
@@ -104,155 +81,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('❌ Category POST error:', error);
     return NextResponse.json(
-      { error: 'Kategori eklenemedi' },
-      { status: 500 }
-    );
-  }
-}
-
-// PUT - Kategori güncelle
-export async function PUT(request: NextRequest) {
-  try {
-    // JWT token authentication
-    const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized - Token gerekli' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    let user;
-    
-    try {
-      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { categoryId, name, icon, displayOrder, isActive } = body;
-
-    if (!categoryId) {
-      return NextResponse.json(
-        { error: 'Kategori ID gerekli' },
-        { status: 400 }
-      );
-    }
-
-    // Önce mevcut kategoriyi bul
-    const existing = await sql`
-      SELECT * FROM business_menu_categories WHERE id = ${categoryId}
-    `;
-
-    if (existing.length === 0) {
-      return NextResponse.json(
-        { error: 'Kategori bulunamadı' },
-        { status: 404 }
-      );
-    }
-
-    // Update yapılacak değerleri hazırla
-    const updateData = {
-      name: name !== undefined ? name : existing[0].name,
-      icon: icon !== undefined ? icon : existing[0].icon,
-      display_order: displayOrder !== undefined ? displayOrder : existing[0].display_order,
-      is_active: isActive !== undefined ? isActive : existing[0].is_active
-    };
-
-    const result = await sql`
-      UPDATE business_menu_categories
-      SET name = ${updateData.name}, 
-          icon = ${updateData.icon}, 
-          display_order = ${updateData.display_order}, 
-          is_active = ${updateData.is_active}, 
-          updated_at = NOW()
-      WHERE id = ${categoryId}
-      RETURNING *
-    `;
-
-    if (result.length === 0) {
-      return NextResponse.json(
-        { error: 'Kategori güncellenemedi' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      category: result[0],
-      message: 'Kategori başarıyla güncellendi'
-    });
-
-  } catch (error: any) {
-    console.error('❌ Category PUT error:', error);
-    return NextResponse.json(
-      { error: 'Kategori güncellenemedi' },
-      { status: 500 }
-    );
-  }
-}
-
-// DELETE - Kategori sil
-export async function DELETE(request: NextRequest) {
-  try {
-    // JWT token authentication
-    const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized - Token gerekli' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    let user;
-    
-    try {
-      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const categoryId = searchParams.get('categoryId');
-
-    if (!categoryId) {
-      return NextResponse.json(
-        { error: 'Kategori ID gerekli' },
-        { status: 400 }
-      );
-    }
-
-    // Kategori altında ürün var mı kontrol et
-    const itemsCheck = await sql`
-      SELECT COUNT(*) as count FROM business_menu_items WHERE category_id = ${categoryId}
-    `;
-
-    if (parseInt(itemsCheck[0].count) > 0) {
-      return NextResponse.json(
-        { error: 'Bu kategoride ürünler var. Önce ürünleri silmelisiniz.' },
-        { status: 400 }
-      );
-    }
-
-    const result = await sql`
-      DELETE FROM business_menu_categories WHERE id = ${categoryId} RETURNING name
-    `;
-
-    if (result.length === 0) {
-      return NextResponse.json(
-        { error: 'Kategori bulunamadı' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `${result[0].name} kategorisi silindi`
-    });
-
-  } catch (error: any) {
-    console.error('❌ Category DELETE error:', error);
-    return NextResponse.json(
-      { error: 'Kategori silinemedi' },
+      { error: 'Kategori eklenemedi', details: error.message },
       { status: 500 }
     );
   }
