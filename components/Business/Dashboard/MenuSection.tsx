@@ -19,7 +19,9 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
     try {
       // businessProfile.user_id kullan, ID değil!
       const businessUserId = businessProfile.user_id || businessProfile.id;
-      console.log('🍽️ Menü yükle başladı, businessUserId:', businessUserId);
+      const token = localStorage.getItem('business_token');
+      
+      console.log('🍽️ Menü yükle başladı, businessUserId:', businessUserId, 'hasToken:', !!token);
       
       if (!businessUserId) {
         console.error('❌ businessProfile:', businessProfile);
@@ -27,8 +29,26 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
         return;
       }
       
-      const response = await fetch(`/api/business/menu?businessId=${businessUserId}`);
+      if (!token) {
+        console.warn('⚠️ Business token yok, authentication gerekebilir');
+      }
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`/api/business/menu?businessId=${businessUserId}`, {
+        headers
+      });
+      
+      console.log('📡 Menu load response status:', response.status);
+      
       const data = await response.json();
+      console.log('📦 Menu load response data:', data);
       
       if (data.success) {
         setCategories(data.categories || []);
@@ -51,23 +71,37 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
 
     try {
       const businessUserId = businessProfile.user_id || businessProfile.id;
-      console.log('🍽️ Kategori ekleniyor:', { businessUserId, name });
+      const token = localStorage.getItem('business_token');
+      
+      console.log('🍽️ Kategori ekleniyor:', { businessUserId, name, hasToken: !!token });
       
       if (!businessUserId) {
         toast.error('İşletme ID bulunamadı');
         return;
       }
       
+      if (!token) {
+        toast.error('Oturum süresi dolmuş, lütfen tekrar giriş yapın');
+        return;
+      }
+      
       const response = await fetch('/api/business/menu/categories', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           businessId: businessUserId,
           name
         })
       });
 
+      console.log('📡 Kategori ekleme response status:', response.status);
+      
       const data = await response.json();
+      console.log('📦 Kategori ekleme response data:', data);
+      
       if (data.success) {
         toast.success('Kategori eklendi');
         loadMenu();

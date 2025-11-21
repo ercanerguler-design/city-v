@@ -513,33 +513,33 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
                           </span>
                         </div>
                         <p className="text-xs text-gray-600 dark:text-gray-400">
-                          {location.address || 'Adres bilgisi yok'}
+                          {business.address || business.city || 'Adres bilgisi yok'}
                         </p>
                       </div>
                       <div className="ml-2 flex items-center gap-2">
                         {/* Favori Butonu */}
                         <button
                           onClick={async () => {
-                            const wasFavorite = isFavorite(location.id);
-                            await toggleFavorite(location.id, user?.id);
+                            const wasFavorite = isFavorite(business.location_id || business.id);
+                            await toggleFavorite(business.location_id || business.id, user?.id);
                             
                             if (!wasFavorite) {
-                              toast.success(`❤️ ${location.name} favorilere eklendi!`, {
+                              toast.success(`❤️ ${business.name} favorilere eklendi!`, {
                                 icon: '⭐',
                                 style: { borderRadius: '12px', background: '#10b981', color: '#fff' }
                               });
                             } else {
-                              toast(`💔 ${location.name} favorilerden çıkarıldı`, { icon: '➖' });
+                              toast(`💔 ${business.name} favorilerden çıkarıldı`, { icon: '➖' });
                             }
                           }}
                           className={cn(
                             'p-1.5 rounded-full transition-all',
-                            isFavorite(location.id)
+                            isFavorite(business.location_id || business.id)
                               ? 'bg-red-100 dark:bg-red-900/30 text-red-500'
                               : 'bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-red-50 hover:text-red-400'
                           )}
                         >
-                          <Heart className={cn('w-4 h-4', isFavorite(location.id) && 'fill-current')} />
+                          <Heart className={cn('w-4 h-4', isFavorite(business.location_id || business.id) && 'fill-current')} />
                         </button>
                         
                         {/* Yoğunluk Badge - Real IoT Data */}
@@ -600,8 +600,8 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
                       </div>
                     </div>
                     
-                    {/* Fiyatları Gör Butonu - Business Profile ID varsa */}
-                    {business.business_profile_id && (
+                    {/* Fiyatları Gör Butonu - Business Profile ID varsa ve menü varsa */}
+                    {business.business_profile_id && (business.hasMenu || business.menuCategoryCount > 0) && (
                       <button
                         onClick={() => {
                           setSelectedBusinessId(business.business_profile_id); // Profile ID kullan
@@ -611,7 +611,7 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
                         className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all font-medium shadow-sm hover:shadow-md"
                       >
                         <Receipt className="w-4 h-4" />
-                        <span>Fiyatları Gör</span>
+                        <span>Fiyatları Gör ({business.menuCategoryCount || 1})</span>
                       </button>
                     )}
                     

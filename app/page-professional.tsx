@@ -320,6 +320,29 @@ export default function ProfessionalHome() {
     };
   }, []);
 
+  // Window focus event - business page'den döndüğünde refresh
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      console.log('🔄 Window focus - Auto-refresh locations');
+      fetchAllLocations();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('🔄 Page visibility changed - Auto-refresh locations');
+        fetchAllLocations();
+      }
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   // Konum banner'ını göster (sadece bir kez, kullanıcı konumu yoksa)
   useEffect(() => {
     const timer = setTimeout(() => {

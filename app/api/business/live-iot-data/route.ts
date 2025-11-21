@@ -90,7 +90,9 @@ export async function GET(request: NextRequest) {
           longitude: parseFloat(row.longitude) || null,
           phone: row.phone,
           isActive: row.business_active,
-          cameras: []
+          cameras: [],
+          hasMenu: Math.random() > 0.5, // Şimdilik random - gerçek menu kontrolü eklenecek
+          menuCategoryCount: Math.floor(Math.random() * 5) + 1 // 1-5 arası kategori
         });
       }
       

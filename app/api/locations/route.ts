@@ -10,36 +10,63 @@ const sql = neon(process.env.DATABASE_URL!);
  */
 export async function GET(req: NextRequest) {
   try {
-    console.log('🗺️ Locations API - Basit Test');
+    console.log('🗺️ Locations API - Business + Static locations');
 
-    // Sadece business locations
-    const result = await sql`
+    // Business locations
+    const businessResult = await sql`
       SELECT 
         bp.location_id as id,
-        bp.business_name as name,
-        bp.latitude,
-        bp.longitude
+        bp.name as business_name,
+        bp.business_type as category,
+        bp.coordinates_lat as latitude,
+        bp.coordinates_lng as longitude,
+        bp.address,
+        bp.phone,
+        bp.visible_on_map,
+        bp.created_at
        FROM business_profiles bp
-       WHERE bp.is_visible_on_map = true
-         AND bp.latitude IS NOT NULL
-         AND bp.longitude IS NOT NULL
+       WHERE bp.visible_on_map = true
+         AND bp.coordinates_lat IS NOT NULL
+         AND bp.coordinates_lng IS NOT NULL
     `;
 
-    console.log('✅ Business locations found:', result.length);
+    console.log('✅ Business locations found:', businessResult.length);
 
-    const locations = result.map(row => ({
+    const businessLocations = businessResult.map(row => ({
       id: row.id,
-      name: row.name,
+      name: row.business_name,
       coordinates: [parseFloat(row.latitude), parseFloat(row.longitude)],
-      category: 'business',
+      category: row.category || 'business',
+      address: row.address || '',
+      phone: row.phone || '',
       currentCrowdLevel: 'moderate',
-      source: 'business'
+      source: 'business',
+      isBusiness: true,
+      visible_on_map: row.visible_on_map,
+      created_at: row.created_at
     }));
+
+    // Static locations (ankaraData'dan)
+    const { ankaraLocations } = await import('@/lib/ankaraData');
+    const staticLocations = ankaraLocations.map(loc => ({
+      ...loc,
+      source: 'static',
+      isBusiness: false
+    }));
+
+    // Combine both
+    const allLocations = [...businessLocations, ...staticLocations];
+
+    console.log('📊 Total locations:', allLocations.length);
+    console.log('   ↳ Business:', businessLocations.length);
+    console.log('   ↳ Static:', staticLocations.length);
 
     return NextResponse.json({
       success: true,
-      locations,
-      total: locations.length
+      locations: allLocations,
+      total: allLocations.length,
+      business: businessLocations.length,
+      static: staticLocations.length
     });
 
   } catch (error: any) {
