@@ -1,13 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 /**
- * Business Menü Ürünleri Yönetimi API
+ * Business Menü Ürünleri Yönetimi API - With Authentication
  */
+
+// Authentication helper function
+async function verifyBusinessUser(request: NextRequest) {
+  const token = request.headers.get('Authorization')?.replace('Bearer ', '') || 
+                request.cookies.get('business_token')?.value;
+
+  if (!token) {
+    throw new Error('Token bulunamadı');
+  }
+
+  let decoded: any;
+  try {
+    decoded = jwt.verify(token, JWT_SECRET);
+  } catch (error) {
+    throw new Error('Geçersiz token');
+  }
+
+  return { userId: decoded.userId };
+}
 
 // POST - Yeni ürün ekle
 export async function POST(request: NextRequest) {
   try {
+    // Authentication check
+    const { userId } = await verifyBusinessUser(request);
+    console.log('✅ Authenticated user:', userId);
+
     const body = await request.json();
     const { categoryId, name, description, price, originalPrice, imageUrl, isAvailable = true, displayOrder = 0 } = body;
 
@@ -27,9 +53,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Category'den business_id'yi al
+    // Category'den business_id'yi al ve user ownership kontrol et
     const categoryResult = await query(
-      `SELECT business_id FROM business_menu_categories WHERE id = $1`,
+      `SELECT bmc.business_id, bp.user_id 
+       FROM business_menu_categories bmc
+       JOIN business_profiles bp ON bmc.business_id = bp.id
+       WHERE bmc.id = $1`,
       [categoryId]
     );
 
@@ -40,7 +69,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const businessId = categoryResult.rows[0].business_id;
+    const category = categoryResult.rows[0];
+    if (category.user_id !== userId) {
+      return NextResponse.json(
+        { error: 'Bu işletmeye erişim yetkiniz yok' },
+        { status: 403 }
+      );
+    }
+
+    const businessId = category.business_id;
 
     const result = await query(
       `INSERT INTO business_menu_items 
@@ -58,8 +95,16 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Menu item POST error:', error);
+    
+    if (error.message.includes('Token') || error.message.includes('Geçersiz') || error.message.includes('Kullanıcı')) {
+      return NextResponse.json(
+        { error: 'Unauthorized', details: error.message },
+        { status: 401 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Ürün eklenemedi' },
+      { error: 'Ürün eklenemedi', details: error.message },
       { status: 500 }
     );
   }
