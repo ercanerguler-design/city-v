@@ -147,7 +147,6 @@ export async function POST(req: NextRequest) {
         phone,
         website,
         photos,
-        verified,
         business_type as "businessType",
         user_id as "businessUserId"
        FROM business_profiles
@@ -173,7 +172,7 @@ export async function POST(req: NextRequest) {
         phone: row.phone,
         website: row.website,
         photos: row.photos,
-        verified: row.verified,
+        verified: false, // Default false since column doesn't exist
         businessType: row.businessType,
         businessUserId: row.businessUserId,
         source: 'business'
