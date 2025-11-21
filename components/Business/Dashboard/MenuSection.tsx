@@ -17,7 +17,17 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
 
   const loadMenu = async () => {
     try {
-      const response = await fetch(`/api/business/menu?businessId=${businessProfile.id}`);
+      // businessProfile.user_id kullan, ID değil!
+      const businessUserId = businessProfile.user_id || businessProfile.id;
+      console.log('🍽️ Menü yükle başladı, businessUserId:', businessUserId);
+      
+      if (!businessUserId) {
+        console.error('❌ businessProfile:', businessProfile);
+        toast.error('İşletme ID bulunamadı');
+        return;
+      }
+      
+      const response = await fetch(`/api/business/menu?businessId=${businessUserId}`);
       const data = await response.json();
       
       if (data.success) {
@@ -25,9 +35,11 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
         console.log('✅ Menü kategorileri yüklendi:', data.categories?.length || 0, 'kategori');
       } else {
         console.error('❌ Menü API hatası:', data.error);
+        toast.error(data.error || 'Menü yüklenemedi');
       }
     } catch (error) {
       console.error('Menu load error:', error);
+      toast.error('Bağlantı hatası');
     } finally {
       setLoading(false);
     }
@@ -38,11 +50,19 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
     if (!name) return;
 
     try {
+      const businessUserId = businessProfile.user_id || businessProfile.id;
+      console.log('🍽️ Kategori ekleniyor:', { businessUserId, name });
+      
+      if (!businessUserId) {
+        toast.error('İşletme ID bulunamadı');
+        return;
+      }
+      
       const response = await fetch('/api/business/menu/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          businessId: businessProfile.id,
+          businessId: businessUserId,
           name
         })
       });
@@ -52,10 +72,12 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
         toast.success('Kategori eklendi');
         loadMenu();
       } else {
+        console.error('❌ Kategori ekleme hatası:', data);
         toast.error(data.error || 'Eklenemedi');
       }
     } catch (error) {
-      toast.error('Eklenemedi');
+      console.error('❌ Kategori ekleme exception:', error);
+      toast.error('Bağlantı hatası');
     }
   };
 
@@ -122,10 +144,16 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
     }
 
     try {
+      const businessUserId = businessProfile.user_id || businessProfile.id;
+      
       const response = await fetch('/api/business/menu/items', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('business_token')}`
+        },
         body: JSON.stringify({
+          businessId: businessUserId,
           categoryId,
           name,
           description,
@@ -136,6 +164,16 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
       const data = await response.json();
       if (data.success) {
         toast.success('Ürün eklendi');
+        loadMenu();
+      } else {
+        console.error('❌ Ürün ekleme hatası:', data);
+        toast.error(data.error || 'Eklenemedi');
+      }
+    } catch (error) {
+      console.error('❌ Ürün ekleme exception:', error);
+      toast.error('Bağlantı hatası');
+    }
+  };
         loadMenu();
       } else {
         toast.error(data.error || 'Eklenemedi');
