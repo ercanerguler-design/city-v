@@ -107,8 +107,9 @@ export async function GET(request: NextRequest) {
     console.error('❌ Categories GET error:', error);
     
     if (error.message.includes('Token') || error.message.includes('Geçersiz') || error.message.includes('Kullanıcı')) {
+      console.log('🔍 GET Auth error details:', error.message);
       return NextResponse.json(
-        { error: 'Unauthorized', details: error.message },
+        { error: 'Unauthorized', details: error.message, debug: 'GET Auth failed' },
         { status: 401 }
       );
     }
