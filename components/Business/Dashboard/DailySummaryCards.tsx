@@ -184,9 +184,19 @@ export default function DailySummaryCards({ businessUserId }: DailySummaryCardsP
       const today = new Date().toISOString().split('T')[0];
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
+      // Get auth token
+      const token = localStorage.getItem('business_token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       // Bugünün verilerini al
       const todayResponse = await fetch(
-        `/api/business/daily-summary?businessUserId=${businessUserId}&date=${today}`
+        `/api/business/daily-summary?businessUserId=${businessUserId}&date=${today}`,
+        { headers }
       );
       
       if (todayResponse.ok) {
@@ -196,7 +206,8 @@ export default function DailySummaryCards({ businessUserId }: DailySummaryCardsP
 
       // Dünün verilerini al
       const yesterdayResponse = await fetch(
-        `/api/business/daily-summary?businessUserId=${businessUserId}&date=${yesterday}`
+        `/api/business/daily-summary?businessUserId=${businessUserId}&date=${yesterday}`,
+        { headers }
       );
       
       if (yesterdayResponse.ok) {

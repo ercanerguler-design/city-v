@@ -71,11 +71,24 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 Menu kategorileri alınıyor...');
 
-    // Kategorileri getir
+    // Get business profile's business_id from business_profiles
+    const businessProfileResult = await sql`
+      SELECT id FROM business_profiles WHERE id = ${businessId}
+    `;
+    
+    if (businessProfileResult.length === 0) {
+      console.log('❌ Business profile not found:', businessId);
+      return NextResponse.json(
+        { error: 'İşletme bulunamadı' },
+        { status: 404 }
+      );
+    }
+
+    // Kategorileri getir - business_id kullan (business_profiles.id ile aynı)
     const categoriesResult = await sql`
       SELECT id, name, display_order, is_active, icon
       FROM business_menu_categories
-      WHERE business_user_id = ${businessId}
+      WHERE business_id = ${businessId}
       ORDER BY display_order ASC, name ASC
     `;
 
@@ -99,7 +112,7 @@ export async function GET(request: NextRequest) {
         mi.display_order
        FROM business_menu_items mi
        INNER JOIN business_menu_categories mc ON mi.category_id = mc.id
-       WHERE mc.business_user_id = ${businessId}
+       WHERE mc.business_id = ${businessId}
        ORDER BY mi.display_order ASC, mi.name ASC
     `;
 

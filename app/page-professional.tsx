@@ -276,8 +276,9 @@ export default function ProfessionalHome() {
           // API'den gelen locations zaten Location formatında (backend dönüştürüyor)
           const allLocations: Location[] = data.locations.map((loc: any) => ({
             ...loc,
-            // Working hours açık/kapalı kontrolü ekle
-            isOpen: loc.workingHours ? isLocationOpen(loc).isOpen : undefined,
+            // Working hours açık/kapalı kontrolü ekle - API'den working_hours gelir, workingHours'a dönüştür
+            workingHours: loc.working_hours || loc.workingHours,
+            isOpen: (loc.working_hours || loc.workingHours) ? isLocationOpen({ ...loc, workingHours: loc.working_hours || loc.workingHours }).isOpen : undefined,
             // Business locations için özel marker flag
             isBusiness: loc.source === 'business',
             // IoT data için ek alanlar
