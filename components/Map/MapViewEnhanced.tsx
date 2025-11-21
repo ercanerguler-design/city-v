@@ -158,25 +158,35 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
   // Log MapView rendering
   useEffect(() => {
     console.log('\n🗺️ ============================================');
-    console.log('🗺️ MAPVIEW RENDER EDİLİYOR');
+    console.log('🗺️ MAPVIEWENHANCED MARKER DEBUG');
     console.log('🗺️ ============================================');
-    console.log('📊 Gelen locations sayısı:', locations.length);
+    console.log('📊 Toplam locations sayısı:', locations.length);
     console.log('🎨 Görünüm modu:', viewMode);
-    console.log('🔥 Isı haritası yoğunluğu:', heatmapIntensity);
-    console.log('📍 Kümeleme aktif:', clusteringEnabled);
+    console.log('📦 Cluster aktif:', clusteringEnabled);
     
     if (locations.length > 0) {
-      console.log('📍 İlk 3 location:');
-      locations.slice(0, 3).forEach((loc, i) => {
-        console.log(`   ${i+1}. ${loc.name}`);
-        console.log(`      ID: ${loc.id}`);
-        console.log(`      Koordinatlar: [${loc.coordinates[0]}, ${loc.coordinates[1]}]`);
-        console.log(`      Kalabalık: ${loc.currentCrowdLevel}`);
+      console.log('\n📍 TÜM LOCATIONS DETAYI:');
+      locations.forEach((loc, i) => {
+        console.log(`\n   ${i+1}. ${loc.name}`);
+        console.log(`      ├─ ID: ${loc.id}`);
+        console.log(`      ├─ Koordinatlar: [${loc.coordinates[0]}, ${loc.coordinates[1]}]`);
+        console.log(`      ├─ Kalabalık: ${loc.currentCrowdLevel}`);
+        console.log(`      ├─ Kategori: ${loc.category}`);
+        console.log(`      ├─ Adres: ${loc.address || 'Yok'}`);
+        console.log(`      ├─ İşletme mi: ${loc.source === 'business' ? 'EVET ✅' : 'HAYIR ❌'}`);
+        console.log(`      └─ Source: ${loc.source || 'Bilinmiyor'}`);
       });
+      
+      const businessCount = locations.filter(l => l.source === 'business').length;
+      const staticCount = locations.filter(l => l.source !== 'business').length;
+      
+      console.log(`\n📊 KAYNAK DAĞILIMI:`);
+      console.log(`   ├─ Business locations: ${businessCount}`);
+      console.log(`   └─ Static locations: ${staticCount}`);
     } else {
-      console.log('⚠️ MAPVIEW\'E HİÇ LOCATION GELMEDİ!');
+      console.log('❌ MAPVIEW\'E HİÇ LOCATION GELMEDİ!');
     }
-    console.log('🗺️ ============================================\n');
+    console.log('\n🗺️ ============================================\n');
   }, [locations, viewMode, heatmapIntensity, clusteringEnabled]);
 
   // Rota polyline noktaları
@@ -379,13 +389,13 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           location.currentCrowdLevel === 'empty' ? 'bg-green-100 text-green-700' :
                           location.currentCrowdLevel === 'low' ? 'bg-blue-100 text-blue-700' :
-                          location.currentCrowdLevel === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                          location.currentCrowdLevel === 'moderate' ? 'bg-yellow-100 text-yellow-700' :
                           location.currentCrowdLevel === 'high' ? 'bg-orange-100 text-orange-700' :
                           'bg-red-100 text-red-700'
                         }`}>
                           {location.currentCrowdLevel === 'empty' && '🟢 Boş'}
                           {location.currentCrowdLevel === 'low' && '🔵 Az Kalabalık'}
-                          {location.currentCrowdLevel === 'medium' && '🟡 Orta'}
+                          {location.currentCrowdLevel === 'moderate' && '🟡 Orta'}
                           {location.currentCrowdLevel === 'high' && '🟠 Kalabalık'}
                           {location.currentCrowdLevel === 'very_high' && '🔴 Çok Kalabalık'}
                         </span>
