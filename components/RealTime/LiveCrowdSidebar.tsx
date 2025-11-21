@@ -67,27 +67,8 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
     
     try {
       setStatsLoading(true);
-      console.log('📊 Location stats yükleniyor (TEST MODE)...');
-      
-      // TEMPORARY: Mock location stats
-      const mockStats: Record<string, any> = {};
-      locations.forEach((loc, index) => {
-        mockStats[loc.id] = {
-          todayVisitors: Math.floor(Math.random() * 200) + 50,
-          averageStay: Math.floor(Math.random() * 60) + 15,
-          peakHour: `${Math.floor(Math.random() * 12) + 10}:00`,
-          trend: Math.random() > 0.5 ? 'up' : 'down',
-          satisfaction: Math.random() * 2 + 3, // 3-5 arasında
-          lastUpdated: new Date().toISOString()
-        };
-      });
-      
-      setLocationStats(mockStats);
-      console.log('✅ Mock location stats yüklendi:', Object.keys(mockStats).length, 'locations');
-      
-      /*
-      // REAL API CALL (temporarily disabled)
       const locationIds = locations.map(loc => loc.id).join(',');
+      
       const response = await fetch(`/api/locations/stats?locationIds=${locationIds}`);
       const data = await response.json();
       
@@ -97,7 +78,6 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
       } else {
         console.error('❌ Location stats API error:', data.error);
       }
-      */
     } catch (error) {
       console.error('❌ Location stats load error:', error);
     } finally {
@@ -108,38 +88,17 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
   const loadBusinessIoTData = async () => {
     try {
       setIotLoading(true);
-      console.log('📡 Business IoT verileri yükleniyor (TEST MODE)...');
+      console.log('📡 Business IoT verileri yükleniyor...');
+      console.log('👤 User durumu:', { 
+        isAuthenticated, 
+        hasUser: !!user, 
+        membershipTier: user?.membershipTier,
+        userId: user?.id 
+      });
       
-      // TEMPORARY: Mock real-time business data
-      const mockBusinessData = [
-        {
-          id: 1,
-          name: 'Test Restoran',
-          currentPeople: Math.floor(Math.random() * 50) + 10,
-          crowdLevel: ['empty', 'low', 'moderate', 'high'][Math.floor(Math.random() * 4)],
-          isOpen: true,
-          lastUpdate: new Date().toISOString(),
-          cameras: [{ id: 1, status: 'active' }],
-          summary: { hasRealtimeData: true }
-        },
-        {
-          id: 2,
-          name: 'Demo Kafe',
-          currentPeople: Math.floor(Math.random() * 30) + 5,
-          crowdLevel: ['empty', 'low', 'moderate', 'high'][Math.floor(Math.random() * 4)],
-          isOpen: true,
-          lastUpdate: new Date().toISOString(),
-          cameras: [{ id: 2, status: 'active' }],
-          summary: { hasRealtimeData: true }
-        }
-      ];
-      
-      setBusinessIoTData(mockBusinessData);
-      console.log('✅ Mock Business IoT verileri yüklendi:', mockBusinessData.length);
-      
-      /*
-      // REAL API CALL (temporarily disabled)
       const response = await fetch('/api/business/live-iot-data');
+      
+      console.log('📡 API Response Status:', response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -148,14 +107,25 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
       }
       
       const data = await response.json();
+      console.log('📦 API Response Data:', data);
       
       if (data.success) {
         setBusinessIoTData(data.businesses || []);
         console.log('✅ Business IoT verileri yüklendi:', data.businesses?.length || 0);
+        
+        if (data.businesses && data.businesses.length > 0) {
+          console.log('📊 İlk business örneği:', {
+            name: data.businesses[0].name,
+            cameras: data.businesses[0].cameras?.length,
+            hasData: data.businesses[0].summary?.hasRealtimeData
+          });
+        } else {
+          console.log('ℹ️ Hiç business IoT verisi bulunamadı');
+        }
       } else {
         console.error('❌ API başarısız:', data.error);
+        console.error('📋 Detaylar:', data.details);
       }
-      */
     } catch (error) {
       console.error('❌ Business IoT veri yükleme hatası:', error);
     } finally {
@@ -168,8 +138,8 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
     if (isOpen && locations && locations.length > 0) {
       loadLocationStats();
       
-      // Her 30 saniyede bir stats'i güncelle (daha sık update)
-      const statsInterval = setInterval(loadLocationStats, 30000);
+      // Her 60 saniyede bir stats'i güncelle
+      const statsInterval = setInterval(loadLocationStats, 60000);
       
       return () => clearInterval(statsInterval);
     }
@@ -187,12 +157,12 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
       // Business IoT verilerini de yükle
       loadBusinessIoTData();
       
-      // Her 10 saniyede bir güncelle (daha sık real-time update)
+      // Her 30 saniyede bir güncelle (API ile senkronize)
       const interval = setInterval(() => {
-        console.log('🔄 Crowd analizi güncelleniyor (TEST MODE)...');
+        console.log('🔄 Crowd analizi güncelleniyor...');
         analyzeOpenLocations(locations);
         loadBusinessIoTData();
-      }, 10000); // 30000'den 10000'e düşürüldü
+      }, 30000);
       
       return () => {
         clearInterval(interval);

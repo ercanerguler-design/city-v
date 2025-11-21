@@ -38,42 +38,11 @@ export default function PersonelSection({ businessProfile }: { businessProfile: 
     try {
       console.log('📋 Personel listesi yükleniyor...');
       
-      // TEMPORARY: Mock data for testing
-      console.log('🧪 TESTING MODE: Mock personel data kullanılıyor');
-      const mockStaff = [
-        {
-          id: 1,
-          name: 'Ahmet Yılmaz',
-          position: 'Garson',
-          status: 'active',
-          shift: 'Sabah (08:00-16:00)',
-          phone: '0555 123 4567',
-          email: 'ahmet@example.com',
-          joinDate: '2024-01-15',
-          photo: null
-        },
-        {
-          id: 2,
-          name: 'Fatma Demir',
-          position: 'Kasiyer',
-          status: 'active',
-          shift: 'Öğle (12:00-20:00)',
-          phone: '0555 234 5678',
-          email: 'fatma@example.com',
-          joinDate: '2024-02-20',
-          photo: null
-        }
-      ];
-      
-      setStaff(mockStaff);
-      console.log('✅ Mock personel data yüklendi:', mockStaff.length, 'personel');
-      
-      /*
-      // REAL API CALL (temporarily disabled)
       const response = await fetch(`/api/business/staff?businessId=${businessProfile.id}`);
       const data = await response.json();
       
       if (data.success) {
+        // API'den gelen verileri UI formatına dönüştür
         const formattedStaff = data.staff.map((s: any) => ({
           id: s.id,
           name: s.full_name,
@@ -86,8 +55,11 @@ export default function PersonelSection({ businessProfile }: { businessProfile: 
           photo: s.photo_url
         }));
         setStaff(formattedStaff);
+        console.log('✅ Personel listesi yüklendi:', formattedStaff.length, 'personel');
+      } else {
+        console.error('❌ API hatası:', data.error);
+        toast.error(data.error || 'Personel listesi yüklenemedi');
       }
-      */
     } catch (error) {
       console.error('❌ Personel yükleme hatası:', error);
       toast.error('Personel listesi yüklenemedi');
@@ -105,48 +77,6 @@ export default function PersonelSection({ businessProfile }: { businessProfile: 
     if (!businessProfile?.id) return;
 
     try {
-      console.log('💼 Personel kaydediliyor (TEST MODE):', formData);
-
-      // TEMPORARY: Mock save operation
-      if (editingStaff) {
-        // Güncelleme
-        const updatedStaff = staff.map(s => 
-          s.id === editingStaff.id 
-            ? {
-                ...s,
-                name: formData.name,
-                email: formData.email,
-                phone: formData.phone,
-                position: formData.position,
-                shift: formData.shift
-              }
-            : s
-        );
-        setStaff(updatedStaff);
-        toast.success('✅ Personel güncellendi! (TEST MODE)');
-      } else {
-        // Yeni ekleme
-        const newStaff = {
-          id: staff.length + 1,
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          position: formData.position,
-          shift: formData.shift,
-          status: 'active' as const,
-          joinDate: new Date().toISOString().split('T')[0],
-          photo: null
-        };
-        
-        setStaff([...staff, newStaff]);
-        toast.success('✅ Personel eklendi! (TEST MODE)');
-      }
-      
-      setShowAddModal(false);
-      setEditingStaff(null);
-      
-      /*
-      // REAL API CALL (temporarily disabled)
       const staffData = {
         businessId: businessProfile.id,
         full_name: formData.name,
@@ -158,14 +88,18 @@ export default function PersonelSection({ businessProfile }: { businessProfile: 
         permissions: formData.permissions || { cameras: false, menu: false, reports: false, settings: false }
       };
 
+      console.log('💼 Personel kaydediliyor:', staffData);
+
       let response;
       if (editingStaff) {
+        // Güncelle
         response = await fetch('/api/business/staff', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...staffData, id: editingStaff.id })
         });
       } else {
+        // Yeni ekle
         response = await fetch('/api/business/staff', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -174,19 +108,20 @@ export default function PersonelSection({ businessProfile }: { businessProfile: 
       }
 
       const data = await response.json();
+      console.log('📋 API yanıtı:', data);
       
       if (data.success) {
         toast.success(editingStaff ? '✅ Personel güncellendi!' : '✅ Personel eklendi!');
-        loadStaff(); 
+        loadStaff(); // Listeyi yenile
         setShowAddModal(false);
         setEditingStaff(null);
       } else {
+        console.error('❌ API hatası:', data.error);
         toast.error(data.error || 'İşlem başarısız');
       }
-      */
     } catch (error) {
       console.error('❌ Personel kaydetme hatası:', error);
-      toast.error('Bağlantı hatası (TEST MODE)');
+      toast.error('Bağlantı hatası');
     }
   };
 
@@ -195,15 +130,6 @@ export default function PersonelSection({ businessProfile }: { businessProfile: 
     if (!confirm(`${staffName} adlı personeli silmek istediğinize emin misiniz?`)) return;
 
     try {
-      console.log('🗑️ Personel siliniyor (TEST MODE):', staffId, staffName);
-      
-      // TEMPORARY: Mock delete operation
-      const updatedStaff = staff.filter(s => s.id !== staffId);
-      setStaff(updatedStaff);
-      toast.success('✅ Personel silindi! (TEST MODE)');
-      
-      /*
-      // REAL API CALL (temporarily disabled)
       const response = await fetch(`/api/business/staff?id=${staffId}`, {
         method: 'DELETE'
       });
@@ -212,14 +138,13 @@ export default function PersonelSection({ businessProfile }: { businessProfile: 
       
       if (data.success) {
         toast.success('✅ Personel silindi!');
-        loadStaff();
+        loadStaff(); // Listeyi yenile
       } else {
         toast.error(data.error || 'Silme başarısız');
       }
-      */
     } catch (error) {
       console.error('❌ Personel silme hatası:', error);
-      toast.error('Bağlantı hatası (TEST MODE)');
+      toast.error('Bağlantı hatası');
     }
   };
 

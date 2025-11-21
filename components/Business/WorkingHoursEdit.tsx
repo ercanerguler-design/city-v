@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useBusinessStore, type Business } from '@/store/businessStore';
+import toast from 'react-hot-toast';
 
 interface WorkingHoursEditProps {
   business: Business;
@@ -31,20 +32,32 @@ const WorkingHoursEdit: React.FC<WorkingHoursEditProps> = ({ business, onClose }
       // Local state'i güncelle
       updateBusiness({ workingHours });
       
-      // SYNC TO MAIN SITE: Real-time sync simulation
-      console.log('🔄 Ana siteye sync yapılıyor (DEMO MODE)...');
-      console.log('📋 Güncellenen çalışma saatleri:', workingHours);
+      // SYNC TO MAIN SITE: Ana siteye real-time sync
+      console.log('🔄 Ana siteye sync yapılıyor...');
       
-      // Simulate instant update notification
-      setTimeout(() => {
-        console.log('✅ SIMÜLE SYNC TAMAMLANDI!');
-        console.log('🌐 Ana site anlık güncellendi (demo)');
-        console.log('📍 Harita üzerinde business saatleri güncel');
-      }, 1000);
+      const syncResponse = await fetch('/api/business/sync-to-cityv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessUserId: business.id,
+          workingHours: workingHours,
+          autoSyncToCityv: true
+        })
+      });
+      
+      if (syncResponse.ok) {
+        const syncData = await syncResponse.json();
+        console.log('✅ Ana site senkronize edildi:', syncData);
+        toast.success('✅ Çalışma saatleri güncellendi ve ana siteye senkronize edildi!');
+      } else {
+        console.error('❌ Sync hatası:', syncResponse.status);
+        toast.error('⚠️ Çalışma saatleri güncellendi ama ana site senkronize edilemedi');
+      }
       
       onClose();
     } catch (error) {
       console.error('❌ Çalışma saati kaydetme hatası:', error);
+      toast.error('❌ Çalışma saatleri güncellenemedi');
     }
   };
 
