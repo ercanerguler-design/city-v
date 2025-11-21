@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * Public Business Menu API
@@ -18,34 +20,38 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Business bilgilerini çek
-    const businessResult = await query(
-      `SELECT bp.business_name, bp.business_type, bp.description, bp.logo_url, bp.address, bp.phone
-       FROM business_profiles bp
-       INNER JOIN business_users bu ON bp.user_id = bu.id
-       WHERE bp.id = $1 AND bu.is_active = true`,
-      [businessId]
-    );
+    console.log('🍽️ Public menu GET for businessId:', businessId);
 
-    if (businessResult.rows.length === 0) {
+    // Business bilgilerini çek
+    const businessResult = await sql`
+      SELECT bp.business_name, bp.business_type, bp.description, bp.logo_url, bp.address, bp.phone
+      FROM business_profiles bp
+      INNER JOIN business_users bu ON bp.user_id = bu.id
+      WHERE bp.id = ${businessId} AND bu.is_active = true
+    `;
+
+    if (businessResult.length === 0) {
+      console.log('❌ Business profile not found or inactive:', businessId);
       return NextResponse.json(
         { error: 'İşletme bulunamadı' },
         { status: 404 }
       );
     }
 
-    const businessInfo = businessResult.rows[0];
+    const businessInfo = businessResult[0];
+    console.log('✅ Business found:', businessInfo.business_name);
 
     // Kategorileri ve ürünleri çek
-    const categoriesResult = await query(
-      `SELECT id, name, icon, display_order
-       FROM business_menu_categories
-       WHERE business_id = $1 AND is_active = true
-       ORDER BY display_order ASC, name ASC`,
-      [businessId]
-    );
+    const categoriesResult = await sql`
+      SELECT id, name, icon, display_order
+      FROM business_menu_categories
+      WHERE business_id = ${businessId} AND is_active = true
+      ORDER BY display_order ASC, name ASC
+    `;
 
-    if (categoriesResult.rows.length === 0) {
+    console.log(`📋 Found ${categoriesResult.length} categories`);
+
+    if (categoriesResult.length === 0) {
       return NextResponse.json({
         success: true,
         hasMenu: false,
@@ -56,18 +62,19 @@ export async function GET(request: NextRequest) {
 
     // Her kategori için ürünleri çek
     const categoriesWithItems = await Promise.all(
-      categoriesResult.rows.map(async (category) => {
-        const itemsResult = await query(
-          `SELECT id, name, description, price, original_price, image_url, is_available
-           FROM business_menu_items
-           WHERE category_id = $1
-           ORDER BY display_order ASC, name ASC`,
-          [category.id]
-        );
+      categoriesResult.map(async (category) => {
+        const itemsResult = await sql`
+          SELECT id, name, description, price, original_price, image_url, is_available
+          FROM business_menu_items
+          WHERE category_id = ${category.id}
+          ORDER BY display_order ASC, name ASC
+        `;
+
+        console.log(`  ${category.name}: ${itemsResult.length} items`);
 
         return {
           ...category,
-          items: itemsResult.rows
+          items: itemsResult
         };
       })
     );
