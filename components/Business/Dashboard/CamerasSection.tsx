@@ -61,6 +61,29 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
   // Business dashboard store hook
   const { businessUser, businessProfile: storeProfile } = useBusinessDashboardStore();
 
+  // Helper: Check if camera uses ngrok (remote access)
+  const isNgrokCamera = (camera: Camera): boolean => {
+    if (!camera.stream_url && !camera.ip_address) return false;
+    
+    // Check stream_url for ngrok domain
+    if (camera.stream_url && (
+      camera.stream_url.includes('ngrok') ||
+      camera.stream_url.includes('.app') ||
+      camera.stream_url.includes('cityv-remote')
+    )) {
+      return true;
+    }
+    
+    // Check if IP is NOT local (192.168.x.x, 10.x.x.x, 127.x.x.x, localhost)
+    const ip = camera.ip_address || '';
+    const isLocal = ip.startsWith('192.168.') || 
+                    ip.startsWith('10.') || 
+                    ip.startsWith('127.') ||
+                    ip === 'localhost';
+    
+    return !isLocal;
+  };
+
   useEffect(() => {
     if (businessProfile) {
       loadCameras();
@@ -607,7 +630,14 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
                       }`} />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{camera.camera_name}</h3>
+                      <h3 className="font-semibold text-gray-900">
+                        {camera.camera_name}
+                        {isNgrokCamera(camera) && (
+                          <span className="ml-2 text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                            CityV Remote
+                          </span>
+                        )}
+                      </h3>
                       <p className="text-sm text-gray-500">{camera.location_description}</p>
                     </div>
                   </div>
@@ -670,10 +700,10 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
                   <button
                     onClick={() => openLiveView(camera)}
                     className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
-                    title={networkInfo.type === 'remote' ? 'Uzak erişim ile canlı izleme' : 'Yerel ağ canlı izleme'}
+                    title={isNgrokCamera(camera) ? 'CityV Remote - Uzak erişim ile canlı izleme' : 'Yerel ağ canlı izleme'}
                   >
                     <Eye className="w-4 h-4" />
-                    {networkInfo.type === 'remote' ? (
+                    {isNgrokCamera(camera) ? (
                       <span className="flex items-center gap-1">
                         🌐 Uzaktan İzle
                       </span>
