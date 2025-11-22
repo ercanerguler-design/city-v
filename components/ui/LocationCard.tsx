@@ -51,7 +51,7 @@ const getCrowdLevelText = (level: CrowdLevel): string => {
   return texts[level];
 };
 
-export default function LocationCard({ location, onReportClick, onLocationClick, onSocialClick, distance }: LocationCardProps) {
+export default function LocationCard({ location, onReportClick, onLocationClick, onSocialClick, onRouteClick, distance }: LocationCardProps) {
   const { toggleFavorite, isFavorite } = useFavoritesStore();
   const { user } = useAuthStore();
   const { favoriteAdded } = useGamificationStore();
