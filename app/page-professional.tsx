@@ -46,6 +46,7 @@ import LiveCrowdSidebar from '@/components/RealTime/LiveCrowdSidebar';
 import QRScanner from '@/components/Camera/QRScanner';
 import PhotoGallery from '@/components/Camera/PhotoGallery';
 import AddReviewModal from '@/components/ui/AddReviewModal';
+import LocationDetailModal from '@/components/ui/LocationDetailModal';
 
 // Business Box Promotion Components
 import BusinessBoxBanner from '@/components/business-box/BusinessBoxBanner';
@@ -126,6 +127,7 @@ export default function ProfessionalHome() {
   const [showLiveCrowd, setShowLiveCrowd] = useState(true); // 🔥 Canlı kalabalık otomatik açık
   const [showPhotoGallery, setShowPhotoGallery] = useState(false);
   const [showLocationDetail, setShowLocationDetail] = useState(false);
+  const [showAddReview, setShowAddReview] = useState(false);
   const [viewMode, setViewMode] = useState<'map' | 'grid'>('map');
   const [mapCenter, setMapCenter] = useState<[number, number]>([39.9334, 32.8597]); // Ankara merkez
   const [mapZoom, setMapZoom] = useState(12);
@@ -497,13 +499,22 @@ export default function ProfessionalHome() {
     // Recommendations: Ziyaret geçmişine ekle
     addVisitToHistory(location.id, location.category, location.currentCrowdLevel);
     
-    // Rota modalını aç
-    if (userLocation) {
-      setRouteTargetLocation(location);
+    // Konum detayları modalını aç
+    setSelectedLocation(location);
+    setShowLocationDetail(true);
+  };
+
+  const handleRouteClick = () => {
+    if (selectedLocation && userLocation) {
+      setRouteTargetLocation(selectedLocation);
       setShowRouteModal(true);
     } else {
-      alert('Rota göstermek için önce konumunuzu paylaşmalısınız.');
+      toast.error('Rota göstermek için önce konumunuzu paylaşmalısınız.');
     }
+  };
+
+  const handleReviewClick = () => {
+    setShowAddReview(true);
   };
 
   const handleSocialClick = (location: Location) => {
@@ -1206,10 +1217,22 @@ export default function ProfessionalHome() {
       {/* 🚀 Business Box Promotion - Modal (First Visit) */}
       <BusinessBoxModal />
 
+      {/* 📍 Location Detail Modal */}
+      <LocationDetailModal
+        isOpen={showLocationDetail}
+        onClose={() => {
+          setShowLocationDetail(false);
+          setSelectedLocation(null);
+        }}
+        location={selectedLocation}
+        onReviewClick={handleReviewClick}
+        onRouteClick={handleRouteClick}
+      />
+
       {/* 💬 Add Review Modal */}
       <AddReviewModal
-        isOpen={selectedLocation !== null}
-        onClose={() => setSelectedLocation(null)}
+        isOpen={showAddReview}
+        onClose={() => setShowAddReview(false)}
         locationId={selectedLocation?.id || ''}
         locationName={selectedLocation?.name || ''}
       />
