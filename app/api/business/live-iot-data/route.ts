@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN LATERAL (
         SELECT people_count, crowd_density, current_occupancy, analysis_timestamp
         FROM iot_crowd_analysis
-        WHERE device_id = bc.id
+        WHERE device_id = bc.device_id
           AND analysis_timestamp >= NOW() - INTERVAL '5 minutes'
         ORDER BY analysis_timestamp DESC
         LIMIT 1
