@@ -112,6 +112,7 @@ export default function ProfessionalHome() {
   const [showAIChat, setShowAIChat] = useState(false);
   const [showLiveCrowd, setShowLiveCrowd] = useState(true); // 🔥 Canlı kalabalık otomatik açık
   const [showPhotoGallery, setShowPhotoGallery] = useState(false);
+  const [showLocationDetail, setShowLocationDetail] = useState(false);
   const [viewMode, setViewMode] = useState<'map' | 'grid'>('map');
   const [mapCenter, setMapCenter] = useState<[number, number]>([39.9334, 32.8597]); // Ankara merkez
   const [mapZoom, setMapZoom] = useState(12);
@@ -496,12 +497,20 @@ export default function ProfessionalHome() {
   };
   
   const handleMapMarkerClick = (location: Location) => {
-    setSelectedLocation(location);
-    // Grid'den tıklandıysa haritaya geç ve konumu ortala
-    if (viewMode === 'grid') {
-      setViewMode('map');
-      setMapCenter(location.coordinates);
-      setMapZoom(16);
+    try {
+      console.log('🗺️ Map marker clicked:', location.name);
+      setSelectedLocation(location);
+      setShowLocationDetail(true);
+      
+      // Grid'den tıklandıysa haritaya geç ve konumu ortala
+      if (viewMode === 'grid') {
+        setViewMode('map');
+        setMapCenter(location.coordinates);
+        setMapZoom(16);
+      }
+    } catch (error) {
+      console.error('❌ handleMapMarkerClick error:', error);
+      toast.error('Konum detayları yüklenirken hata oluştu');
     }
   };
 
@@ -1000,6 +1009,63 @@ export default function ProfessionalHome() {
                 onCancel={() => {
                   setShowReportForm(false);
                   setSelectedLocation(null);
+                }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Location Detail Modal - Marker Click */}
+      <AnimatePresence>
+        {showLocationDetail && selectedLocation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              setShowLocationDetail(false);
+              setSelectedLocation(null);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative max-w-2xl w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => {
+                  setShowLocationDetail(false);
+                  setSelectedLocation(null);
+                }}
+                className="absolute -top-3 -right-3 p-2 bg-white rounded-full shadow-xl hover:bg-gray-100 transition-colors z-10"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+              
+              <LocationCard
+                location={selectedLocation}
+                distance={userLocation ? calculateDistance(
+                  userLocation[0],
+                  userLocation[1],
+                  selectedLocation.coordinates[0],
+                  selectedLocation.coordinates[1]
+                ) : null}
+                onReportClick={() => {
+                  setShowLocationDetail(false);
+                  handleReportClick(selectedLocation);
+                }}
+                onSocialClick={() => {
+                  setShowLocationDetail(false);
+                  handleSocialClick(selectedLocation);
+                }}
+                onRouteClick={() => {
+                  setShowLocationDetail(false);
+                  setRouteTargetLocation(selectedLocation);
+                  setShowRouteModal(true);
                 }}
               />
             </motion.div>

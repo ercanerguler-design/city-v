@@ -25,6 +25,7 @@ interface LocationCardProps {
   onReportClick: (location: Location) => void;
   onLocationClick?: (location: Location) => void;
   onSocialClick?: (location: Location) => void;
+  onRouteClick?: (location: Location) => void;
   distance?: number; // km cinsinden mesafe
 }
 
@@ -473,7 +474,7 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => onLocationClick?.(location)}
+            onClick={() => onRouteClick?.(location)}
             className="bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 md:py-2.5 px-3 md:px-3 rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all flex items-center justify-center gap-1.5 font-bold text-sm md:text-xs shadow-lg hover:shadow-xl touch-manipulation"
           >
             <Navigation className="w-4 h-4 md:w-4 md:h-4" />
