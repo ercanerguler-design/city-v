@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         bu.is_active as business_active,
         bu.added_by_admin,
         
-        -- Kamera bilgileri
+        -- Kamera bilgileri (business_cameras.business_user_id = business_users.id)
         bc.id as camera_id,
         bc.camera_name,
         bc.ip_address,
@@ -47,18 +47,19 @@ export async function GET(request: NextRequest) {
         bc.created_at as camera_created_at,
         
         -- Crowd analysis bilgileri (son 5 dakika) - iot_crowd_analysis tablosu
-        ca.person_count,
-        ca.crowd_level,
-        ca.occupancy_rate,
+        -- NOT: device_id kullanılıyor (camera_id değil), people_count kullanılıyor (person_count değil)
+        ca.people_count,
+        ca.crowd_density,
+        ca.current_occupancy,
         ca.analysis_timestamp
         
       FROM business_profiles bp
       INNER JOIN business_users bu ON bp.user_id = bu.id
-      LEFT JOIN business_cameras bc ON bp.id = bc.business_id AND bc.is_active = true
+      LEFT JOIN business_cameras bc ON bu.id = bc.business_user_id AND bc.is_active = true
       LEFT JOIN LATERAL (
-        SELECT person_count, crowd_level, occupancy_rate, analysis_timestamp
+        SELECT people_count, crowd_density, current_occupancy, analysis_timestamp
         FROM iot_crowd_analysis
-        WHERE camera_id = bc.id
+        WHERE device_id = bc.id
           AND analysis_timestamp >= NOW() - INTERVAL '5 minutes'
         ORDER BY analysis_timestamp DESC
         LIMIT 1
@@ -132,10 +133,11 @@ export async function GET(request: NextRequest) {
           createdAt: row.camera_created_at,
           
           // Crowd analysis verisi (son 5 dakika) - iot_crowd_analysis'ten
-          analysis: row.person_count !== null ? {
-            personCount: row.person_count || 0,
-            crowdDensity: row.crowd_level || 'empty',
-            currentOccupancy: row.occupancy_rate || 0,
+          // NOT: people_count ve crowd_density kolonları kullanılıyor
+          analysis: row.people_count !== null ? {
+            personCount: row.people_count || 0,
+            crowdDensity: row.crowd_density || 'empty',
+            currentOccupancy: row.current_occupancy || 0,
             timestamp: row.analysis_timestamp
           } : null
         });
