@@ -67,9 +67,9 @@ const LocationDetailModal = ({ isOpen, onClose, location, onReviewClick, onRoute
   const isBusinessLocation = location.id && (location.id.toString().startsWith('business-') || typeof location.id === 'number');
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {isOpen && (
-        <>
+        <div key="location-modal">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -84,6 +84,7 @@ const LocationDetailModal = ({ isOpen, onClose, location, onReviewClick, onRoute
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.95 }}
+            transition={{ type: "spring", duration: 0.3 }}
             className="fixed inset-4 md:inset-8 lg:inset-16 bg-white rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden"
           >
             {/* Header */}
@@ -328,7 +329,7 @@ const LocationDetailModal = ({ isOpen, onClose, location, onReviewClick, onRoute
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
