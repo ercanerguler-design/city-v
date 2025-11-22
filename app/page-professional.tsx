@@ -617,6 +617,17 @@ export default function ProfessionalHome() {
     return sorted;
   }, [filteredLocations, userLocation]);
 
+  // Seçilen location için distance hesapla (cache'lenmiş)
+  const selectedLocationDistance = useMemo(() => {
+    if (!selectedLocation || !userLocation) return null;
+    return calculateDistance(
+      userLocation[0],
+      userLocation[1],
+      selectedLocation.coordinates[0],
+      selectedLocation.coordinates[1]
+    );
+  }, [selectedLocation, userLocation, calculateDistance]);
+
   // Gerçek istatistikleri hesapla
   const { trackedLocationIds } = useTrackedStore();
   const realTimeStats = useMemo(() => {
@@ -1048,12 +1059,7 @@ export default function ProfessionalHome() {
               
               <LocationCard
                 location={selectedLocation}
-                distance={userLocation ? calculateDistance(
-                  userLocation[0],
-                  userLocation[1],
-                  selectedLocation.coordinates[0],
-                  selectedLocation.coordinates[1]
-                ) : null}
+                distance={selectedLocationDistance}
                 onReportClick={() => {
                   setShowLocationDetail(false);
                   handleReportClick(selectedLocation);
