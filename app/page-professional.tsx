@@ -490,18 +490,33 @@ export default function ProfessionalHome() {
 
   // Handlers
   const handleLocationClick = (location: Location) => {
-    // Analytics'e kaydet
-    trackVisit(location.id, location.name, location.category, location.currentCrowdLevel);
-    
-    // Gamification: Check-in
-    checkIn(location.id);
-    
-    // Recommendations: Ziyaret geçmişine ekle
-    addVisitToHistory(location.id, location.category, location.currentCrowdLevel);
-    
-    // Konum detayları modalını aç
-    setSelectedLocation(location);
-    setShowLocationDetail(true);
+    try {
+      // Analytics'e kaydet
+      if (trackVisit) {
+        trackVisit(location.id, location.name, location.category, location.currentCrowdLevel);
+      }
+      
+      // Gamification: Check-in
+      if (checkIn) {
+        checkIn(location.id);
+      }
+      
+      // Recommendations: Ziyaret geçmişine ekle
+      if (addVisitToHistory) {
+        addVisitToHistory(location.id, location.category, location.currentCrowdLevel);
+      }
+      
+      // Konum detayları modalını aç
+      setSelectedLocation(location);
+      setShowLocationDetail(true);
+    } catch (error) {
+      console.error('❌ handleLocationClick error:', error);
+      toast.error('Konum detayları yüklenirken hata oluştu');
+      
+      // En azından modalı açmaya çalış
+      setSelectedLocation(location);
+      setShowLocationDetail(true);
+    }
   };
 
   const handleRouteClick = () => {
@@ -522,9 +537,23 @@ export default function ProfessionalHome() {
     setShowSocialModal(true);
   };
   
-  const handleMapMarkerClick = (location: Location) => {
+  const handleMapMarkerClick = useCallback((location: Location) => {
     try {
       console.log('🗺️ Map marker clicked:', location.name);
+      
+      // Store functions'ları güvenli çağır
+      if (typeof trackVisit === 'function') {
+        trackVisit(location.id, location.name, location.category, location.currentCrowdLevel);
+      }
+      
+      if (typeof checkIn === 'function') {
+        checkIn(location.id);
+      }
+      
+      if (typeof addVisitToHistory === 'function') {
+        addVisitToHistory(location.id, location.category, location.currentCrowdLevel);
+      }
+      
       setSelectedLocation(location);
       setShowLocationDetail(true);
       
@@ -537,8 +566,12 @@ export default function ProfessionalHome() {
     } catch (error) {
       console.error('❌ handleMapMarkerClick error:', error);
       toast.error('Konum detayları yüklenirken hata oluştu');
+      
+      // En azından modalı açmaya çalış
+      setSelectedLocation(location);
+      setShowLocationDetail(true);
     }
-  };
+  }, [trackVisit, checkIn, addVisitToHistory, viewMode]);
 
   const handleReportClick = (location: Location) => {
     if (!isAuthenticated) {
