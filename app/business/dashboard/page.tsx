@@ -34,7 +34,7 @@ const navItems: NavItem[] = [
   { id: 'overview', label: 'Genel Bakış', icon: LayoutDashboard },
   { id: 'cameras', label: 'Kameralar', icon: Camera },
   { id: 'ai-analytics', label: 'AI Analytics', icon: Activity },
-  { id: 'reviews', label: 'Yorumlar & Duygular', icon: Users },
+  { id: 'reviews', label: 'Duygular', icon: Users },
   { id: 'location', label: 'Konum Yönetimi', icon: MapPin },
   { id: 'menu', label: 'Menü & Fiyatlar', icon: MenuIcon },
   { id: 'personel', label: 'Personel Yönetimi', icon: UserCheck },

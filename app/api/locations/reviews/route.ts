@@ -144,11 +144,29 @@ export async function GET(req: NextRequest) {
     if (businessUserId) {
       console.log('🔍 Business reviews query for user ID:', businessUserId);
       
+      // Önce business_profiles'dan location_id'yi al
+      const profileResult = await sql`
+        SELECT location_id FROM business_profiles WHERE user_id = ${businessUserId}
+      `;
+      
+      if (profileResult.length === 0) {
+        console.log('⚠️ Business profile not found for user:', businessUserId);
+        return NextResponse.json({
+          success: true,
+          reviews: [],
+          stats: { total: 0, avgRating: 0, sentimentCounts: {} },
+          count: 0
+        });
+      }
+      
+      const locationId = profileResult[0].location_id;
+      console.log('🏪 Location ID for business:', locationId);
+      
       const businessResult = await sql`
         SELECT lr.*, bp.business_name
         FROM location_reviews lr
-        JOIN business_profiles bp ON lr.location_id = bp.id
-        WHERE bp.user_id = ${businessUserId}
+        JOIN business_profiles bp ON lr.location_id = bp.location_id
+        WHERE lr.location_id = ${locationId}
         ORDER BY lr.created_at DESC
         LIMIT ${parseInt(limit)}
       `;

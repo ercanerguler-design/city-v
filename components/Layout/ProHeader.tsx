@@ -49,6 +49,19 @@ export default function ProHeader({
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
   const [lastShownCampaignId, setLastShownCampaignId] = useState<string | null>(null);
 
+  // Chrome Push Notification sistemi
+  useEffect(() => {
+    const requestNotificationPermission = async () => {
+      if ('Notification' in window && 'serviceWorker' in navigator) {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          console.log('🔔 Notification permission granted');
+        }
+      }
+    };
+    requestNotificationPermission();
+  }, []);
+
   // Gerçek kampanyaları API'den çek (sadece CityV anasayfası için)
   useEffect(() => {
     const loadActiveCampaigns = async () => {
@@ -59,12 +72,35 @@ export default function ProHeader({
         if (data.success && data.campaigns.length > 0) {
           setCampaignNotifications(data.campaigns);
           
-          // Yeni bir kampanya varsa popup göster
+          // Yeni bir kampanya varsa popup ve Chrome notification göster
           const latestCampaign = data.campaigns[0];
           if (latestCampaign.id !== lastShownCampaignId) {
             setShowNotificationPopup(true);
             setLastShownCampaignId(latestCampaign.id);
             setTimeout(() => setShowNotificationPopup(false), 5000);
+            
+            // Chrome Desktop Notification
+            if ('Notification' in window && Notification.permission === 'granted') {
+              const notification = new Notification('🎉 ' + latestCampaign.title, {
+                body: latestCampaign.description,
+                icon: '/icon-192x192.png',
+                badge: '/icon-72x72.png',
+                tag: 'campaign-' + latestCampaign.id,
+                requireInteraction: false,
+                silent: false,
+                data: {
+                  campaignId: latestCampaign.id,
+                  businessId: latestCampaign.businessId,
+                  businessName: latestCampaign.businessName
+                }
+              });
+              
+              notification.onclick = () => {
+                window.focus();
+                notification.close();
+                // İsteğe bağlı: Kampanya detayına yönlendir
+              };
+            }
           }
         }
       } catch (error) {
