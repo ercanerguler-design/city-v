@@ -365,7 +365,13 @@ export default function ESP32CameraStream({
           </div>
           <div>
             <h3 className="text-white font-bold text-lg">{cameraName}</h3>
-            <p className="text-gray-400 text-sm">{location}</p>
+            <p className="text-gray-400 text-sm">
+              {typeof location === 'string' 
+                ? location 
+                : typeof location === 'object' && location !== null && 'address' in location
+                  ? location.address 
+                  : 'Konum bilgisi yok'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3">

@@ -550,7 +550,13 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
                             {Math.round(intensity)}
                           </div>
                           <div className="flex-1">
-                            <div className="font-medium text-gray-900">{location}</div>
+                            <div className="font-medium text-gray-900">
+                              {typeof location === 'string' 
+                                ? location 
+                                : typeof location === 'object' && location !== null && 'address' in location
+                                  ? location.address 
+                                  : 'Konum bilgisi yok'}
+                            </div>
                             <div className="text-xs text-gray-500">Toplam yoğunluk skoru</div>
                           </div>
                         </div>
