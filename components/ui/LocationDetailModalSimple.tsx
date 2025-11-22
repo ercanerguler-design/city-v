@@ -25,6 +25,11 @@ const LocationDetailModalSimple = ({ isOpen, onClose, location, onReviewClick, o
   }
 
   console.log('✅ Modal WILL render for location:', location.name);
+  console.log('🔍 Props check:', { 
+    onReviewClick: typeof onReviewClick, 
+    onRouteClick: typeof onRouteClick,
+    location: !!location 
+  });
 
   const handleShare = () => {
     console.log('📤 Share clicked');

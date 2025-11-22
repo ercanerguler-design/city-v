@@ -46,7 +46,7 @@ import LiveCrowdSidebar from '@/components/RealTime/LiveCrowdSidebar';
 import QRScanner from '@/components/Camera/QRScanner';
 import PhotoGallery from '@/components/Camera/PhotoGallery';
 import AddReviewModal from '@/components/ui/AddReviewModal';
-import LocationDetailModal from '@/components/ui/LocationDetailModalSimple';
+import LocationDetailModal from '@/components/ui/LocationDetailModalUltraSimple';
 
 // Business Box Promotion Components
 import BusinessBoxBanner from '@/components/business-box/BusinessBoxBanner';
