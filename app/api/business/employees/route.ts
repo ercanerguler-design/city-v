@@ -2,7 +2,7 @@ import { sql } from '@vercel/postgres';
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 function getUserFromToken(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
@@ -248,3 +248,4 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+

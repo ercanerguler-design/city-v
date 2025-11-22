@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 export async function POST(request: Request) {
   try {
@@ -85,3 +85,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { sql } from '@vercel/postgres';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 export async function POST(request: Request) {
   try {
@@ -110,3 +110,4 @@ export async function POST(request: Request) {
     );
   }
 }
+
