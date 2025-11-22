@@ -117,19 +117,36 @@ export async function POST(request: Request) {
     const campaign = result.rows[0];
 
     // Push notification oluştur
+    const notificationTitle = `🎉 Yeni Kampanya: ${title}`;
+    const notificationMessage = discountPercent 
+      ? `${description} - %${discountPercent} indirim!`
+      : discountAmount 
+        ? `${description} - ${discountAmount}₺ indirim!`
+        : description;
+
     const notification = {
       id: Date.now(),
       businessId,
       campaignId: campaign.id,
-      title: `🎉 Yeni Kampanya: ${title}`,
-      message: `${description} - %${discountPercent} indirim!`,
+      title: notificationTitle,
+      message: notificationMessage,
       type: 'campaign',
       createdAt: new Date().toISOString(),
       read: false
     };
 
-    // Vercel KV'ye bildirim kaydet (ana CityV kullanıcıları için)
-    await kv.lpush('cityv:notifications', JSON.stringify(notification));
+    // Vercel KV'ye bildirim kaydet (ana CityV kullanıcıları için) - KV yoksa skip
+    try {
+      if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+        await kv.lpush('cityv:notifications', JSON.stringify(notification));
+        console.log('✅ Notification sent to Vercel KV');
+      } else {
+        console.log('⚠️ Vercel KV not configured, skipping KV notification');
+      }
+    } catch (kvError) {
+      console.error('⚠️ KV notification failed (non-critical):', kvError);
+      // KV hatası kampanyayı durdurmasın
+    }
     
     // Business notifications tablosuna kaydet
     await sql`
@@ -137,8 +154,8 @@ export async function POST(request: Request) {
         business_id, campaign_id, title, message, notification_type, sent_at
       )
       VALUES (
-        ${businessId}, ${campaign.id}, ${notification.title}, 
-        ${notification.message}, 'campaign', NOW()
+        ${businessId}, ${campaign.id}, ${notificationTitle}, 
+        ${notificationMessage}, 'campaign', NOW()
       )
     `;
 
