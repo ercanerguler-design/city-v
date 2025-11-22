@@ -325,7 +325,18 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
                       click: () => {
                         try {
                           console.log('📍 Marker clicked:', location.id, location.name);
-                          onLocationClick?.(location);
+                          
+                          // Wrap onLocationClick call with additional safety
+                          setTimeout(() => {
+                            try {
+                              onLocationClick?.(location);
+                              console.log('✅ onLocationClick completed successfully');
+                            } catch (clickError) {
+                              console.error('❌ onLocationClick execution error:', clickError);
+                              toast.error('Konum detayları işlenirken hata oluştu');
+                            }
+                          }, 0); // Minimal delay to break React render cycle
+                          
                         } catch (error) {
                           console.error('❌ Marker click error:', error);
                           toast.error('Konum detayları yüklenirken hata oluştu');

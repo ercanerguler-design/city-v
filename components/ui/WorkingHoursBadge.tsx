@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Clock, Phone } from 'lucide-react';
 import { Location } from '@/types';
 import { isLocationOpen, getWorkingHoursText, getCurrentDayName } from '@/lib/workingHours';
@@ -59,14 +58,12 @@ export default function WorkingHoursBadge({ location, size = 'medium' }: Working
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
+    <div
       className={`${
         isOpen 
           ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
           : 'bg-gradient-to-r from-red-500 to-pink-500'
-      } text-white rounded-xl p-3 shadow-md`}
+      } text-white rounded-xl p-3 shadow-md transition-all duration-300 animate-in fade-in zoom-in`}
     >
       <div className="flex items-center gap-2 mb-2">
         <Clock className="w-4 h-4" />
@@ -78,7 +75,7 @@ export default function WorkingHoursBadge({ location, size = 'medium' }: Working
       <div className="text-xs space-y-1">
         {isOpen ? (
           <>
-            <p className="opacity-90">Çalışma Saati: <strong>{hoursText}</strong></p>
+            <p className="opacity-90">Çalışma Saati: <strong>{typeof hoursText === 'string' ? hoursText : 'Bilinmiyor'}</strong></p>
             {location.phone && (
               <div className="flex items-center gap-1 opacity-90">
                 <Phone className="w-3 h-3" />
@@ -90,6 +87,6 @@ export default function WorkingHoursBadge({ location, size = 'medium' }: Working
           <p className="font-semibold">{reason || 'Hafta sonu kapalı'}</p>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }

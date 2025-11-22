@@ -241,16 +241,41 @@ export function getWorkingHoursText(location: any): string {
     return 'Her Zaman Açık';
   }
   
-  if (hours.is24Hours) {
+  if (hours.is24Hours || hours.isOpen24Hours) {
     return '7/24 Açık';
   }
 
+  const currentDay = getCurrentDayName();
+  
+  // Gerçek çalışma saatleri varsa onları kullan
+  if (hours[currentDay]) {
+    const dayHours = hours[currentDay];
+    
+    // Object formatı { isOpen: true, openTime: "09:00", closeTime: "18:00" }
+    if (typeof dayHours === 'object' && dayHours.isOpen !== undefined) {
+      if (!dayHours.isOpen) {
+        return 'Kapalı';
+      }
+      return `${dayHours.openTime} - ${dayHours.closeTime}`;
+    }
+    
+    // String formatı "09:00-18:00"
+    if (typeof dayHours === 'string') {
+      return dayHours;
+    }
+  }
+
+  // Legacy format için fallback
   if (isSunday()) {
     // Nöbetçi eczane özel durumu
     if (location.category === 'pharmacy' && hours.isOnDuty) {
       return 'Nöbetçi Eczane (24 Saat)';
     }
-    return hours.sunday || 'Kapalı';
+    const sundayHours = hours.sunday;
+    if (typeof sundayHours === 'object' && sundayHours.isOpen !== undefined) {
+      return sundayHours.isOpen ? `${sundayHours.openTime} - ${sundayHours.closeTime}` : 'Kapalı';
+    }
+    return sundayHours || 'Kapalı';
   }
 
   if (isSaturday()) {
@@ -258,10 +283,20 @@ export function getWorkingHoursText(location: any): string {
     if (location.category === 'pharmacy' && hours.isOnDuty) {
       return 'Nöbetçi Eczane (24 Saat)';
     }
-    return hours.saturday || 'Kapalı';
+    const saturdayHours = hours.saturday;
+    if (typeof saturdayHours === 'object' && saturdayHours.isOpen !== undefined) {
+      return saturdayHours.isOpen ? `${saturdayHours.openTime} - ${saturdayHours.closeTime}` : 'Kapalı';
+    }
+    return saturdayHours || 'Kapalı';
   }
 
-  return hours.weekday;
+  // Weekday fallback
+  const weekdayHours = hours.weekday;
+  if (typeof weekdayHours === 'object' && weekdayHours.isOpen !== undefined) {
+    return weekdayHours.isOpen ? `${weekdayHours.openTime} - ${weekdayHours.closeTime}` : 'Kapalı';
+  }
+  
+  return weekdayHours || '09:00 - 18:00';
 }
 
 // Kategoriye göre hafta sonu durumu

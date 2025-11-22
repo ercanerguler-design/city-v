@@ -12,6 +12,7 @@ import 'leaflet/dist/leaflet.css';
 
 // Error Boundary
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { MapErrorBoundary } from '@/components/ErrorBoundary/MapErrorBoundary';
 
 // Components
 import ProHeader from '@/components/Layout/ProHeader';
@@ -46,7 +47,7 @@ import LiveCrowdSidebar from '@/components/RealTime/LiveCrowdSidebar';
 import QRScanner from '@/components/Camera/QRScanner';
 import PhotoGallery from '@/components/Camera/PhotoGallery';
 import AddReviewModal from '@/components/ui/AddReviewModal';
-// import LocationDetailModal from '@/components/ui/LocationDetailModalUltraSimple'; // DISABLED FOR ERROR FIX
+import UltraSimpleModal from '@/components/ui/UltraSimpleModal';
 
 // Business Box Promotion Components
 import BusinessBoxBanner from '@/components/business-box/BusinessBoxBanner';
@@ -538,26 +539,185 @@ export default function ProfessionalHome() {
   }, []);
   
   const handleMapMarkerClick = useCallback((location: Location) => {
+    // Ultra-safe function validation and execution wrapper
+    const safeExecuteFunction = (fn: any, functionName: string, ...args: any[]) => {
+      try {
+        if (!fn) {
+          console.warn(`⚠️ ${functionName} is undefined`);
+          return false;
+        }
+        if (typeof fn !== 'function') {
+          console.warn(`⚠️ ${functionName} is not a function, type: ${typeof fn}`);
+          return false;
+        }
+        const result = fn(...args);
+        console.log(`✅ ${functionName} executed successfully`);
+        return result;
+      } catch (error) {
+        console.error(`❌ ${functionName} execution error:`, error);
+        return false;
+      }
+    };
+
+    // Ultra-safe state setter
+    const safeSetState = (setter: any, value: any, fallbackValue: any, stateName: string) => {
+      return new Promise((resolve) => {
+        try {
+          if (!setter || typeof setter !== 'function') {
+            console.error(`❌ ${stateName} setter is not a function`);
+            resolve(false);
+            return;
+          }
+          
+          setter(value);
+          console.log(`✅ ${stateName} set successfully`);
+          resolve(true);
+        } catch (error) {
+          console.error(`❌ ${stateName} setting error:`, error);
+          try {
+            // Fallback attempt
+            setter(fallbackValue);
+            console.log(`🔄 ${stateName} fallback successful`);
+            resolve(true);
+          } catch (fallbackError) {
+            console.error(`💀 ${stateName} fallback failed:`, fallbackError);
+            resolve(false);
+          }
+        }
+      });
+    };
+
+    // Main click handler with multiple layers of protection
+    const executeClickHandler = async () => {
+      try {
+        console.log('🗺️ Map marker clicked:', location?.name || 'Unknown location');
+        
+        // Validate location object
+        if (!location || typeof location !== 'object') {
+          console.error('❌ Invalid location object:', location);
+          return;
+        }
+
+        // Layer 1: Analytics functions (non-blocking)
+        const analyticsPromises = [
+          new Promise((resolve) => {
+            setTimeout(() => {
+              safeExecuteFunction(trackVisit, 'trackVisit', location.id, location.name, location.category, location.currentCrowdLevel);
+              resolve(true);
+            }, 5);
+          }),
+          new Promise((resolve) => {
+            setTimeout(() => {
+              safeExecuteFunction(checkIn, 'checkIn', location.id);
+              resolve(true);
+            }, 10);
+          }),
+          new Promise((resolve) => {
+            setTimeout(() => {
+              safeExecuteFunction(addVisitToHistory, 'addVisitToHistory', location.id, location.category, location.currentCrowdLevel);
+              resolve(true);
+            }, 15);
+          })
+        ];
+
+        // Execute analytics in parallel (non-blocking)
+        Promise.allSettled(analyticsPromises).catch(err => {
+          console.warn('⚠️ Analytics execution had some issues:', err);
+        });
+
+        // Layer 2: Critical state updates (blocking, with multiple attempts)
+        const stateUpdateAttempts = async () => {
+          // Attempt 1: Normal state update
+          let attempt1Success = false;
+          try {
+            await safeSetState(
+              (newLocation: Location) => setSelectedLocation(newLocation),
+              location,
+              location,
+              'selectedLocation'
+            );
+            
+            await safeSetState(
+              (show: boolean) => setShowLocationDetail(show),
+              true,
+              true,
+              'showLocationDetail'
+            );
+            
+            attempt1Success = true;
+            console.log('✅ Attempt 1: Modal state updated successfully');
+          } catch (error) {
+            console.error('❌ Attempt 1 failed:', error);
+          }
+
+          if (!attempt1Success) {
+            // Attempt 2: Direct state update with timeout
+            try {
+              await new Promise((resolve) => {
+                setTimeout(() => {
+                  try {
+                    setSelectedLocation(location);
+                    setShowLocationDetail(true);
+                    console.log('✅ Attempt 2: Direct state update successful');
+                    resolve(true);
+                  } catch (error) {
+                    console.error('❌ Attempt 2 failed:', error);
+                    resolve(false);
+                  }
+                }, 25);
+              });
+            } catch (error) {
+              console.error('❌ Attempt 2 wrapper failed:', error);
+              
+              // Attempt 3: Emergency state update with longer delay
+              setTimeout(() => {
+                try {
+                  setSelectedLocation(() => location);
+                  setShowLocationDetail(() => true);
+                  console.log('🆘 Attempt 3: Emergency state update successful');
+                } catch (finalError) {
+                  console.error('💀 All state update attempts failed:', finalError);
+                }
+              }, 100);
+            }
+          }
+        };
+
+        // Execute state updates
+        await stateUpdateAttempts();
+        
+      } catch (mainError) {
+        console.error('❌ Main click handler error:', mainError);
+        
+        // Ultimate fallback: Simple modal opening
+        setTimeout(() => {
+          try {
+            setSelectedLocation(location);
+            setShowLocationDetail(true);
+            console.log('🚑 Ultimate fallback: Modal opened');
+          } catch (ultimateError) {
+            console.error('💀 Ultimate fallback failed:', ultimateError);
+          }
+        }, 200);
+      }
+    };
+
+    // Execute with additional error boundary
     try {
-      console.log('🗺️ Map marker clicked:', location.name);
+      executeClickHandler();
+    } catch (topLevelError) {
+      console.error('💥 Top-level click handler error:', topLevelError);
       
-      // ABSOLUTELY NO STATE CHANGES - ZERO REACT INTERACTION
-      // Just pure JavaScript operations
-      const timestamp = new Date().toLocaleTimeString();
-      console.log(`⏰ Click timestamp: ${timestamp}`);
-      console.log(`📋 Location details: ${JSON.stringify(location, null, 2)}`);
-      
-      // Use setTimeout to completely isolate from React cycle
-      setTimeout(() => {
-        console.log('⚡ Delayed log - outside React render cycle');
-        alert(`🏢 ${location.name}\n⏰ Time: ${timestamp}`);
-      }, 100);
-      
-      console.log('✅ handleMapMarkerClick completed - NO REACT CHANGES');
-    } catch (error) {
-      console.error('❌ handleMapMarkerClick error:', error);
+      // Last resort: Immediate modal opening
+      try {
+        setSelectedLocation(location);
+        setShowLocationDetail(true);
+        console.log('🔥 Last resort: Modal opened immediately');
+      } catch (lastResortError) {
+        console.error('☠️ Even last resort failed:', lastResortError);
+      }
     }
-  }, []);  // EMPTY DEPENDENCIES - NO STATE INTERACTION
+  }, [trackVisit, checkIn, addVisitToHistory]);
 
   const handleReportClick = (location: Location) => {
     if (!isAuthenticated) {
@@ -854,13 +1014,15 @@ export default function ProfessionalHome() {
         <div className="flex-1 overflow-hidden">
           {viewMode === 'map' ? (
             <div data-tour="map" className="h-full w-full">
-              <MapView
-                locations={sortedLocationsByDistance}
-                center={mapCenter}
-                zoom={mapZoom}
-                onLocationClick={handleMapMarkerClick}
-                userLocation={userLocation}
-              />
+              <MapErrorBoundary>
+                <MapView
+                  locations={sortedLocationsByDistance}
+                  center={mapCenter}
+                  zoom={mapZoom}
+                  onLocationClick={handleMapMarkerClick}
+                  userLocation={userLocation}
+                />
+              </MapErrorBoundary>
             </div>
           ) : (
             <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-indigo-50/30 dark:from-slate-900 dark:to-slate-800 transition-colors duration-300">
@@ -1236,19 +1398,24 @@ export default function ProfessionalHome() {
       {/* 🚀 Business Box Promotion - Modal (First Visit) */}
       <BusinessBoxModal />
 
-      {/* 📍 Location Detail Modal - TEMPORARILY DISABLED TO FIX ERROR */}
-      {/*
-      <LocationDetailModal
+      {/* 📍 Ultra Simple Modal */}
+      <UltraSimpleModal
         isOpen={showLocationDetail}
         onClose={() => {
+          console.log('❌ Modal closing requested');
           setShowLocationDetail(false);
           setSelectedLocation(null);
         }}
         location={selectedLocation}
-        onReviewClick={handleReviewClick}
-        onRouteClick={handleRouteClick}
+        onReview={() => {
+          console.log('📝 Review click from ultra simple modal');
+          handleReviewClick();
+        }}
+        onNavigate={() => {
+          console.log('🗺️ Navigate click from ultra simple modal');
+          handleRouteClick();
+        }}
       />
-      */}
 
       {/* 💬 Add Review Modal */}
       <AddReviewModal
