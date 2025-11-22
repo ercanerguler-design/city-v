@@ -8,6 +8,8 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddItem, setShowAddItem] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     if (businessProfile) {
@@ -209,6 +211,58 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
     }
   };
 
+  const editItem = async (item: any) => {
+    setEditingItem(item);
+    setShowEditModal(true);
+  };
+
+  const updateItem = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    if (!editingItem) return;
+
+    try {
+      const formData = new FormData(e.currentTarget);
+      const name = formData.get('name') as string;
+      const description = formData.get('description') as string;
+      const price = parseFloat(formData.get('price') as string);
+      const originalPrice = formData.get('originalPrice') ? parseFloat(formData.get('originalPrice') as string) : null;
+
+      if (!name || isNaN(price) || price <= 0) {
+        toast.error('Geçerli bilgiler girin');
+        return;
+      }
+
+      const response = await fetch('/api/business/menu/items', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('business_token')}`
+        },
+        body: JSON.stringify({
+          itemId: editingItem.id,
+          name,
+          description,
+          price,
+          originalPrice
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Ürün güncellendi');
+        setShowEditModal(false);
+        setEditingItem(null);
+        loadMenu();
+      } else {
+        toast.error(data.error || 'Güncellenemedi');
+      }
+    } catch (error) {
+      console.error('❌ Ürün güncelleme hatası:', error);
+      toast.error('Bağlantı hatası');
+    }
+  };
+
   const deleteItem = async (itemId: number, itemName: string) => {
     if (!confirm(`"${itemName}" ürününü silmek istediğinize emin misiniz?`)) {
       return;
@@ -216,7 +270,10 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
 
     try {
       const response = await fetch(`/api/business/menu/items?itemId=${itemId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('business_token')}`
+        }
       });
 
       const data = await response.json();
@@ -323,13 +380,22 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
                             <p className="text-sm text-gray-400 line-through">{parseFloat(item.original_price).toFixed(2)} ₺</p>
                           )}
                         </div>
-                        <button
-                          onClick={() => deleteItem(item.id, item.name)}
-                          className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-700 p-1.5 hover:bg-red-50 rounded transition-all"
-                          title="Ürünü Sil"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => editItem(item)}
+                            className="text-blue-600 hover:text-blue-700 p-1.5 hover:bg-blue-50 rounded transition-colors"
+                            title="Ürünü Düzenle"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteItem(item.id, item.name)}
+                            className="text-red-600 hover:text-red-700 p-1.5 hover:bg-red-50 rounded transition-colors"
+                            title="Ürünü Sil"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -337,6 +403,109 @@ export default function MenuSection({ businessProfile }: { businessProfile: any 
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Ürün Düzenleme Modalı */}
+      {showEditModal && editingItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Ürünü Düzenle</h3>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingItem(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <form onSubmit={updateItem} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ürün Adı *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  defaultValue={editingItem.name}
+                  required
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Örn: Latte"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Açıklama
+                </label>
+                <textarea
+                  name="description"
+                  defaultValue={editingItem.description || ''}
+                  rows={3}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                  placeholder="Ürün açıklaması..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Fiyat (₺) *
+                  </label>
+                  <input
+                    type="number"
+                    name="price"
+                    defaultValue={editingItem.price}
+                    required
+                    step="0.01"
+                    min="0"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Eski Fiyat (₺)
+                  </label>
+                  <input
+                    type="number"
+                    name="originalPrice"
+                    defaultValue={editingItem.original_price || ''}
+                    step="0.01"
+                    min="0"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingItem(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Güncelle
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

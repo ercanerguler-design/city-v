@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       ORDER BY display_order ASC, name ASC
     `;
 
-    // Tüm ürünleri getir (category_id üzerinden)
+    // Tüm ürünleri getir (category_id üzerinden) - profileId kullan!
     const itemsResult = await sql`
       SELECT 
         mi.id,
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
         mi.display_order
        FROM business_menu_items mi
        INNER JOIN business_menu_categories mc ON mi.category_id = mc.id
-       WHERE mc.business_id = ${businessId}
+       WHERE mc.business_id = ${profileId}
        ORDER BY mi.display_order ASC, mi.name ASC
     `;
 
