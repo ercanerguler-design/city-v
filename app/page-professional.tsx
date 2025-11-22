@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Filter, Map as MapIcon, Grid3x3, Search, Sparkles } from 'lucide-react';
@@ -556,8 +556,9 @@ export default function ProfessionalHome() {
 
   const activeFiltersCount = selectedCategories.length + crowdLevelFilter.length + (searchQuery ? 1 : 0);
 
-  // Mesafe hesaplama fonksiyonu (Haversine formula) - useMemo'dan ÖNCE tanımlanmalı
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  // Mesafe hesaplama fonksiyonu (Haversine formula) - useCallback ile cache'le
+  const calculateDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const toRad = (degrees: number): number => degrees * (Math.PI / 180);
     const R = 6371; // Dünya'nın yarıçapı (km)
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
@@ -566,11 +567,7 @@ export default function ProfessionalHome() {
       Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
-  };
-
-  const toRad = (degrees: number): number => {
-    return degrees * (Math.PI / 180);
-  };
+  }, []);
 
   // Kullanıcının konumuna göre yakınlık sıralaması
   const sortedLocationsByDistance = useMemo(() => {
@@ -626,7 +623,7 @@ export default function ProfessionalHome() {
       selectedLocation.coordinates[0],
       selectedLocation.coordinates[1]
     );
-  }, [selectedLocation, userLocation, calculateDistance]);
+  }, [selectedLocation, userLocation]);
 
   // Gerçek istatistikleri hesapla
   const { trackedLocationIds } = useTrackedStore();
