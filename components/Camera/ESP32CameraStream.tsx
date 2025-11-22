@@ -30,8 +30,9 @@ export default function ESP32CameraStream({
   businessId,
   onAnalyticsUpdate
 }: ESP32CameraStreamProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  console.log('🎥 ESP32CameraStream rendered - location type:', typeof location, location);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [model, setModel] = useState<cocoSsd.ObjectDetection | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [analytics, setAnalytics] = useState<AnalyticsData>({
