@@ -97,7 +97,7 @@ export default function ReviewsAndSentiments({ businessUserId }: ReviewsStatsPro
           </div>
           <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-              Yorumlar & Duygular
+              Duygular
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Müşteri geri bildirimleri
