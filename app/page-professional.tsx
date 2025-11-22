@@ -519,23 +519,23 @@ export default function ProfessionalHome() {
     }
   };
 
-  const handleRouteClick = () => {
+  const handleRouteClick = useCallback(() => {
     if (selectedLocation && userLocation) {
       setRouteTargetLocation(selectedLocation);
       setShowRouteModal(true);
     } else {
       toast.error('Rota göstermek için önce konumunuzu paylaşmalısınız.');
     }
-  };
+  }, [selectedLocation, userLocation]);
 
-  const handleReviewClick = () => {
+  const handleReviewClick = useCallback(() => {
     setShowAddReview(true);
-  };
+  }, []);
 
-  const handleSocialClick = (location: Location) => {
+  const handleSocialClick = useCallback((location: Location) => {
     setSelectedSocialLocation(location);
     setShowSocialModal(true);
-  };
+  }, []);
   
   const handleMapMarkerClick = useCallback((location: Location) => {
     try {
