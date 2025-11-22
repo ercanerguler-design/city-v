@@ -542,53 +542,14 @@ export default function ProfessionalHome() {
       console.log('🗺️ Map marker clicked:', location.name);
       console.log('📍 Location data:', location);
       
-      // COMPLETELY BYPASS MODAL - Use alert instead
-      const crowdText = location.currentCrowdLevel === 'low' ? 'Düşük' : 
-                       location.currentCrowdLevel === 'moderate' ? 'Orta' : 
-                       location.currentCrowdLevel === 'high' ? 'Yüksek' : 'Çok Yüksek';
+      // ABSOLUTE MINIMAL VERSION - ONLY ALERT, NO OTHER FUNCTION CALLS
+      alert(`📍 ${location.name}\n📂 Kategori: ${location.category}`);
       
-      alert(`
-📍 ${location.name}
-📂 Kategori: ${location.category}
-👥 Kalabalık: ${crowdText}
-📍 Adres: ${location.address || 'Adres bilgisi yok'}
-⭐ Puan: ${location.rating || 'Değerlendirme yok'}
-      `);
-      
-      // Store functions'ları güvenli çağır
-      console.log('🔄 Calling trackVisit...');
-      if (typeof trackVisit === 'function') {
-        trackVisit(location.id, location.name, location.category, location.currentCrowdLevel);
-        console.log('✅ trackVisit completed');
-      }
-      
-      console.log('🔄 Calling checkIn...');
-      if (typeof checkIn === 'function') {
-        checkIn(location.id);
-        console.log('✅ checkIn completed');
-      }
-      
-      console.log('🔄 Calling addVisitToHistory...');
-      if (typeof addVisitToHistory === 'function') {
-        addVisitToHistory(location.id, location.category, location.currentCrowdLevel);
-        console.log('✅ addVisitToHistory completed');
-      }
-      
-      // Grid'den tıklandıysa haritaya geç ve konumu ortala
-      if (viewMode === 'grid') {
-        console.log('🔄 Switching to map view...');
-        setViewMode('map');
-        setMapCenter(location.coordinates);
-        setMapZoom(16);
-        console.log('✅ View mode switched');
-      }
-      
-      console.log('✅ handleMapMarkerClick completed successfully - NO MODAL RENDERING');
+      console.log('✅ handleMapMarkerClick completed successfully - MINIMAL VERSION');
     } catch (error) {
       console.error('❌ handleMapMarkerClick error:', error);
-      toast.error('Konum detayları yüklenirken hata oluştu');
     }
-  }, [trackVisit, checkIn, addVisitToHistory, viewMode]);
+  }, []);  // EMPTY DEPENDENCIES
 
   const handleReportClick = (location: Location) => {
     if (!isAuthenticated) {
