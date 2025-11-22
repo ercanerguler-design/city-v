@@ -35,12 +35,22 @@ export default function WorkingHoursBadge({ location, size = 'medium' }: Working
   }
 
   const { isOpen, reason } = isLocationOpen(location);
-  const hoursText = getWorkingHoursText(location);
+  const hoursTextRaw = getWorkingHoursText(location);
+  // Ensure hoursText is always a string - more defensive approach
+  let hoursText = 'Bilinmiyor';
+  
+  if (typeof hoursTextRaw === 'string') {
+    hoursText = hoursTextRaw;
+  } else if (hoursTextRaw && typeof hoursTextRaw === 'object') {
+    // If it returns an object unexpectedly, try to extract text
+    hoursText = hoursTextRaw.hoursText || hoursTextRaw.text || hoursTextRaw.toString() || 'Bilinmiyor';
+  }
 
   console.log('🕐 WorkingHoursBadge result for', location.name, ':', {
     isOpen,
     reason,
-    hoursText,
+    hoursTextRaw: typeof hoursTextRaw,
+    hoursText: typeof hoursText,
     hasWorkingHours: !!location.workingHours
   });
 
