@@ -13,7 +13,7 @@ const VERCEL_ENVIRONMENT_VARIABLES = {
   NEXT_PUBLIC_GOOGLE_PLACES_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY,
   
   // API Configuration
-  NEXT_PUBLIC_API_URL: 'https://city-v-chi.vercel.app',
+  NEXT_PUBLIC_API_URL: 'https://city-v-ercanerguler-design-ercanergulers-projects.vercel.app',
   JWT_SECRET: process.env.JWT_SECRET || 'cityv-business-secret-2024',
   
   // Email Service
