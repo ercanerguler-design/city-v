@@ -63,8 +63,14 @@ export default function CampaignCreationModal({ businessProfile, onClose, onSucc
       return;
     }
 
-    if (!formData.discount_percent && !formData.discount_amount) {
-      toast.error('İndirim yüzdesi veya tutarı girin');
+    // İndirim yüzdesi ve tutarı opsiyonel
+    if (formData.discount_percent && (parseFloat(formData.discount_percent) <= 0 || parseFloat(formData.discount_percent) > 100)) {
+      toast.error('İndirim yüzdesi 1-100 arasında olmalı');
+      return;
+    }
+
+    if (formData.discount_amount && parseFloat(formData.discount_amount) <= 0) {
+      toast.error('İndirim tutarı 0\'dan büyük olmalı');
       return;
     }
 
@@ -266,7 +272,7 @@ export default function CampaignCreationModal({ businessProfile, onClose, onSucc
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    İndirim Yüzdesi (%)
+                    İndirim Yüzdesi (%) <span className="text-gray-400 text-xs">(opsiyonel)</span>
                   </label>
                   <input
                     type="number"
@@ -281,7 +287,7 @@ export default function CampaignCreationModal({ businessProfile, onClose, onSucc
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    veya İndirim Tutarı (₺)
+                    veya İndirim Tutarı (₺) <span className="text-gray-400 text-xs">(opsiyonel)</span>
                   </label>
                   <input
                     type="number"

@@ -41,9 +41,17 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!discountPercent || discountPercent <= 0 || discountPercent > 100) {
+    // İndirim yüzdesi veya tutarı opsiyonel - en az biri olmalı
+    if (discountPercent && (discountPercent <= 0 || discountPercent > 100)) {
       return NextResponse.json(
-        { error: 'Geçerli bir indirim oranı giriniz (1-100)' },
+        { error: 'İndirim yüzdesi 1-100 arasında olmalı' },
+        { status: 400 }
+      );
+    }
+
+    if (discountAmount && discountAmount <= 0) {
+      return NextResponse.json(
+        { error: 'İndirim tutarı 0\'dan büyük olmalı' },
         { status: 400 }
       );
     }
