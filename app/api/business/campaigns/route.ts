@@ -93,15 +93,15 @@ export async function POST(request: Request) {
 
     console.log('✅ Yeterli kredi var, kampanya oluşturuluyor...');
 
-    // 2. Kampanya oluştur - image_url eklendi
+    // 2. Kampanya oluştur
     const result = await sql`
       INSERT INTO business_campaigns (
         business_id, title, description, discount_percent, discount_amount,
-        start_date, end_date, target_audience, image_url, is_active
+        start_date, end_date, target_audience, is_active
       )
       VALUES (
         ${businessId}, ${title}, ${description}, ${discountPercent || null}, ${discountAmount || null},
-        ${startDate}, ${endDate}, ${targetAudience}, ${imageUrl || null}, true
+        ${startDate}, ${endDate}, ${targetAudience}, true
       )
       RETURNING *
     `;
