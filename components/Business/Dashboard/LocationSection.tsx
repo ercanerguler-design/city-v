@@ -31,18 +31,22 @@ export default function LocationSection({ businessProfile }: { businessProfile: 
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLocation({
+          const newLocation = {
             ...location,
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
-          });
-          toast.success('Konum otomatik algılandı!');
+          };
+          setLocation(newLocation);
+          console.log('📍 Konum algılandı:', newLocation);
+          toast.success('✅ Konum otomatik algılandı! Kaydetmeyi unutmayın.');
           setAutoDetecting(false);
         },
         (error) => {
-          toast.error('Konum izni gerekli');
+          console.error('❌ Konum algılama hatası:', error);
+          toast.error('⚠️ Konum izni gerekli. Tarayıcı ayarlarından konum iznini kontrol edin.');
           setAutoDetecting(false);
-        }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       toast.error('Tarayıcınız konum desteği sunmuyor');
@@ -81,16 +85,23 @@ export default function LocationSection({ businessProfile }: { businessProfile: 
         district: location.district
       });
 
+      const token = localStorage.getItem('business_token');
+      if (!token) {
+        toast.error('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/business/location', {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('business_token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           businessId,
-          latitude: location.latitude,
-          longitude: location.longitude,
+          latitude: parseFloat(location.latitude),
+          longitude: parseFloat(location.longitude),
           address: location.address || '',
           city: location.city || '',
           district: location.district || '',

@@ -308,7 +308,15 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
                     position={location.coordinates}
                     icon={createCustomMarker(location.category, location.currentCrowdLevel)}
                     eventHandlers={{
-                      click: () => onLocationClick?.(location),
+                      click: () => {
+                        try {
+                          console.log('📍 Marker clicked:', location.id, location.name);
+                          onLocationClick?.(location);
+                        } catch (error) {
+                          console.error('❌ Marker click error:', error);
+                          toast.error('Konum detayları yüklenirken hata oluştu');
+                        }
+                      },
                     }}
                   >
                     <Tooltip direction="top" offset={[0, -20]} opacity={0.9}>

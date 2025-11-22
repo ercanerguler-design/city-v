@@ -10,6 +10,9 @@ import toast from 'react-hot-toast';
 import 'leaflet/dist/leaflet.css';
 // Note: react-leaflet-markercluster CSS is automatically included with the component
 
+// Error Boundary
+import ErrorBoundary from '@/components/ErrorBoundary';
+
 // Components
 import ProHeader from '@/components/Layout/ProHeader';
 import LocationCard from '@/components/ui/LocationCard';
@@ -681,9 +684,10 @@ export default function ProfessionalHome() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
-      {/* 🚀 Business Box Banner */}
-      <BusinessBoxBanner />
+    <ErrorBoundary>
+      <div className="flex flex-col h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
+        {/* 🚀 Business Box Banner */}
+        <BusinessBoxBanner />
 
       {/* 🎨 Ultra-Professional Header */}
       <ProHeader
@@ -1138,7 +1142,7 @@ export default function ProfessionalHome() {
           </p>
         </div>
       </footer>
-    </div>
+    </ErrorBoundary>
   );
 }
 
