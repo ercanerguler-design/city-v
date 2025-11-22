@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Filter, Map as MapIcon, Grid3x3, Search, Sparkles } from 'lucide-react';
@@ -241,96 +241,98 @@ export default function ProfessionalHome() {
   }, [userLocation]);
 
   // Tüm locations'ları çek (Business + Static) - City-V Anasayfa Entegrasyonu
-  useEffect(() => {
-    const fetchAllLocations = async () => {
-      try {
-        console.log('🗺️ City-V locations çekiliyor (Business + Static)...');
-        
-        // Build API URL with optional location parameters
-        let apiUrl = `/api/locations?city=${selectedCity}`;
-        if (userLocation) {
-          apiUrl += `&lat=${userLocation[0]}&lng=${userLocation[1]}&radius=7`;
-          console.log(`📍 Filtering by user location: ${userLocation[0]}, ${userLocation[1]} (7km radius)`);
-        }
-        
-        // Unified API endpoint - business profiles + static locations
-        const response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+  // useCallback ile tanımla ki diğer useEffect'lerde kullanılabilsin
+  const fetchAllLocations = useCallback(async () => {
+    try {
+      console.log('🗺️ City-V locations çekiliyor (Business + Static)...');
+      
+      // Build API URL with optional location parameters
+      let apiUrl = `/api/locations?city=${selectedCity}`;
+      if (userLocation) {
+        apiUrl += `&lat=${userLocation[0]}&lng=${userLocation[1]}&radius=7`;
+        console.log(`📍 Filtering by user location: ${userLocation[0]}, ${userLocation[1]} (7km radius)`);
+      }
+      
+      // Unified API endpoint - business profiles + static locations
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('📦 API Response:', data);
+      
+      if (data.success && data.locations && Array.isArray(data.locations)) {
+        console.log('✅ Locations alındı:', data.locations.length);
+        console.log('   ↳ Business locations:', data.locations.filter((l: any) => l.source === 'business').length);
+        console.log('   ↳ Static locations:', data.locations.filter((l: any) => l.source === 'static').length);
+        
+        // Debug: Show first location
+        if (data.locations.length > 0) {
+          console.log('📍 İlk location:', {
+            id: data.locations[0].id,
+            name: data.locations[0].name,
+            category: data.locations[0].category,
+            coordinates: data.locations[0].coordinates
+          });
         }
         
-        const data = await response.json();
-        console.log('📦 API Response:', data);
-        
-        if (data.success && data.locations && Array.isArray(data.locations)) {
-          console.log('✅ Locations alındı:', data.locations.length);
-          console.log('   ↳ Business locations:', data.locations.filter((l: any) => l.source === 'business').length);
-          console.log('   ↳ Static locations:', data.locations.filter((l: any) => l.source === 'static').length);
-          
-          // Debug: Show first location
-          if (data.locations.length > 0) {
-            console.log('📍 İlk location:', {
-              id: data.locations[0].id,
-              name: data.locations[0].name,
-              category: data.locations[0].category,
-              coordinates: data.locations[0].coordinates
-            });
-          }
-          
-          if (data.locations.length === 0) {
-            console.warn('⚠️ Location bulunamadı');
-            setLocations([]);
-            setIsLoadingPlaces(false);
-            return;
-          }
-          
-          // API'den gelen locations zaten Location formatında (backend dönüştürüyor)
-          const allLocations: Location[] = data.locations.map((loc: any) => ({
-            ...loc,
-            // Working hours açık/kapalı kontrolü ekle - API'den working_hours gelir, workingHours'a dönüştür
-            workingHours: loc.working_hours || loc.workingHours,
-            isOpen: (loc.working_hours || loc.workingHours) ? isLocationOpen({ ...loc, workingHours: loc.working_hours || loc.workingHours }).isOpen : undefined,
-            // Business locations için özel marker flag
-            isBusiness: loc.source === 'business',
-            // IoT data için ek alanlar
-            currentPeople: loc.currentPeople || 0,
-            isLive: loc.isLive || false,
-            hasCampaigns: loc.hasCampaigns || false,
-            campaigns: loc.campaigns || []
-          }));
-          
-          console.log('🗺️ Haritaya eklenecek toplam locations:', allLocations.length);
-          
-          // Açık kapalı bilgisi
-          const openCount = allLocations.filter(l => l.isOpen === true).length;
-          const closedCount = allLocations.filter(l => l.isOpen === false).length;
-          if (openCount > 0 || closedCount > 0) {
-            console.log(`   ↳ Açık: ${openCount}, Kapalı: ${closedCount}`);
-          }
-          
-          setLocations(allLocations);
-          setIsLoadingPlaces(false);
-          
-          console.log('✅ Tüm locations haritaya eklendi');
-        } else {
-          console.warn('⚠️ API yanıtı başarısız veya veri yok:', data);
+        if (data.locations.length === 0) {
+          console.warn('⚠️ Location bulunamadı');
           setLocations([]);
           setIsLoadingPlaces(false);
+          return;
         }
-      } catch (error) {
-        console.error('❌ Locations fetch hatası:', error);
-        console.error('❌ Hata detayı:', error instanceof Error ? error.message : 'Bilinmeyen hata');
+        
+        // API'den gelen locations zaten Location formatında (backend dönüştürüyor)
+        const allLocations: Location[] = data.locations.map((loc: any) => ({
+          ...loc,
+          // Working hours açık/kapalı kontrolü ekle - API'den working_hours gelir, workingHours'a dönüştür
+          workingHours: loc.working_hours || loc.workingHours,
+          isOpen: (loc.working_hours || loc.workingHours) ? isLocationOpen({ ...loc, workingHours: loc.working_hours || loc.workingHours }).isOpen : undefined,
+          // Business locations için özel marker flag
+          isBusiness: loc.source === 'business',
+          // IoT data için ek alanlar
+          currentPeople: loc.currentPeople || 0,
+          isLive: loc.isLive || false,
+          hasCampaigns: loc.hasCampaigns || false,
+          campaigns: loc.campaigns || []
+        }));
+        
+        console.log('🗺️ Haritaya eklenecek toplam locations:', allLocations.length);
+        
+        // Açık kapalı bilgisi
+        const openCount = allLocations.filter(l => l.isOpen === true).length;
+        const closedCount = allLocations.filter(l => l.isOpen === false).length;
+        if (openCount > 0 || closedCount > 0) {
+          console.log(`   ↳ Açık: ${openCount}, Kapalı: ${closedCount}`);
+        }
+        
+        setLocations(allLocations);
+        setIsLoadingPlaces(false);
+        
+        console.log('✅ Tüm locations haritaya eklendi');
+      } else {
+        console.warn('⚠️ API yanıtı başarısız veya veri yok:', data);
         setLocations([]);
         setIsLoadingPlaces(false);
       }
-    };
-    
+    } catch (error) {
+      console.error('❌ Locations fetch hatası:', error);
+      console.error('❌ Hata detayı:', error instanceof Error ? error.message : 'Bilinmeyen hata');
+      setLocations([]);
+      setIsLoadingPlaces(false);
+    }
+  }, [selectedCity, userLocation]);
+
+  // Initial fetch ve interval setup
+  useEffect(() => {
     // Sayfa yüklendiğinde ve şehir değiştiğinde çek
     setIsLoadingPlaces(true);
     fetchAllLocations();
@@ -339,7 +341,7 @@ export default function ProfessionalHome() {
     const interval = setInterval(fetchAllLocations, 30000);
     
     return () => clearInterval(interval);
-  }, [selectedCity, userLocation]); // Re-fetch when user location changes
+  }, [fetchAllLocations]); // fetchAllLocations dependency olarak
 
   // Map popup event listeners
   useEffect(() => {
