@@ -74,25 +74,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if user owns this business
+    // Check if user owns this business - businessId could be user_id or profile_id
+    console.log('🔍 Checking business access:', { businessId, userId });
+    
+    let profileId = businessId;
     const businessCheck = await sql`
       SELECT id FROM business_profiles 
-      WHERE id = ${businessId} AND user_id = ${userId}
+      WHERE (id = ${businessId} OR user_id = ${businessId}) AND user_id = ${userId}
     `;
 
     if (!businessCheck.length) {
+      console.log('❌ Business access denied:', { businessId, userId });
       return NextResponse.json(
         { error: 'Bu işletmeye erişim yetkiniz yok' },
         { status: 403 }
       );
     }
-
-    console.log('🔍 Getting categories for business:', businessId);
+    
+    profileId = businessCheck[0].id;
+    console.log('🔍 Getting categories for business profile:', profileId);
 
     const result = await sql`
       SELECT id, name, display_order, is_active, icon, created_at
       FROM business_menu_categories
-      WHERE business_id = ${businessId}
+      WHERE business_id = ${profileId}
       ORDER BY display_order ASC, name ASC
     `;
 
@@ -140,24 +145,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user owns this business
+    // Check if user owns this business - businessId could be user_id or profile_id
+    console.log('🔍 POST Checking business access:', { businessId, userId });
+    
     const businessCheck = await sql`
       SELECT id FROM business_profiles 
-      WHERE id = ${businessId} AND user_id = ${userId}
+      WHERE (id = ${businessId} OR user_id = ${businessId}) AND user_id = ${userId}
     `;
 
     if (!businessCheck.length) {
+      console.log('❌ POST Business access denied:', { businessId, userId });
       return NextResponse.json(
         { error: 'Bu işletmeye erişim yetkiniz yok' },
         { status: 403 }
       );
     }
-
-    console.log('📝 Creating category:', { businessId, name, icon, displayOrder });
+    
+    const profileId = businessCheck[0].id;
+    console.log('📝 Creating category for business profile:', { profileId, name, icon, displayOrder });
 
     const result = await sql`
       INSERT INTO business_menu_categories (business_id, name, icon, display_order, is_active)
-      VALUES (${businessId}, ${name}, ${icon}, ${displayOrder}, true)
+      VALUES (${profileId}, ${name}, ${icon}, ${displayOrder}, true)
       RETURNING *
     `;
 
