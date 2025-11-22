@@ -15,7 +15,7 @@ interface CampaignNotificationPanelProps {
     discountPercent?: number;
     discountAmount?: number;
     validUntil?: string;
-    location?: string;
+    location?: string | { lat: number; lng: number; address: string };
   };
 }
 
@@ -135,7 +135,13 @@ export default function CampaignNotificationPanel({
               {campaign.location && (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <MapPin className="w-4 h-4 text-purple-600" />
-                  <span>{campaign.location}</span>
+                  <span>
+                    {typeof campaign.location === 'string' 
+                      ? campaign.location 
+                      : typeof campaign.location === 'object' && campaign.location !== null && 'address' in campaign.location
+                        ? campaign.location.address 
+                        : 'Konum bilgisi yok'}
+                  </span>
                 </div>
               )}
             </div>
