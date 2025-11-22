@@ -304,26 +304,55 @@ export default function AdminPage() {
               <StatCard
                 icon={Users}
                 label="Toplam Kullanıcı"
-                value={allUsers.length.toLocaleString()}
+                value={(realStats?.totalUsers || allUsers.length).toLocaleString()}
                 gradient="bg-gradient-to-br from-blue-500 to-blue-600"
+                change={realStats?.userGrowth?.week > 0 ? `+${realStats.userGrowth.week} bu hafta` : undefined}
               />
               <StatCard
                 icon={Activity}
-                label="Aktif Kullanıcı"
-                value={allUsers.filter(u => u.isActive).length.toLocaleString()}
+                label="Aktif Kullanıcı (7 gün)"
+                value={(realStats?.activeUsers || allUsers.filter(u => u.isActive).length).toLocaleString()}
                 gradient="bg-gradient-to-br from-green-500 to-green-600"
               />
               <StatCard
                 icon={Crown}
                 label="Premium Üye"
-                value={allUsers.filter(u => u.membershipTier && u.membershipTier !== 'free').length.toLocaleString()}
+                value={(realStats?.premiumUsers || allUsers.filter(u => u.membershipTier && u.membershipTier !== 'free').length).toLocaleString()}
                 gradient="bg-gradient-to-br from-yellow-500 to-orange-500"
               />
               <StatCard
-                icon={DollarSign}
-                label="Free Üye"
-                value={allUsers.filter(u => !u.membershipTier || u.membershipTier === 'free').length.toLocaleString()}
+                icon={Building2}
+                label="Business Üye"
+                value={(realStats?.totalBusinessMembers || 0).toLocaleString()}
                 gradient="bg-gradient-to-br from-purple-500 to-pink-500"
+              />
+            </div>
+
+            {/* Business & Platform Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <StatCard
+                icon={MapPin}
+                label="Toplam İşletme"
+                value={(realStats?.totalLocations || 0).toLocaleString()}
+                gradient="bg-gradient-to-br from-indigo-500 to-indigo-600"
+              />
+              <StatCard
+                icon={Camera}
+                label="Aktif IoT Cihaz"
+                value={(realStats?.totalDevices || 0).toLocaleString()}
+                gradient="bg-gradient-to-br from-cyan-500 to-cyan-600"
+              />
+              <StatCard
+                icon={BarChart3}
+                label="Kalabalık Analizi"
+                value={(realStats?.totalCrowdAnalysis || 0).toLocaleString()}
+                gradient="bg-gradient-to-br from-orange-500 to-orange-600"
+              />
+              <StatCard
+                icon={Star}
+                label="Aktif Kampanya"
+                value={(realStats?.activeCampaigns || 0).toLocaleString()}
+                gradient="bg-gradient-to-br from-pink-500 to-rose-600"
               />
             </div>
 
@@ -337,21 +366,41 @@ export default function AdminPage() {
                 <Users className="w-5 h-5 text-indigo-500" />
                 Kullanıcı Dağılımı
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Toplam Kayıtlı</p>
-                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{allUsers.length}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Toplam Kullanıcı</p>
+                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                    {realStats?.totalUsers || allUsers.length}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    Kayıtlı kullanıcılar
+                  </p>
                 </div>
                 <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl p-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Premium Üyeler</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Premium Üye</p>
                   <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
-                    {allUsers.filter(u => u.membershipTier && u.membershipTier !== 'free').length}
+                    {realStats?.premiumUsers || allUsers.filter(u => u.membershipTier && u.membershipTier !== 'free').length}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    {realStats?.revenue?.premiumBreakdown?.monthly.count || 0} aylık + {realStats?.revenue?.premiumBreakdown?.yearly.count || 0} yıllık
+                  </p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Business Üye</p>
+                  <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                    {realStats?.totalBusinessMembers || 0}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    {realStats?.premiumBusiness || 0} premium + {realStats?.enterpriseBusiness || 0} enterprise
                   </p>
                 </div>
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20 rounded-xl p-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Free Üyeler</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Free Üye</p>
                   <p className="text-3xl font-bold text-gray-600 dark:text-gray-400">
-                    {allUsers.filter(u => !u.membershipTier || u.membershipTier === 'free').length}
+                    {(realStats?.totalUsers || allUsers.length) - (realStats?.premiumUsers || 0)}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    Ücretsiz hesaplar
                   </p>
                 </div>
               </div>
@@ -598,29 +647,70 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard
                 icon={MapPin}
-                label="Toplam Mekan"
-                value={stats.totalLocations}
+                label="Kayıtlı İşletme"
+                value={(realStats?.totalLocations || 0).toLocaleString()}
                 gradient="bg-gradient-to-br from-indigo-500 to-indigo-600"
               />
               <StatCard
-                icon={MessageSquare}
-                label="Yorumlar"
-                value={stats.totalComments}
-                gradient="bg-gradient-to-br from-blue-500 to-blue-600"
+                icon={Camera}
+                label="IoT Cihazları"
+                value={(realStats?.totalDevices || 0).toLocaleString()}
+                gradient="bg-gradient-to-br from-cyan-500 to-cyan-600"
               />
               <StatCard
-                icon={Camera}
-                label="Fotoğraflar"
-                value={stats.totalPhotos}
+                icon={BarChart3}
+                label="Kalabalık Analizi"
+                value={(realStats?.totalCrowdAnalysis || 0).toLocaleString()}
+                gradient="bg-gradient-to-br from-orange-500 to-orange-600"
+              />
+              <StatCard
+                icon={Star}
+                label="Toplam Kampanya"
+                value={(realStats?.totalCampaigns || 0).toLocaleString()}
                 gradient="bg-gradient-to-br from-pink-500 to-pink-600"
               />
-              <StatCard
-                icon={Heart}
-                label="Beğeniler"
-                value={stats.totalFavorites + stats.totalTrackedLocations}
-                gradient="bg-gradient-to-br from-red-500 to-red-600"
-              />
             </div>
+            
+            {/* Business İstatistikleri */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg"
+            >
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-indigo-500" />
+                İşletme Detayları
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 rounded-xl p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Toplam İşletme</p>
+                  <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                    {realStats?.totalLocations || 0}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    Kayıtlı mekan sayısı
+                  </p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Premium İşletme</p>
+                  <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                    {realStats?.premiumBusiness || 0}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    ₺2,500/ay paket
+                  </p>
+                </div>
+                <div className="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20 rounded-xl p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Enterprise İşletme</p>
+                  <p className="text-3xl font-bold text-pink-600 dark:text-pink-400">
+                    {realStats?.enterpriseBusiness || 0}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    ₺5,000/ay paket
+                  </p>
+                </div>
+              </div>
+            </motion.div>
           </div>
         )}
 
