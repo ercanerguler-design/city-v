@@ -12,34 +12,34 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📢 Active campaigns API çağrıldı');
 
-    // Son 24 saatte oluşturulmuş, aktif, gerçek business kampanyaları
+    // push_notifications tablosundan son 24 saatteki kampanyaları çek
     const result = await query(
       `SELECT 
-        bc.id as campaign_id,
-        bc.title,
-        bc.description,
+        pn.id as notification_id,
+        pn.campaign_id,
+        pn.title,
+        pn.message as description,
+        pn.sent_at as created_at,
         bc.discount_percent,
         bc.discount_amount,
         bc.start_date,
         bc.end_date,
-        bc.created_at,
+        bc.is_active,
         bp.id as business_id,
         bp.business_name,
-        bp.business_type,
+        bp.category as business_type,
         bp.latitude,
         bp.longitude,
-        bp.address,
-        bp.logo_url
-       FROM business_campaigns bc
-       INNER JOIN business_profiles bp ON bc.business_id = bp.id
-       INNER JOIN business_users bu ON bp.user_id = bu.id
-       WHERE bc.is_active = true
+        bp.address
+       FROM push_notifications pn
+       INNER JOIN business_campaigns bc ON pn.campaign_id = bc.id
+       INNER JOIN business_profiles bp ON pn.business_id = bp.id
+       WHERE pn.notification_type = 'campaign'
+         AND bc.is_active = true
          AND bc.start_date <= NOW()
          AND bc.end_date >= NOW()
-         AND bu.is_active = true
-         AND bu.added_by_admin = true
-         AND bc.created_at >= NOW() - INTERVAL '24 hours'
-       ORDER BY bc.created_at DESC
+         AND pn.sent_at >= NOW() - INTERVAL '24 hours'
+       ORDER BY pn.sent_at DESC
        LIMIT 10`
     );
 
@@ -57,12 +57,11 @@ export async function GET(request: NextRequest) {
       startDate: row.start_date,
       endDate: row.end_date,
       createdAt: row.created_at,
-      location: {
+      location: row.latitude && row.longitude ? {
         lat: parseFloat(row.latitude),
         lng: parseFloat(row.longitude),
         address: row.address
-      },
-      logoUrl: row.logo_url
+      } : null
     }));
 
     return NextResponse.json({

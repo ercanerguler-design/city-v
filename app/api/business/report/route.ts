@@ -29,23 +29,22 @@ export async function GET(req: NextRequest) {
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999); // End of day
 
-    // Get analytics for date range
+    // Get analytics for date range - iot_crowd_analysis tablosundan
     const analytics = await sql`
       SELECT 
-        ia.id,
-        ia.camera_id,
-        ia.person_count,
-        ia.crowd_density,
-        ia.detection_objects,
-        ia.created_at,
+        ica.id,
+        ica.device_id,
+        ica.people_count as person_count,
+        ica.crowd_density,
+        ica.timestamp as created_at,
         bc.camera_name,
-        bc.location as camera_location
-       FROM iot_ai_analysis ia
-       JOIN business_cameras bc ON bc.id = ia.camera_id
+        bc.location_description as camera_location
+       FROM iot_crowd_analysis ica
+       JOIN business_cameras bc ON bc.device_id = ica.device_id
        WHERE bc.business_user_id = ${businessUserId}
-         AND ia.created_at >= ${start.toISOString()}
-         AND ia.created_at <= ${end.toISOString()}
-       ORDER BY ia.created_at DESC
+         AND ica.timestamp >= ${start.toISOString()}
+         AND ica.timestamp <= ${end.toISOString()}
+       ORDER BY ica.timestamp DESC
     `;
 
     // Calculate summary stats
@@ -56,17 +55,10 @@ export async function GET(req: NextRequest) {
       avgPeople: totalRecords > 0 ? Math.round(analytics.reduce((sum, a) => sum + (a.person_count || 0), 0) / totalRecords) : 0,
       maxPeople: totalRecords > 0 ? Math.max(...analytics.map(a => a.person_count || 0)) : 0,
       minPeople: totalRecords > 0 ? Math.min(...analytics.map(a => a.person_count || 0)) : 0,
-      avgDensity: totalRecords > 0 ? (analytics.reduce((sum, a) => sum + (a.crowd_density || 0), 0) / totalRecords * 100).toFixed(1) : '0.0',
+      avgDensity: totalRecords > 0 ? (analytics.reduce((sum, a) => sum + (a.crowd_density || 0), 0) / totalRecords).toFixed(1) : '0.0',
       
-      totalEntries: analytics.reduce((sum, a) => {
-        const obj = typeof a.detection_objects === 'string' ? JSON.parse(a.detection_objects) : a.detection_objects;
-        return sum + (obj?.people_in || 0);
-      }, 0),
-      
-      totalExits: analytics.reduce((sum, a) => {
-        const obj = typeof a.detection_objects === 'string' ? JSON.parse(a.detection_objects) : a.detection_objects;
-        return sum + (obj?.people_out || 0);
-      }, 0),
+      totalEntries: 0, // iot_crowd_analysis'de entries/exits yok
+      totalExits: 0,
       
       totalRecords,
       dateRange: {
@@ -95,17 +87,16 @@ export async function GET(req: NextRequest) {
 
     // Format analytics data
     const formattedAnalytics = analytics.map(a => {
-      const obj = typeof a.detection_objects === 'string' ? JSON.parse(a.detection_objects) : a.detection_objects;
       return {
         id: a.id,
-        camera_id: a.camera_id,
+        device_id: a.device_id,
         camera_name: a.camera_name,
         camera_location: a.camera_location,
         people_count: a.person_count || 0,
-        crowd_density: ((a.crowd_density || 0) * 100).toFixed(1),
-        entries_count: obj?.people_in || 0,
-        exits_count: obj?.people_out || 0,
-        current_occupancy: obj?.current_occupancy || 0,
+        crowd_density: (a.crowd_density || 0).toFixed(1),
+        entries_count: 0, // iot_crowd_analysis'de yok
+        exits_count: 0,
+        current_occupancy: a.person_count || 0,
         timestamp: a.created_at,
         date: new Date(a.created_at).toLocaleDateString('tr-TR'),
         time: new Date(a.created_at).toLocaleTimeString('tr-TR')
