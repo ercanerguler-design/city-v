@@ -57,11 +57,8 @@ export async function GET(request: NextRequest) {
       startDate: row.start_date,
       endDate: row.end_date,
       createdAt: row.created_at,
-      location: row.latitude && row.longitude ? {
-        lat: parseFloat(row.latitude),
-        lng: parseFloat(row.longitude),
-        address: row.address
-      } : null
+      // ✅ Location string olarak döndür (React Error #31 fix)
+      location: row.address || (row.latitude && row.longitude ? `${row.latitude}, ${row.longitude}` : null)
     }));
 
     return NextResponse.json({
