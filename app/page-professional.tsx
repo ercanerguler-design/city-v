@@ -540,16 +540,24 @@ export default function ProfessionalHome() {
   const handleMapMarkerClick = useCallback((location: Location) => {
     try {
       console.log('🗺️ Map marker clicked:', location.name);
-      console.log('📍 Location data:', location);
       
-      // ABSOLUTE MINIMAL VERSION - ONLY ALERT, NO OTHER FUNCTION CALLS
-      alert(`📍 ${location.name}\n📂 Kategori: ${location.category}`);
+      // ABSOLUTELY NO STATE CHANGES - ZERO REACT INTERACTION
+      // Just pure JavaScript operations
+      const timestamp = new Date().toLocaleTimeString();
+      console.log(`⏰ Click timestamp: ${timestamp}`);
+      console.log(`📋 Location details: ${JSON.stringify(location, null, 2)}`);
       
-      console.log('✅ handleMapMarkerClick completed successfully - MINIMAL VERSION');
+      // Use setTimeout to completely isolate from React cycle
+      setTimeout(() => {
+        console.log('⚡ Delayed log - outside React render cycle');
+        alert(`🏢 ${location.name}\n⏰ Time: ${timestamp}`);
+      }, 100);
+      
+      console.log('✅ handleMapMarkerClick completed - NO REACT CHANGES');
     } catch (error) {
       console.error('❌ handleMapMarkerClick error:', error);
     }
-  }, []);  // EMPTY DEPENDENCIES
+  }, []);  // EMPTY DEPENDENCIES - NO STATE INTERACTION
 
   const handleReportClick = (location: Location) => {
     if (!isAuthenticated) {
