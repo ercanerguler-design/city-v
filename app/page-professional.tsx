@@ -46,7 +46,7 @@ import LiveCrowdSidebar from '@/components/RealTime/LiveCrowdSidebar';
 import QRScanner from '@/components/Camera/QRScanner';
 import PhotoGallery from '@/components/Camera/PhotoGallery';
 import AddReviewModal from '@/components/ui/AddReviewModal';
-import LocationDetailModal from '@/components/ui/LocationDetailModalUltraSimple';
+// import LocationDetailModal from '@/components/ui/LocationDetailModalUltraSimple'; // DISABLED FOR ERROR FIX
 
 // Business Box Promotion Components
 import BusinessBoxBanner from '@/components/business-box/BusinessBoxBanner';
@@ -541,38 +541,38 @@ export default function ProfessionalHome() {
     try {
       console.log('🗺️ Map marker clicked:', location.name);
       console.log('📍 Location data:', location);
-      console.log('🎯 Modal state before:', { showLocationDetail, selectedLocation });
+      
+      // COMPLETELY BYPASS MODAL - Use alert instead
+      const crowdText = location.currentCrowdLevel === 'low' ? 'Düşük' : 
+                       location.currentCrowdLevel === 'moderate' ? 'Orta' : 
+                       location.currentCrowdLevel === 'high' ? 'Yüksek' : 'Çok Yüksek';
+      
+      alert(`
+📍 ${location.name}
+📂 Kategori: ${location.category}
+👥 Kalabalık: ${crowdText}
+📍 Adres: ${location.address || 'Adres bilgisi yok'}
+⭐ Puan: ${location.rating || 'Değerlendirme yok'}
+      `);
       
       // Store functions'ları güvenli çağır
       console.log('🔄 Calling trackVisit...');
       if (typeof trackVisit === 'function') {
         trackVisit(location.id, location.name, location.category, location.currentCrowdLevel);
         console.log('✅ trackVisit completed');
-      } else {
-        console.log('⚠️ trackVisit not available');
       }
       
       console.log('🔄 Calling checkIn...');
       if (typeof checkIn === 'function') {
         checkIn(location.id);
         console.log('✅ checkIn completed');
-      } else {
-        console.log('⚠️ checkIn not available');
       }
       
       console.log('🔄 Calling addVisitToHistory...');
       if (typeof addVisitToHistory === 'function') {
         addVisitToHistory(location.id, location.category, location.currentCrowdLevel);
         console.log('✅ addVisitToHistory completed');
-      } else {
-        console.log('⚠️ addVisitToHistory not available');
       }
-      
-      console.log('🔄 Setting selected location...');
-      setSelectedLocation(location);
-      console.log('🔄 Setting show detail true...');
-      setShowLocationDetail(true);
-      console.log('✅ Modal state updated');
       
       // Grid'den tıklandıysa haritaya geç ve konumu ortala
       if (viewMode === 'grid') {
@@ -583,14 +583,10 @@ export default function ProfessionalHome() {
         console.log('✅ View mode switched');
       }
       
-      console.log('✅ handleMapMarkerClick completed successfully');
+      console.log('✅ handleMapMarkerClick completed successfully - NO MODAL RENDERING');
     } catch (error) {
       console.error('❌ handleMapMarkerClick error:', error);
       toast.error('Konum detayları yüklenirken hata oluştu');
-      
-      // En azından modalı açmaya çalış
-      setSelectedLocation(location);
-      setShowLocationDetail(true);
     }
   }, [trackVisit, checkIn, addVisitToHistory, viewMode]);
 
@@ -1271,7 +1267,8 @@ export default function ProfessionalHome() {
       {/* 🚀 Business Box Promotion - Modal (First Visit) */}
       <BusinessBoxModal />
 
-      {/* 📍 Location Detail Modal */}
+      {/* 📍 Location Detail Modal - TEMPORARILY DISABLED TO FIX ERROR */}
+      {/*
       <LocationDetailModal
         isOpen={showLocationDetail}
         onClose={() => {
@@ -1282,6 +1279,7 @@ export default function ProfessionalHome() {
         onReviewClick={handleReviewClick}
         onRouteClick={handleRouteClick}
       />
+      */}
 
       {/* 💬 Add Review Modal */}
       <AddReviewModal
