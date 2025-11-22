@@ -569,6 +569,24 @@ export default function ProfessionalHome() {
 
   const activeFiltersCount = selectedCategories.length + crowdLevelFilter.length + (searchQuery ? 1 : 0);
 
+  // Distance Map - Location ID -> Distance (AYRI MAP'TE TUT)
+  const distanceMap = useMemo(() => {
+    const map = new Map<string | number, number>();
+    if (!userLocation) return map;
+    
+    filteredLocations.forEach((loc) => {
+      const dist = calculateDistanceHelper(
+        userLocation[0],
+        userLocation[1],
+        loc.coordinates[0],
+        loc.coordinates[1]
+      );
+      map.set(loc.id, dist);
+    });
+    
+    return map;
+  }, [filteredLocations, userLocation]);
+
   // Kullanıcının konumuna göre yakınlık sıralaması
   const sortedLocationsByDistance = useMemo(() => {
     console.log('\n📏 ============================================');
@@ -585,18 +603,17 @@ export default function ProfessionalHome() {
 
     const MAX_DISTANCE_KM = 7; // 7km radius
     
+    // Distance Map kullanarak filtrele ve sırala (OBJEYE DISTANCE EKLEME!)
     const sorted = [...filteredLocations]
-      .map((loc) => ({
-        ...loc,
-        distance: calculateDistanceHelper(
-          userLocation[0],
-          userLocation[1],
-          loc.coordinates[0],
-          loc.coordinates[1]
-        ),
-      }))
-      .filter((loc) => loc.distance <= MAX_DISTANCE_KM)
-      .sort((a, b) => a.distance - b.distance);
+      .filter((loc) => {
+        const dist = distanceMap.get(loc.id);
+        return dist !== undefined && dist <= MAX_DISTANCE_KM;
+      })
+      .sort((a, b) => {
+        const distA = distanceMap.get(a.id) || 0;
+        const distB = distanceMap.get(b.id) || 0;
+        return distA - distB;
+      });
     
     console.log('\n✅ SIRALAMA TAMAMLANDI');
     console.log(`📊 ${MAX_DISTANCE_KM}km içinde:`, sorted.length, 'işletme');
@@ -604,7 +621,8 @@ export default function ProfessionalHome() {
     if (sorted.length > 0) {
       console.log('🎯 En yakın 3 yer:');
       sorted.slice(0, 3).forEach((loc, i) => {
-        console.log(`   ${i+1}. ${loc.name} (${loc.category}) - ${loc.distance.toFixed(2)} km`);
+        const dist = distanceMap.get(loc.id);
+        console.log(`   ${i+1}. ${loc.name} (${loc.category}) - ${dist?.toFixed(2)} km`);
       });
     } else {
       console.log('⚠️ 7km içinde işletme bulunamadı');
@@ -612,18 +630,13 @@ export default function ProfessionalHome() {
     console.log('📏 ============================================\n');
     
     return sorted;
-  }, [filteredLocations, userLocation]);
+  }, [filteredLocations, userLocation, distanceMap]);
 
   // Seçilen location için distance hesapla (cache'lenmiş)
   const selectedLocationDistance = useMemo(() => {
-    if (!selectedLocation || !userLocation) return null;
-    return calculateDistanceHelper(
-      userLocation[0],
-      userLocation[1],
-      selectedLocation.coordinates[0],
-      selectedLocation.coordinates[1]
-    );
-  }, [selectedLocation, userLocation]);
+    if (!selectedLocation) return null;
+    return distanceMap.get(selectedLocation.id) || null;
+  }, [selectedLocation, distanceMap]);
 
   // Gerçek istatistikleri hesapla
   const { trackedLocationIds } = useTrackedStore();
