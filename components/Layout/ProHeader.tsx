@@ -7,6 +7,7 @@ import { MapPin, User, Crown, Bell, Settings, Brain, Activity, Sparkles, Menu, X
 import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import CameraButton from '../Camera/CameraButton';
+import CampaignNotificationPanel from '@/components/Notifications/CampaignNotificationPanel';
 
 interface ProHeaderProps {
   onAuthClick: () => void;
@@ -48,6 +49,8 @@ export default function ProHeader({
   const [campaignNotifications, setCampaignNotifications] = useState<any[]>([]);
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
   const [lastShownCampaignId, setLastShownCampaignId] = useState<string | null>(null);
+  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+  const [currentNotificationCampaign, setCurrentNotificationCampaign] = useState<any>(null);
 
   // Chrome Push Notification sistemi
   useEffect(() => {
@@ -79,15 +82,37 @@ export default function ProHeader({
             setLastShownCampaignId(latestCampaign.id);
             setTimeout(() => setShowNotificationPopup(false), 5000);
             
-            // Chrome Desktop Notification
+            // Sağdan Kayan Panel
+            setCurrentNotificationCampaign({
+              id: latestCampaign.id,
+              title: latestCampaign.title,
+              description: latestCampaign.description,
+              businessName: latestCampaign.businessName,
+              discountPercent: latestCampaign.discount_percent,
+              discountAmount: latestCampaign.discount_amount,
+              validUntil: latestCampaign.valid_until,
+              location: latestCampaign.location
+            });
+            setShowNotificationPanel(true);
+
+            // Chrome Desktop Notification + Sesli Bildirim
             if ('Notification' in window && Notification.permission === 'granted') {
+              // Sesli bildirim çal
+              try {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYHGmm98OScTgwOUKrj8LZjHAU5k9nyz3ksBSR3yPDdkUELFF60+...');
+                audio.volume = 0.5;
+                audio.play().catch(e => console.log('🔇 Audio play failed:', e));
+              } catch (e) {
+                console.log('🔇 Audio creation failed:', e);
+              }
+              
               const notification = new Notification('🎉 ' + latestCampaign.title, {
                 body: latestCampaign.description,
                 icon: '/icon-192x192.png',
                 badge: '/icon-72x72.png',
                 tag: 'campaign-' + latestCampaign.id,
                 requireInteraction: false,
-                silent: false,
+                silent: false, // Native notification sesi
                 data: {
                   campaignId: latestCampaign.id,
                   businessId: latestCampaign.businessId,
@@ -98,7 +123,8 @@ export default function ProHeader({
               notification.onclick = () => {
                 window.focus();
                 notification.close();
-                // İsteğe bağlı: Kampanya detayına yönlendir
+                // Panel aç
+                setShowNotificationPanel(true);
               };
             }
           }
@@ -549,6 +575,15 @@ export default function ProHeader({
           )}
         </AnimatePresence>
       </motion.header>
+
+      {/* Sağdan Kayan Bildirim Paneli */}
+      {currentNotificationCampaign && (
+        <CampaignNotificationPanel
+          show={showNotificationPanel}
+          onClose={() => setShowNotificationPanel(false)}
+          campaign={currentNotificationCampaign}
+        />
+      )}
     </>
   );
 }

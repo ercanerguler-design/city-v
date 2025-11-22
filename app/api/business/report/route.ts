@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
     end.setHours(23, 59, 59, 999); // End of day
 
     // Get analytics for date range - iot_crowd_analysis tablosundan
+    console.log('📊 Query params:', { businessUserId, start: start.toISOString(), end: end.toISOString() });
+    
     const analytics = await sql`
       SELECT 
         ica.id,
@@ -41,11 +43,13 @@ export async function GET(req: NextRequest) {
         bc.location_description as camera_location
        FROM iot_crowd_analysis ica
        JOIN business_cameras bc ON bc.device_id = ica.device_id
-       WHERE bc.business_user_id = ${businessUserId}
+       WHERE bc.business_user_id = ${parseInt(businessUserId)}
          AND ica.timestamp >= ${start.toISOString()}
          AND ica.timestamp <= ${end.toISOString()}
        ORDER BY ica.timestamp DESC
     `;
+    
+    console.log('📊 Found analytics records:', analytics.length);
 
     // Calculate summary stats
     const totalRecords = analytics.length;
