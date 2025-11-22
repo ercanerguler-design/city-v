@@ -1069,7 +1069,6 @@ export default function ProfessionalHome() {
               
               <LocationCard
                 location={selectedLocation}
-                distance={selectedLocationDistance}
                 onReportClick={() => {
                   setShowLocationDetail(false);
                   handleReportClick(selectedLocation);
