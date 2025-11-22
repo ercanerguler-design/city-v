@@ -6,10 +6,8 @@ const OFFLINE_URL = '/offline.html';
 // Assets to cache on install
 const PRECACHE_ASSETS = [
   '/',
-  '/offline.html',
   '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png',
+  // Icon'lar optional - yoksa hata vermesin
 ];
 
 // Install event - cache essential assets
@@ -18,13 +16,25 @@ self.addEventListener('install', (event) => {
   
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
+      .then(async (cache) => {
         console.log('[SW] Precaching assets');
-        return cache.addAll(PRECACHE_ASSETS);
+        // Try to cache each asset individually to avoid failures
+        const cachePromises = PRECACHE_ASSETS.map(async (url) => {
+          try {
+            await cache.add(url);
+            console.log('[SW] Cached:', url);
+          } catch (error) {
+            console.warn('[SW] Failed to cache:', url, error);
+          }
+        });
+        await Promise.all(cachePromises);
       })
       .then(() => {
         console.log('[SW] Service worker installed');
         return self.skipWaiting();
+      })
+      .catch((error) => {
+        console.error('[SW] Installation failed:', error);
       })
   );
 });
