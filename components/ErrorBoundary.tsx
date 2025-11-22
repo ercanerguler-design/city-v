@@ -30,6 +30,14 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     console.error('📍 Error stack:', error.stack);
     console.error('🔧 Component stack:', errorInfo.componentStack);
     
+    // More detailed analysis for React Error #31
+    if (error.message.includes('Objects are not valid as a React child')) {
+      console.error('🚨 REACT ERROR #31 DETECTED!');
+      console.error('🔍 This happens when trying to render an object directly in JSX');
+      console.error('🎯 Look for: {location} instead of {location.address}');
+      console.error('💡 Solution: Use type guard or convert object to string');
+    }
+    
     // Optional error reporting callback
     if (this.props.onError) {
       this.props.onError(error, errorInfo);

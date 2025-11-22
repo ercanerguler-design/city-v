@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Tag, Calendar, MapPin } from 'lucide-react';
+import { safeRenderLocation } from '@/lib/locationUtils';
 
 interface CampaignNotificationPanelProps {
   show: boolean;
@@ -135,13 +136,7 @@ export default function CampaignNotificationPanel({
               {campaign.location && (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <MapPin className="w-4 h-4 text-purple-600" />
-                  <span>
-                    {typeof campaign.location === 'string' 
-                      ? campaign.location 
-                      : typeof campaign.location === 'object' && campaign.location !== null && 'address' in campaign.location
-                        ? campaign.location.address 
-                        : 'Konum bilgisi yok'}
-                  </span>
+                  <span>{safeRenderLocation(campaign.location)}</span>
                 </div>
               )}
             </div>
