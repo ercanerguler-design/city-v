@@ -26,7 +26,7 @@ interface LocationCardProps {
   onLocationClick?: (location: Location) => void;
   onSocialClick?: (location: Location) => void;
   onRouteClick?: (location: Location) => void;
-  distance?: number; // km cinsinden mesafe
+  distance?: number | null; // km cinsinden mesafe
 }
 
 const getCrowdColor = (level: CrowdLevel): string => {
