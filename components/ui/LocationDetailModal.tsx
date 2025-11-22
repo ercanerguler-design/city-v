@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { X, MapPin, Clock, Users, Star, MessageSquare, Camera, Navigation, Heart, Share, Phone, Globe, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
@@ -20,9 +19,17 @@ const LocationDetailModal = ({ isOpen, onClose, location, onReviewClick, onRoute
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
 
-  if (!location) return null;
+  console.log('🔧 LocationDetailModal rendering:', { isOpen, location: location?.name });
+
+  if (!isOpen || !location) {
+    console.log('⏹️ Modal not rendering - isOpen:', isOpen, 'location:', !!location);
+    return null;
+  }
+
+  console.log('✅ Modal will render for location:', location.name);
 
   const handleShare = () => {
+    console.log('📤 Share clicked');
     if (navigator.share) {
       navigator.share({
         title: location.name,
@@ -40,6 +47,7 @@ const LocationDetailModal = ({ isOpen, onClose, location, onReviewClick, onRoute
   };
 
   const toggleFavorite = () => {
+    console.log('❤️ Favorite toggled');
     setIsFavorite(!isFavorite);
     toast.success(isFavorite ? 'Favorilerden çıkarıldı' : 'Favorilere eklendi');
   };
@@ -67,26 +75,15 @@ const LocationDetailModal = ({ isOpen, onClose, location, onReviewClick, onRoute
   const isBusinessLocation = location.id && (location.id.toString().startsWith('business-') || typeof location.id === 'number');
 
   return (
-    <AnimatePresence mode="wait">
-      {isOpen && (
-        <div key="location-modal">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
-            onClick={onClose}
-          />
+    <div>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
-          {/* Modal */}
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.95 }}
-            transition={{ type: "spring", duration: 0.3 }}
-            className="fixed inset-4 md:inset-8 lg:inset-16 bg-white rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden"
-          >
+      {/* Modal */}
+      <div className="fixed inset-4 md:inset-8 lg:inset-16 bg-white rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-50 to-purple-50">
               <div className="flex items-center space-x-4">
@@ -328,10 +325,9 @@ const LocationDetailModal = ({ isOpen, onClose, location, onReviewClick, onRoute
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
-      )}
-    </AnimatePresence>
+    </div>
   );
 };
 

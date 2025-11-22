@@ -46,7 +46,7 @@ import LiveCrowdSidebar from '@/components/RealTime/LiveCrowdSidebar';
 import QRScanner from '@/components/Camera/QRScanner';
 import PhotoGallery from '@/components/Camera/PhotoGallery';
 import AddReviewModal from '@/components/ui/AddReviewModal';
-import LocationDetailModal from '@/components/ui/LocationDetailModal';
+import LocationDetailModal from '@/components/ui/LocationDetailModalSimple';
 
 // Business Box Promotion Components
 import BusinessBoxBanner from '@/components/business-box/BusinessBoxBanner';
@@ -540,29 +540,50 @@ export default function ProfessionalHome() {
   const handleMapMarkerClick = useCallback((location: Location) => {
     try {
       console.log('🗺️ Map marker clicked:', location.name);
+      console.log('📍 Location data:', location);
+      console.log('🎯 Modal state before:', { showLocationDetail, selectedLocation });
       
       // Store functions'ları güvenli çağır
+      console.log('🔄 Calling trackVisit...');
       if (typeof trackVisit === 'function') {
         trackVisit(location.id, location.name, location.category, location.currentCrowdLevel);
+        console.log('✅ trackVisit completed');
+      } else {
+        console.log('⚠️ trackVisit not available');
       }
       
+      console.log('🔄 Calling checkIn...');
       if (typeof checkIn === 'function') {
         checkIn(location.id);
+        console.log('✅ checkIn completed');
+      } else {
+        console.log('⚠️ checkIn not available');
       }
       
+      console.log('🔄 Calling addVisitToHistory...');
       if (typeof addVisitToHistory === 'function') {
         addVisitToHistory(location.id, location.category, location.currentCrowdLevel);
+        console.log('✅ addVisitToHistory completed');
+      } else {
+        console.log('⚠️ addVisitToHistory not available');
       }
       
+      console.log('🔄 Setting selected location...');
       setSelectedLocation(location);
+      console.log('🔄 Setting show detail true...');
       setShowLocationDetail(true);
+      console.log('✅ Modal state updated');
       
       // Grid'den tıklandıysa haritaya geç ve konumu ortala
       if (viewMode === 'grid') {
+        console.log('🔄 Switching to map view...');
         setViewMode('map');
         setMapCenter(location.coordinates);
         setMapZoom(16);
+        console.log('✅ View mode switched');
       }
+      
+      console.log('✅ handleMapMarkerClick completed successfully');
     } catch (error) {
       console.error('❌ handleMapMarkerClick error:', error);
       toast.error('Konum detayları yüklenirken hata oluştu');
