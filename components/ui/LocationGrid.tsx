@@ -223,7 +223,7 @@ export default function LocationGrid({
               )}
 
               {/* Distance & Route */}
-              {showDistance && location.distance !== undefined && (
+              {showDistance && location.distance !== undefined && typeof location.distance === 'number' && (
                 <div className="pt-3 border-t flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <span>🚗</span>

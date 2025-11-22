@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Filter, Map as MapIcon, Grid3x3, Search, Sparkles } from 'lucide-react';
@@ -82,6 +82,19 @@ const MapView = dynamic(() => import('@/components/Map/MapViewEnhanced'), {
     </div>
   ),
 });
+
+// Mesafe hesaplama fonksiyonu - Component dışında tanımla
+function calculateDistanceHelper(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (degrees: number): number => degrees * (Math.PI / 180);
+  const R = 6371; // Dünya'nın yarıçapı (km)
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export default function ProfessionalHome() {
   // Refs
@@ -556,19 +569,6 @@ export default function ProfessionalHome() {
 
   const activeFiltersCount = selectedCategories.length + crowdLevelFilter.length + (searchQuery ? 1 : 0);
 
-  // Mesafe hesaplama fonksiyonu (Haversine formula) - useCallback ile cache'le
-  const calculateDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const toRad = (degrees: number): number => degrees * (Math.PI / 180);
-    const R = 6371; // Dünya'nın yarıçapı (km)
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }, []);
-
   // Kullanıcının konumuna göre yakınlık sıralaması
   const sortedLocationsByDistance = useMemo(() => {
     console.log('\n📏 ============================================');
@@ -588,7 +588,7 @@ export default function ProfessionalHome() {
     const sorted = [...filteredLocations]
       .map((loc) => ({
         ...loc,
-        distance: calculateDistance(
+        distance: calculateDistanceHelper(
           userLocation[0],
           userLocation[1],
           loc.coordinates[0],
@@ -617,7 +617,7 @@ export default function ProfessionalHome() {
   // Seçilen location için distance hesapla (cache'lenmiş)
   const selectedLocationDistance = useMemo(() => {
     if (!selectedLocation || !userLocation) return null;
-    return calculateDistance(
+    return calculateDistanceHelper(
       userLocation[0],
       userLocation[1],
       selectedLocation.coordinates[0],
