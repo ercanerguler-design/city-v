@@ -9,8 +9,8 @@ export function safeRenderLocation(location: any): string {
   
   if (typeof location === 'object' && location !== null) {
     // {lat, lng, address} formatında object
-    if ('address' in location) {
-      return location.address;
+    if ('address' in location && location.address) {
+      return String(location.address);
     }
     
     // {lat, lng} formatında object
@@ -18,8 +18,19 @@ export function safeRenderLocation(location: any): string {
       return `${location.lat}, ${location.lng}`;
     }
     
-    // Diğer object formatları
-    return JSON.stringify(location);
+    // name property varsa onu kullan
+    if ('name' in location && location.name) {
+      return String(location.name);
+    }
+    
+    // title property varsa onu kullan
+    if ('title' in location && location.title) {
+      return String(location.title);
+    }
+    
+    // Hiçbiri yoksa, object render edilmesin
+    console.warn('⚠️ Location object could not be safely rendered:', Object.keys(location));
+    return 'Konum bilgisi mevcut değil';
   }
   
   return String(location);

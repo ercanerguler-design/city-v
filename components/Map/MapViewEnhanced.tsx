@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 import WorkingHoursBadge from '../ui/WorkingHoursBadge';
 import { Users } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { safeRenderLocation } from '@/lib/locationUtils';
 
 // Haversine formülü ile mesafe hesaplama (km cinsinden) - COMPONENT DIŞINDA TANIMLA
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -335,7 +336,7 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
                     <Tooltip direction="top" offset={[0, -20]} opacity={0.9}>
                       <div className="text-sm">
                         <div className="font-bold text-gray-900">{location.name}</div>
-                        <div className="text-gray-600 text-xs">{location.address}</div>
+                        <div className="text-gray-600 text-xs">{safeRenderLocation(location.address)}</div>
                         <div className="mt-1 flex items-center gap-2">
                           <span className="text-xs font-medium text-gray-700">
                             {location.category === 'restaurant' && '🍴'}
@@ -351,13 +352,13 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
                           <span className={`text-xs px-2 py-0.5 rounded-full ${
                             location.currentCrowdLevel === 'empty' ? 'bg-green-100 text-green-700' :
                             location.currentCrowdLevel === 'low' ? 'bg-blue-100 text-blue-700' :
-                            location.currentCrowdLevel === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            location.currentCrowdLevel === 'moderate' ? 'bg-yellow-100 text-yellow-700' :
                             location.currentCrowdLevel === 'high' ? 'bg-orange-100 text-orange-700' :
                             'bg-red-100 text-red-700'
                           }`}>
                             {location.currentCrowdLevel === 'empty' && '🟢 Boş'}
                             {location.currentCrowdLevel === 'low' && '🔵 Az Kalabalık'}
-                            {location.currentCrowdLevel === 'medium' && '🟡 Orta'}
+                            {location.currentCrowdLevel === 'moderate' && '🟡 Orta'}
                             {location.currentCrowdLevel === 'high' && '🟠 Kalabalık'}
                             {location.currentCrowdLevel === 'very_high' && '🔴 Çok Kalabalık'}
                           </span>
@@ -394,7 +395,7 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
                   <Tooltip direction="top" offset={[0, -20]} opacity={0.9}>
                     <div className="text-sm">
                       <div className="font-bold text-gray-900">{location.name}</div>
-                      <div className="text-gray-600 text-xs">{location.address}</div>
+                      <div className="text-gray-600 text-xs">{safeRenderLocation(location.address)}</div>
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-xs font-medium text-gray-700">
                           {location.category === 'restaurant' && '🍴'}
@@ -512,7 +513,7 @@ function LocationPopupContent({ location, distance, onLocationClick }: { locatio
       
       {/* Adres */}
       {location.address && (
-        <p className="text-sm text-gray-600 mb-2">{location.address}</p>
+        <p className="text-sm text-gray-600 mb-2">{safeRenderLocation(location.address)}</p>
       )}
 
       {/* Working Hours Badge */}

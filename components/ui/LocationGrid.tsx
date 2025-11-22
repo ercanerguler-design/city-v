@@ -5,6 +5,7 @@ import { Location } from '@/types';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { useBusinessIoTData } from '@/lib/hooks/useBusinessIoTData';
+import { safeRenderLocation } from '@/lib/locationUtils';
 
 interface LocationGridProps {
   locations: Location[];
@@ -146,7 +147,7 @@ export default function LocationGrid({
               {location.address && (
                 <p className="text-xs text-gray-600 line-clamp-2 flex items-start gap-1">
                   <span>📍</span>
-                  <span>{location.address}</span>
+                  <span>{safeRenderLocation(location.address)}</span>
                 </p>
               )}
 

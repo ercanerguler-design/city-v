@@ -13,6 +13,7 @@ import { useAuthStore } from '@/store/authStore';
 import { usePremiumStore } from '@/lib/stores/premiumStore';
 import { motion } from 'framer-motion';
 import { cn, formatTime } from '@/lib/utils';
+import { safeRenderLocation } from '@/lib/locationUtils';
 import WorkingHoursBadge from './WorkingHoursBadge';
 import { isLocationOpen } from '@/lib/workingHours';
 import toast from 'react-hot-toast';
@@ -399,7 +400,7 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
         {location.address && (
           <div className="mb-4 text-sm text-gray-600 flex items-start gap-2">
             <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <span className="line-clamp-2">{location.address}</span>
+            <span className="line-clamp-2">{safeRenderLocation(location.address)}</span>
           </div>
         )}
 
