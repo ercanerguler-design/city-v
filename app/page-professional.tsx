@@ -84,10 +84,11 @@ const MapView = dynamic(() => import('@/components/Map/MapViewEnhanced'), {
   ),
 });
 
-const UltraSimpleModal = dynamic(() => import('@/components/ui/UltraSimpleModal'), {
-  ssr: false,
-  loading: () => null,
-});
+// UltraSimpleModal temporarily disabled due to callback issues
+// const UltraSimpleModal = dynamic(() => import('@/components/ui/UltraSimpleModal'), {
+//   ssr: false,
+//   loading: () => null,
+// });
 
 // Mesafe hesaplama fonksiyonu - Component dışında tanımla
 function calculateDistanceHelper(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -1402,24 +1403,8 @@ export default function ProfessionalHome() {
       {/* 🚀 Business Box Promotion - Modal (First Visit) */}
       <BusinessBoxModal />
 
-      {/* 📍 Ultra Simple Modal */}
-      <UltraSimpleModal
-        isOpen={showLocationDetail}
-        onClose={() => {
-          console.log('❌ Modal closing requested');
-          setShowLocationDetail(false);
-          setSelectedLocation(null);
-        }}
-        location={selectedLocation}
-        onReview={() => {
-          console.log('📝 Review click from ultra simple modal');
-          handleReviewClick();
-        }}
-        onNavigate={() => {
-          console.log('🗺️ Navigate click from ultra simple modal');
-          handleRouteClick();
-        }}
-      />
+      {/* 📍 Location Detail - Temporarily Disabled */}
+      {/* TODO: Fix UltraSimpleModal callback issues */}
 
       {/* 💬 Add Review Modal */}
       <AddReviewModal
