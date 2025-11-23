@@ -646,6 +646,12 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
 
                 {/* Info */}
                 <div className="space-y-2 mb-4">
+                  {camera.device_id && (
+                    <div className="flex items-center justify-between text-sm p-2 bg-blue-50 rounded border border-blue-200">
+                      <span className="text-blue-700 font-medium">Device ID:</span>
+                      <span className="font-mono text-xs text-blue-900">{camera.device_id}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500">IP Adresi:</span>
                     <span className="font-mono text-gray-900">{camera.ip_address}:{camera.port}</span>
