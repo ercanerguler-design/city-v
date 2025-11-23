@@ -63,9 +63,9 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
   const category = getCategoryById(location.category);
   const [mounted, setMounted] = useState(false);
   
-  // Çalışma saati kontrolü
-  const workingStatus = isLocationOpen(location);
-  const isOpen = workingStatus.isOpen;
+  // Çalışma saati kontrolü - Safe check
+  const workingStatus = isLocationOpen(location) || { isOpen: true };
+  const isOpen = workingStatus?.isOpen ?? true;
   
   // Sosyal veriler
   const comments = getLocationComments(location.id);
@@ -272,7 +272,7 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
               <Clock className="w-3 h-3" />
               {isOpen ? 'AÇIK' : 'KAPALI'}
             </div>
-            {!isOpen && workingStatus.reason && (
+            {!isOpen && workingStatus?.reason && (
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {workingStatus.reason}
               </span>
