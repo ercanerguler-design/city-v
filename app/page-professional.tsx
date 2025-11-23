@@ -142,7 +142,7 @@ export default function ProfessionalHome() {
 
   // Stores
   const { selectedCategories, crowdLevelFilter, searchQuery, showFavoritesOnly, favorites, clearFilters } = useFilterStore();
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, createTestUser } = useAuthStore();
   const { selectedCity, userLocation, userAddress, requestUserLocation } = useLocationStore();
   const { toggleTheme } = useThemeStore();
   const { trackVisit } = useAnalyticsStore();
@@ -221,6 +221,14 @@ export default function ProfessionalHome() {
       useFilterStore.getState().clearFilters();
     }
   }, [userLocation]);
+
+  // DEV MODE: Auto-create premium test user if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      console.log('🧪 DEV MODE: Creating premium test user');
+      createTestUser('premium');
+    }
+  }, []);
 
   // Kullanıcı login olduğunda favorileri veritabanından yükle
   useEffect(() => {
@@ -525,14 +533,20 @@ export default function ProfessionalHome() {
     }
   };
 
-  const handleRouteClick = useCallback(() => {
-    if (selectedLocation && userLocation) {
-      setRouteTargetLocation(selectedLocation);
-      setShowRouteModal(true);
-    } else {
+  const handleRouteClick = useCallback((location: Location) => {
+    if (location && userLocation) {
+      // Open Google Maps with directions
+      const [lat, lng] = location.coordinates;
+      const [userLat, userLng] = userLocation;
+      const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${lat},${lng}&travelmode=driving`;
+      window.open(mapsUrl, '_blank');
+      toast.success('🗺️ Google Maps\'te rota açılıyor...');
+    } else if (!userLocation) {
       toast.error('Rota göstermek için önce konumunuzu paylaşmalısınız.');
+    } else {
+      toast.error('Konum bilgisi bulunamadı.');
     }
-  }, [selectedLocation, userLocation]);
+  }, [userLocation]);
 
   const handleReviewClick = useCallback(() => {
     setShowAddReview(true);

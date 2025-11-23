@@ -9,12 +9,12 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ['leaflet'],
-    // CRITICAL: Force Turbopack to generate new chunk hashes
-    turbo: {
-      resolveAlias: {
-        // This forces module resolution to be different each build
-        '@turbo-cache-bust': `./node_modules/.cache/turbo-${Date.now()}`,
-      },
+  },
+  // CRITICAL: Force Turbopack to generate new chunk hashes
+  turbopack: {
+    resolveAlias: {
+      // This forces module resolution to be different each build
+      '@turbo-cache-bust': `./node_modules/.cache/turbo-${Date.now()}`,
     },
   },
   // CRITICAL: Disable webpack/turbopack chunk hashing optimization

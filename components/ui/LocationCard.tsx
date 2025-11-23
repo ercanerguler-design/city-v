@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Location, CrowdLevel } from '@/types';
-import { MapPin, Clock, Bell, Heart, Navigation, TrendingUp, MessageCircle, Star, Camera, Users, Smile } from 'lucide-react';
+import { MapPin, Clock, Bell, Heart, Navigation, TrendingUp, MessageCircle, Star, Camera, Users, Smile, Sparkles } from 'lucide-react';
 import { getCategoryIcon, getCategoryColor, getCategoryById } from '@/lib/categories';
 import { useFilterStore } from '@/store/filterStore';
 import { useFavoritesStore } from '@/lib/stores/favoritesStore';
@@ -57,7 +57,9 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
   const { favoriteAdded } = useGamificationStore();
   const { getLocationComments, getLocationPhotos, getLocationRating } = useSocialStore();
   const { trackLocation, untrackLocation, isTracked } = useTrackedStore();
-  const { isPremium } = usePremiumStore();
+  const { checkSubscriptionStatus } = usePremiumStore();
+  // Premium check: user has premium, business, or enterprise tier
+  const isPremium = user?.membershipTier && ['premium', 'business', 'enterprise'].includes(user.membershipTier);
   const isLocationFavorite = isFavorite(location.id);
   const isLocationTracked = isTracked(location.id);
   const category = getCategoryById(location.category);
@@ -83,7 +85,8 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
     
     // Load live crowd data from API (ONLY FOR PREMIUM USERS)
     const loadLiveCrowdData = async () => {
-      if (!isPremium()) return; // Premium check
+      console.log('🔐 Premium check:', { isPremium, userTier: user?.membershipTier });
+      if (!isPremium) return; // Premium check
       if (loadingCrowd) return; // Prevent multiple simultaneous calls
       
       setLoadingCrowd(true);
@@ -280,7 +283,7 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
           </div>
           
           {/* 🎥 Live Crowd Data Badge (PREMIUM FEATURE) */}
-          {isPremium() && liveCrowdData && liveCrowdData.isLive ? (
+          {isPremium && liveCrowdData && liveCrowdData.isLive ? (
             <div className="space-y-2 animate-in fade-in zoom-in duration-300">
 
               {/* Live Badge */}
@@ -319,7 +322,7 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
                 </div>
               </div>
             </div>
-          ) : !isPremium() && mounted ? (
+          ) : !isPremium && mounted ? (
             /* Premium Upgrade Teaser */
             <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 p-4 text-white animate-in fade-in slide-in-from-bottom-2 duration-300">
 
