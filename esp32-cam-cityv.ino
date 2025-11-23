@@ -48,7 +48,7 @@
 // WiFi ve API ayarları
 const char* AP_SSID = "CityV-AI-Camera";
 const char* AP_PASSWORD = "cityv2024";
-String API_BASE_URL = "https://vercel.com/ercanergulers-projects/city-v/"; // Local development
+String API_BASE_URL = "https://city-v.vercel.app";
 String API_ENDPOINT = "/api/iot/crowd-analysis";
 HTTPClient http;
 

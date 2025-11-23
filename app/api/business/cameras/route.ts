@@ -98,6 +98,7 @@ export async function GET(request: NextRequest) {
     const cameras = await sql`
       SELECT 
         id, 
+        device_id,
         camera_name, 
         ip_address, 
         port, 

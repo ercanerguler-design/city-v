@@ -200,6 +200,78 @@ export async function POST(request: NextRequest) {
     
     console.log('🤖 AI Analysis Data:', {
       device: data.device_id,
+      camera_id: data.camera_id,
+      ip: data.ip_address,
+      people: data.people_count,
+      density: data.crowd_density,
+      confidence: data.confidence_score
+    });
+
+    // 🔄 OTOMATIK DEVICE_ID EŞLEŞTİRME
+    // Eğer device_id gelmemişse, camera_id veya ip_address ile eşleştir
+    if (!data.device_id && (data.camera_id || data.ip_address)) {
+      console.log('🔍 Device ID yok, otomatik eşleştirme yapılıyor...');
+      
+      let matchQuery;
+      if (data.camera_id) {
+        // Camera ID ile eşleştir
+        matchQuery = await sql`
+          SELECT device_id, id, camera_name, business_user_id
+          FROM business_cameras
+          WHERE id = ${data.camera_id}
+          LIMIT 1
+        `;
+      } else if (data.ip_address) {
+        // IP adresi ile eşleştir
+        matchQuery = await sql`
+          SELECT device_id, id, camera_name, business_user_id
+          FROM business_cameras
+          WHERE ip_address = ${data.ip_address}
+          LIMIT 1
+        `;
+      }
+      
+      if (matchQuery && matchQuery.length > 0) {
+        const camera = matchQuery[0];
+        
+        // Eğer kameranın device_id'si yoksa, oluştur ve ata
+        if (!camera.device_id) {
+          const newDeviceId = `CITYV-CAM-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+          console.log('🆕 Yeni device_id oluşturuluyor:', newDeviceId);
+          
+          await sql`
+            UPDATE business_cameras
+            SET device_id = ${newDeviceId}
+            WHERE id = ${camera.id}
+          `;
+          
+          data.device_id = newDeviceId;
+          console.log(`✅ Camera #${camera.id} (${camera.camera_name}) device_id atandı: ${newDeviceId}`);
+        } else {
+          // Kameranın mevcut device_id'sini kullan
+          data.device_id = camera.device_id;
+          console.log(`✅ Mevcut device_id kullanılıyor: ${camera.device_id}`);
+        }
+      } else {
+        console.log('⚠️ Eşleşen kamera bulunamadı!');
+      }
+    }
+    
+    // Eğer hala device_id yoksa, hata döndür
+    if (!data.device_id) {
+      console.error('❌ Device ID bulunamadı ve oluşturulamadı');
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Device ID gerekli. Lütfen camera_id veya ip_address gönderin.',
+          hint: 'ESP32\'den camera_id veya ip_address göndermelisiniz'
+        },
+        { status: 400 }
+      );
+    }
+    
+    console.log('🤖 Final Analysis Data:', {
+      device_id: data.device_id,
       people: data.people_count,
       density: data.crowd_density,
       confidence: data.confidence_score
