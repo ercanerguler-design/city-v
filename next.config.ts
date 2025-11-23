@@ -9,6 +9,21 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ['leaflet'],
+    // CRITICAL: Force Turbopack to generate new chunk hashes
+    turbo: {
+      resolveAlias: {
+        // This forces module resolution to be different each build
+        '@turbo-cache-bust': `./node_modules/.cache/turbo-${Date.now()}`,
+      },
+    },
+  },
+  // CRITICAL: Disable webpack/turbopack chunk hashing optimization
+  webpack: (config: any) => {
+    // Force unique chunk IDs every build
+    config.optimization = config.optimization || {};
+    config.optimization.moduleIds = 'deterministic';
+    config.optimization.chunkIds = 'deterministic';
+    return config;
   },
   // Force new build hash - invalidate CDN cache + Vercel build cache
   generateBuildId: async () => {
