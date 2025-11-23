@@ -11,7 +11,6 @@ import { useSocialStore } from '@/lib/stores/socialStore';
 import { useTrackedStore } from '@/lib/stores/trackedStore';
 import { useAuthStore } from '@/store/authStore';
 import { usePremiumStore } from '@/lib/stores/premiumStore';
-import { motion } from 'framer-motion';
 import { cn, formatTime } from '@/lib/utils';
 import { safeRenderLocation } from '@/lib/locationUtils';
 import WorkingHoursBadge from './WorkingHoursBadge';
@@ -134,10 +133,9 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
   }, [location.id]);
 
   return (
-    <motion.div
-      whileHover={{ y: -4 }}
+    <div
       className={cn(
-        "group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-slate-700 w-full",
+        "group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-gray-100 dark:border-slate-700 w-full",
         !isOpen && "opacity-60 grayscale hover:grayscale-0 hover:opacity-100"
       )}
     >
@@ -283,11 +281,8 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
           
           {/* 🎥 Live Crowd Data Badge (PREMIUM FEATURE) */}
           {isPremium() && liveCrowdData && liveCrowdData.isLive ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="space-y-2"
-            >
+            <div className="space-y-2 animate-in fade-in zoom-in duration-300">
+
               {/* Live Badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold border border-red-300 dark:border-red-700">
                 <span className="relative flex h-2 w-2">
@@ -323,14 +318,11 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
                   <div className="font-normal">%{liveCrowdData.avgOccupancy} yoğunluk</div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ) : !isPremium() && mounted ? (
             /* Premium Upgrade Teaser */
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="relative overflow-hidden rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 p-4 text-white"
-            >
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 p-4 text-white animate-in fade-in slide-in-from-bottom-2 duration-300">
+
               <div className="flex items-center gap-3">
                 <div className="flex-shrink-0">
                   <Sparkles className="w-8 h-8 animate-pulse" />
@@ -356,7 +348,7 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
                   Yükselt
                 </button>
               </div>
-            </motion.div>
+            </div>
           ) : (
             <>
               {/* Kalabalık durumu - sadece açık mekanlar için, kapalıysa boş göster */}
@@ -472,39 +464,31 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
 
         {/* Action Buttons */}
         <div className="grid grid-cols-3 gap-2 md:gap-3">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          <button
             onClick={() => onRouteClick?.(location)}
-            className="bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 md:py-2.5 px-3 md:px-3 rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all flex items-center justify-center gap-1.5 font-bold text-sm md:text-xs shadow-lg hover:shadow-xl touch-manipulation"
+            className="bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 md:py-2.5 px-3 md:px-3 rounded-xl hover:from-green-600 hover:to-emerald-600 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-sm md:text-xs shadow-lg hover:shadow-xl touch-manipulation"
           >
             <Navigation className="w-4 h-4 md:w-4 md:h-4" />
             <span className="hidden sm:inline">Rota</span>
             <span className="sm:hidden">🗺️</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          </button>
+          <button
             onClick={() => setShowReviewModal(true)}
-            className="bg-gradient-to-r from-pink-500 to-rose-500 text-white py-3 md:py-2.5 px-3 md:px-3 rounded-xl hover:from-pink-600 hover:to-rose-600 transition-all flex items-center justify-center gap-1.5 font-bold text-sm md:text-xs shadow-lg hover:shadow-xl touch-manipulation"
+            className="bg-gradient-to-r from-pink-500 to-rose-500 text-white py-3 md:py-2.5 px-3 md:px-3 rounded-xl hover:from-pink-600 hover:to-rose-600 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-sm md:text-xs shadow-lg hover:shadow-xl touch-manipulation"
           >
             <Smile className="w-4 h-4 md:w-4 md:h-4" />
             <span className="hidden sm:inline">Yorum</span>
             <span className="sm:hidden">💬</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          </button>
+          <button
             onClick={() => onReportClick(location)}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 md:py-2.5 px-3 md:px-3 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-1.5 font-bold text-sm md:text-xs shadow-lg hover:shadow-xl touch-manipulation"
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 md:py-2.5 px-3 md:px-3 rounded-xl hover:from-indigo-700 hover:to-purple-700 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-sm md:text-xs shadow-lg hover:shadow-xl touch-manipulation"
           >
             <Bell className="w-4 h-4 md:w-4 md:h-4" />
             <span className="hidden sm:inline">Bildir</span>
             <span className="sm:hidden">📢</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          </button>
+          <button
             onClick={() => {
               if (isLocationTracked) {
                 untrackLocation(location.id);
@@ -515,7 +499,7 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
               }
             }}
             className={cn(
-              "text-white py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 font-bold text-xs shadow-lg hover:shadow-xl",
+              "text-white py-2.5 px-3 rounded-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-xs shadow-lg hover:shadow-xl",
               isLocationTracked
                 ? "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                 : "bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700"
@@ -532,16 +516,14 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
                 Takip Et
               </>
             )}
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          </button>
+          <button
             onClick={() => onSocialClick?.(location)}
-            className="bg-gradient-to-r from-pink-500 to-rose-500 text-white py-2.5 px-3 rounded-xl hover:from-pink-600 hover:to-rose-600 transition-all flex items-center justify-center gap-1.5 font-bold text-xs shadow-lg hover:shadow-xl"
+            className="bg-gradient-to-r from-pink-500 to-rose-500 text-white py-2.5 px-3 rounded-xl hover:from-pink-600 hover:to-rose-600 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-xs shadow-lg hover:shadow-xl"
           >
             <MessageCircle className="w-4 h-4" />
             Sosyal
-          </motion.button>
+          </button>
         </div>
       </div>
 
@@ -554,6 +536,6 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
           locationName={location.name}
         />
       )}
-    </motion.div>
+    </div>
   );
 }
