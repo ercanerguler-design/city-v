@@ -469,7 +469,12 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
         {/* Content */}
         <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-3' : 'p-2'}`}>
           {/* Business IoT Data Locations */}
-          {businessIoTData.length > 0 ? (
+          {iotLoading ? (
+            <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+              <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+              <p className="text-sm">Canlı veriler yükleniyor...</p>
+            </div>
+          ) : businessIoTData.length > 0 ? (
             <>
               <div className="mb-3 px-2">
                 <div className="flex items-center gap-2 mb-2">
@@ -663,7 +668,17 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
           ) : (
             <div className="text-center text-gray-500 py-8 px-4">
               <Users className="w-8 h-8 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">İşletmeler IoT cihazı bağladığında burada görünecek</p>
+              <p className="text-sm font-medium mb-2">Henüz Canlı İşletme Verisi Yok</p>
+              <p className="text-xs leading-relaxed mb-3">
+                IoT kamera sistemi kurulu işletmeler burada canlı kalabalık verileriyle görünecek.
+              </p>
+              <div className="text-xs bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="font-semibold mb-1">🔍 Debug Bilgileri:</p>
+                <p>API Loading: {iotLoading ? 'Evet' : 'Hayır'}</p>
+                <p>Business Data Length: {businessIoTData.length}</p>
+                <p>Is Sidebar Open: {isOpen ? 'Evet' : 'Hayır'}</p>
+                <p className="mt-2 text-blue-600">Console'u açıp API yanıtını kontrol edin</p>
+              </div>
             </div>
           )}
           
