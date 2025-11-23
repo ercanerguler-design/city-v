@@ -65,9 +65,9 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
   const category = getCategoryById(location.category);
   const [mounted, setMounted] = useState(false);
   
-  // Çalışma saati kontrolü - Safe check
-  const workingStatus = isLocationOpen(location) || { isOpen: true };
-  const isOpen = workingStatus?.isOpen ?? true;
+  // Çalışma saati kontrolü - Always get status, don't fallback to open
+  const workingStatus = isLocationOpen(location);
+  const isOpen = workingStatus?.isOpen ?? true; // Default to open only if workingStatus is null/undefined
   
   // Sosyal veriler
   const comments = getLocationComments(location.id);
