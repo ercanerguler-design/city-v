@@ -631,12 +631,12 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
+                        <span className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-lg font-extrabold rounded-lg shadow-lg mr-3 ring-2 ring-blue-300">
+                          🎯 ID: #{camera.id}
+                        </span>
                         <h3 className="font-semibold text-gray-900">
                           {camera.camera_name}
                         </h3>
-                        <span className="px-3 py-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-bold rounded-full shadow-sm">
-                          ID: #{camera.id}
-                        </span>
                         {isNgrokCamera(camera) && (
                           <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
                             CityV Remote

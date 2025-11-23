@@ -536,10 +536,10 @@ void setupWiFi() {
   // Custom parametreler ekle
   WiFiManagerParameter custom_camera_id(
     "camera_id", 
-    "📷 Camera ID (Dashboard'dan)", 
+    "📷 Camera ID (Örnek: Dashboard'da ID: #62 ise buraya sadece 62 yaz)", 
     savedCameraId, 
     32,
-    "placeholder='62' type='number' min='1' style='width:100%;padding:12px;font-size:16px;border:2px solid #3b82f6;border-radius:8px;'"
+    "placeholder='Dashboard kamera kartında ID: #62 yazan numarayı gir' type='number' min='1' style='width:100%;padding:12px;font-size:16px;border:2px solid #3b82f6;border-radius:8px;'"
   );
   
   WiFiManagerParameter custom_static_ip(
@@ -603,9 +603,14 @@ void setupWiFi() {
     Serial.println("🌐 Adres: http://192.168.4.1");
     Serial.println("📱 Telefonunuzla bu WiFi'ye bağlanın!");
     Serial.println("📋 1) WiFi ağını seçin");
-    Serial.println("📋 2) Camera ID girin (Dashboard'dan)");
+    Serial.println("📋 2) Camera ID girin (Dashboard'dan ID: #62 gibi)");
     Serial.println("📋 3) Statik IP girin (Opsiyonel)");
     Serial.println("📋 4) Save butonuna basın");
+    Serial.println("");
+    Serial.println("⚠️ ÖNEMLİ:");
+    Serial.println("Camera ID Business Dashboard'da mavi badge'de gösterilir:");
+    Serial.println("Cameras sekmesi → Her kamera kartında 'ID: #62' yazısı");
+    Serial.println("Bu numarayı (sadece 62) WiFiManager'a girin!");
     Serial.println("==============================");
   });
   
