@@ -536,10 +536,10 @@ void setupWiFi() {
   // Custom parametreler ekle
   WiFiManagerParameter custom_camera_id(
     "camera_id", 
-    "📷 Camera ID (Örnek: Dashboard'da ID: #62 ise buraya sadece 62 yaz)", 
+    "📷 Camera ID (Dashboard'dan)", 
     savedCameraId, 
     32,
-    "placeholder='Dashboard kamera kartında ID: #62 yazan numarayı gir' type='number' min='1' style='width:100%;padding:12px;font-size:16px;border:2px solid #3b82f6;border-radius:8px;'"
+    "placeholder='62' type='number' min='1' style='width:100%;padding:12px;font-size:16px;border:2px solid #3b82f6;border-radius:8px;'"
   );
   
   WiFiManagerParameter custom_static_ip(
@@ -603,14 +603,9 @@ void setupWiFi() {
     Serial.println("🌐 Adres: http://192.168.4.1");
     Serial.println("📱 Telefonunuzla bu WiFi'ye bağlanın!");
     Serial.println("📋 1) WiFi ağını seçin");
-    Serial.println("📋 2) Camera ID girin (Dashboard'dan ID: #62 gibi)");
+    Serial.println("📋 2) Camera ID girin (Dashboard'dan)");
     Serial.println("📋 3) Statik IP girin (Opsiyonel)");
     Serial.println("📋 4) Save butonuna basın");
-    Serial.println("");
-    Serial.println("⚠️ ÖNEMLİ:");
-    Serial.println("Camera ID Business Dashboard'da mavi badge'de gösterilir:");
-    Serial.println("Cameras sekmesi → Her kamera kartında 'ID: #62' yazısı");
-    Serial.println("Bu numarayı (sadece 62) WiFiManager'a girin!");
     Serial.println("==============================");
   });
   
@@ -905,21 +900,9 @@ void resetWiFiSettings() {
 void initSDCard() {
   Serial.println("💾 SD Kart başlatılıyor...");
   
-  // SD_MMC 1-bit mode başlatma denemesi
-  // true parametresi: 1-bit mode (ESP32-CAM pinleri ile uyumlu)
-  bool sdOk = SD_MMC.begin("/sdcard", true);
-  
-  if (!sdOk) {
-    // İkinci deneme: format siz
-    Serial.println("⚠️ İlk deneme başarısız, yeniden deneniyor...");
-    delay(500);
-    sdOk = SD_MMC.begin();
-  }
-  
-  if (!sdOk) {
+  // SD_MMC 1-bit mode (ESP32-CAM için)
+  if (!SD_MMC.begin("/sdcard", true)) {
     Serial.println("❌ SD Kart takılı değil veya hatalı!");
-    Serial.println("💡 SD Kartı çıkarıp tekrar takın");
-    Serial.println("💡 8GB veya daha küçük FAT32 formatında olmalı");
     Serial.println("⚠️ Offline mode devre dışı - sadece online çalışacak");
     sdCardAvailable = false;
     return;
@@ -927,8 +910,7 @@ void initSDCard() {
   
   uint8_t cardType = SD_MMC.cardType();
   if (cardType == CARD_NONE) {
-    Serial.println("❌ SD Kart tipi tanımlanamadı!");
-    SD_MMC.end();
+    Serial.println("❌ SD Kart bulunamadı!");
     sdCardAvailable = false;
     return;
   }

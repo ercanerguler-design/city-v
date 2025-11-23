@@ -22,12 +22,13 @@ const sentiments = [
   { id: 'negative', key: 'negative-angry', label: 'Kızgın', icon: '😡', color: 'bg-red-500' }
 ];
 
+// Database price_rating enum: 'very_cheap', 'cheap', 'fair', 'expensive', 'very_expensive'
 const priceRatings = [
-  { id: 1, label: 'Çok Ucuz', icon: '$', color: 'text-green-600' },
-  { id: 2, label: 'Ucuz', icon: '$$', color: 'text-green-500' },
-  { id: 3, label: 'Normal', icon: '$$$', color: 'text-yellow-500' },
-  { id: 4, label: 'Pahalı', icon: '$$$$', color: 'text-orange-500' },
-  { id: 5, label: 'Çok Pahalı', icon: '$$$$$', color: 'text-red-500' }
+  { id: 'very_cheap', label: 'Çok Ucuz', icon: '$', color: 'text-green-600' },
+  { id: 'cheap', label: 'Ucuz', icon: '$$', color: 'text-green-500' },
+  { id: 'fair', label: 'Normal', icon: '$$$', color: 'text-yellow-500' },
+  { id: 'expensive', label: 'Pahalı', icon: '$$$$', color: 'text-orange-500' },
+  { id: 'very_expensive', label: 'Çok Pahalı', icon: '$$$$$', color: 'text-red-500' }
 ];
 
 export default function AddReviewModal({ isOpen, onClose, locationId, locationName }: AddReviewModalProps) {
@@ -50,12 +51,18 @@ export default function AddReviewModal({ isOpen, onClose, locationId, locationNa
 
     try {
       // Map sentiment key to database enum values (happy, sad, angry, neutral, excited, disappointed)
-      const sentimentValue = sentiment === 'positive-happy' ? 'happy'
-                           : sentiment === 'positive-excited' ? 'excited'
-                           : sentiment === 'negative-sad' ? 'sad'
-                           : sentiment === 'negative-angry' ? 'angry'
-                           : sentiment === 'negative-disappointed' ? 'disappointed'
-                           : sentiment === 'neutral' ? 'neutral' : null;
+      // Database CHECK constraint: sentiment IN ('happy', 'sad', 'angry', 'neutral', 'excited', 'disappointed')
+      let sentimentValue = null;
+      if (sentiment) {
+        if (sentiment === 'positive-happy') sentimentValue = 'happy';
+        else if (sentiment === 'positive-excited') sentimentValue = 'excited';
+        else if (sentiment === 'negative-sad') sentimentValue = 'sad';
+        else if (sentiment === 'negative-angry') sentimentValue = 'angry';
+        else if (sentiment === 'negative-disappointed') sentimentValue = 'disappointed';
+        else if (sentiment === 'neutral') sentimentValue = 'neutral';
+        
+        console.log('🎭 Sentiment mapping:', { original: sentiment, mapped: sentimentValue });
+      }
 
       const payload = {
         locationId,

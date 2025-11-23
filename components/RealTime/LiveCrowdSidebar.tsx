@@ -176,12 +176,12 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
       console.log('📡 Business IoT verileri yükleniyor...');
       loadBusinessIoTData();
       
-      // Her 30 saniyede bir güncelle (API ile senkronize)
+      // Her 10 saniyede bir güncelle (Canlı veri için)
       const interval = setInterval(() => {
-        console.log('🔄 Crowd analizi güncelleniyor...');
+        console.log('🔄 Crowd analizi güncelleniyor (canlı)...');
         analyzeOpenLocations(locations);
         loadBusinessIoTData();
-      }, 30000);
+      }, 10000);
       
       return () => {
         clearInterval(interval);

@@ -102,15 +102,15 @@ function checkRealWorkingHours(workingHours: any, now: Date): { isOpen: boolean,
 export function isLocationOpen(location: any): { isOpen: boolean, reason?: string } {
   const now = new Date();
 
-  // Business locations için working_hours'ı kontrol et
+  // Working hours'ı kontrol et (hem workingHours hem working_hours destekle)
   const workingHours = location.workingHours || location.working_hours;
-  if (location.isBusiness && workingHours && typeof workingHours === 'object') {
+  
+  // Eğer working hours varsa ve object ise, gerçek kontrol yap
+  if (workingHours && typeof workingHours === 'object' && Object.keys(workingHours).length > 0) {
     return checkRealWorkingHours(workingHours, now);
   }
 
-  // Static locations için basit açık/kapalı mantığı
-  // Static locations - varsayılan olarak her zaman açık kabul et
-  // (Parklar, metro istasyonları, bankalar vs. gerçek çalışma saatleri olmadan)
+  // Working hours yoksa - varsayılan olarak açık kabul et
   return { isOpen: true, reason: undefined };
 }
 

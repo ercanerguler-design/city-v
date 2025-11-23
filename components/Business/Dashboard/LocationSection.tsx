@@ -11,6 +11,7 @@ export default function LocationSection({ businessProfile }: { businessProfile: 
   const [loading, setLoading] = useState(false);
   const [autoDetecting, setAutoDetecting] = useState(false);
 
+  // Konum verilerini yükle ve güncelle - dependency array düzeltildi
   useEffect(() => {
     if (businessProfile) {
       const locationData = {
@@ -23,7 +24,7 @@ export default function LocationSection({ businessProfile }: { businessProfile: 
       setLocation(locationData);
       console.log('📍 Konum store\'dan yüklendi:', locationData);
     }
-  }, [businessProfile]);
+  }, [businessProfile?.latitude, businessProfile?.longitude, businessProfile?.address]);
 
   const handleAutoDetect = () => {
     setAutoDetecting(true);
