@@ -16,7 +16,7 @@ const int CAMERA_ID = 62; // Kamera kartındaki ID numarası
 
 void sendIoTData(int peopleCount) {
   HTTPClient http;
-  http.begin("https://city-v.vercel.app/api/iot/crowd-analysis");
+  http.begin("https://city-v-ercanergulers-projects.vercel.app/api/iot/crowd-analysis");
   http.addHeader("Content-Type", "application/json");
   
   StaticJsonDocument<200> doc;
@@ -46,7 +46,7 @@ const char* MY_IP = "192.168.1.100"; // Kameranın IP'si
 
 void sendIoTData(int peopleCount) {
   HTTPClient http;
-  http.begin("https://city-v.vercel.app/api/iot/crowd-analysis");
+  http.begin("https://city-v-ercanergulers-projects.vercel.app/api/iot/crowd-analysis");
   http.addHeader("Content-Type", "application/json");
   
   StaticJsonDocument<200> doc;
@@ -68,7 +68,7 @@ const char* DEVICE_ID = "CITYV-CAM-1763918698454-6L7V8GJJ0";
 
 void sendIoTData(int peopleCount) {
   HTTPClient http;
-  http.begin("https://city-v.vercel.app/api/iot/crowd-analysis");
+  http.begin("https://city-v-ercanergulers-projects.vercel.app/api/iot/crowd-analysis");
   http.addHeader("Content-Type", "application/json");
   
   StaticJsonDocument<200> doc;
@@ -135,7 +135,7 @@ void sendIoTData(int peopleCount) {
 
 **Veriler gelmiyor:**
 - ESP32 internet bağlantısını kontrol edin
-- API endpoint'i kontrol edin (`https://city-v.vercel.app/api/iot/crowd-analysis`)
+- API endpoint'i kontrol edin (`https://city-v-ercanergulers-projects.vercel.app/api/iot/crowd-analysis`)
 - Serial monitor'da HTTP response kodunu kontrol edin (200 = başarılı)
 
 ## 📞 Destek
@@ -146,3 +146,4 @@ Sorun yaşarsanız ESP32 Serial Monitor çıktısını kontrol edin:
 🔍 Device ID yok, otomatik eşleştirme yapılıyor...
 ✅ Camera #62 device_id atandı: CITYV-CAM-1732384567890-ABC123XYZ
 ```
+
