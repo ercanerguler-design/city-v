@@ -905,9 +905,21 @@ void resetWiFiSettings() {
 void initSDCard() {
   Serial.println("💾 SD Kart başlatılıyor...");
   
-  // SD_MMC 1-bit mode (ESP32-CAM için)
-  if (!SD_MMC.begin("/sdcard", true)) {
+  // SD_MMC 1-bit mode başlatma denemesi
+  // true parametresi: 1-bit mode (ESP32-CAM pinleri ile uyumlu)
+  bool sdOk = SD_MMC.begin("/sdcard", true);
+  
+  if (!sdOk) {
+    // İkinci deneme: format siz
+    Serial.println("⚠️ İlk deneme başarısız, yeniden deneniyor...");
+    delay(500);
+    sdOk = SD_MMC.begin();
+  }
+  
+  if (!sdOk) {
     Serial.println("❌ SD Kart takılı değil veya hatalı!");
+    Serial.println("💡 SD Kartı çıkarıp tekrar takın");
+    Serial.println("💡 8GB veya daha küçük FAT32 formatında olmalı");
     Serial.println("⚠️ Offline mode devre dışı - sadece online çalışacak");
     sdCardAvailable = false;
     return;
@@ -915,7 +927,8 @@ void initSDCard() {
   
   uint8_t cardType = SD_MMC.cardType();
   if (cardType == CARD_NONE) {
-    Serial.println("❌ SD Kart bulunamadı!");
+    Serial.println("❌ SD Kart tipi tanımlanamadı!");
+    SD_MMC.end();
     sdCardAvailable = false;
     return;
   }
