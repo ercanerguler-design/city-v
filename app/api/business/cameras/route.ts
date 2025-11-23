@@ -278,11 +278,16 @@ export async function POST(request: NextRequest) {
       console.log('📹 Generated stream URL:', finalStreamUrl);
     }
 
+    // Device ID oluştur (ESP32 ile eşleşmesi için unique ID)
+    const deviceId = `CITYV-CAM-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    console.log('🔑 Generated device_id:', deviceId);
+
     // Kamerayı ekle
     const result = await sql`
       INSERT INTO business_cameras (
         business_user_id, 
         camera_name, 
+        device_id,
         ip_address, 
         port, 
         username, 
@@ -297,6 +302,7 @@ export async function POST(request: NextRequest) {
       ) VALUES (
         ${user.userId}, 
         ${camera_name}, 
+        ${deviceId},
         ${cleanIp}, 
         ${finalPort}, 
         ${username || null}, 
@@ -314,11 +320,15 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Kamera eklendi: ${camera_name} (${cleanIp}:${finalPort}${actualStreamPath})`);
     console.log(`📹 Stream URL: ${finalStreamUrl}`);
+    console.log(`🔑 Device ID: ${deviceId}`);
+    console.log(`ℹ️  ESP32 kamerayı bu device_id ile eşleştirin: ${deviceId}`);
 
     return NextResponse.json({
       success: true,
       camera: result[0],
-      message: 'Kamera başarıyla eklendi'
+      deviceId: deviceId,
+      message: 'Kamera başarıyla eklendi',
+      note: 'ESP32 kamerayı bu device_id ile eşleştirin'
     });
 
   } catch (error: any) {
