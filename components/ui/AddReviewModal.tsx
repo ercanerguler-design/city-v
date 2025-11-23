@@ -49,9 +49,12 @@ export default function AddReviewModal({ isOpen, onClose, locationId, locationNa
     setLoading(true);
 
     try {
-      // Map sentiment key to database value (positive/neutral/negative)
-      const sentimentValue = sentiment?.startsWith('positive') ? 'positive' 
-                           : sentiment?.startsWith('negative') ? 'negative'
+      // Map sentiment key to database enum values (happy, sad, angry, neutral, excited, disappointed)
+      const sentimentValue = sentiment === 'positive-happy' ? 'happy'
+                           : sentiment === 'positive-excited' ? 'excited'
+                           : sentiment === 'negative-sad' ? 'sad'
+                           : sentiment === 'negative-angry' ? 'angry'
+                           : sentiment === 'negative-disappointed' ? 'disappointed'
                            : sentiment === 'neutral' ? 'neutral' : null;
 
       const payload = {
