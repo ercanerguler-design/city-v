@@ -48,6 +48,15 @@ export default function WorkingHoursEditor({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Update state when props change (after save & page refresh)
+  useEffect(() => {
+    if (initialWorkingHours) {
+      setWorkingHours(initialWorkingHours);
+    }
+    setIsVisibleOnMap(initialVisibility);
+    setAutoSyncToCityv(initialAutoSync);
+  }, [initialWorkingHours, initialVisibility, initialAutoSync]);
+
   useEffect(() => {
     fetchSyncStatus();
   }, [businessUserId]);
@@ -103,6 +112,11 @@ export default function WorkingHoursEditor({
       if (data.success) {
         toast.success('✅ Çalışma saatleri kaydedildi ve City-V\'ye senkronize edildi!');
         fetchSyncStatus();
+        
+        // Force parent to reload business profile data
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } else {
         toast.error(data.error || 'Kaydetme başarısız');
       }

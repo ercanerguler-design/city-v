@@ -49,6 +49,11 @@ const WorkingHoursEdit: React.FC<WorkingHoursEditProps> = ({ business, onClose }
         const syncData = await syncResponse.json();
         console.log('✅ Ana site senkronize edildi:', syncData);
         toast.success('✅ Çalışma saatleri güncellendi ve ana siteye senkronize edildi!');
+        
+        // Force page reload to fetch updated data from database
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } else {
         console.error('❌ Sync hatası:', syncResponse.status);
         toast.error('⚠️ Çalışma saatleri güncellendi ama ana site senkronize edilemedi');

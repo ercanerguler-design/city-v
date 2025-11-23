@@ -43,6 +43,23 @@ export default function SettingsSection({ businessProfile, onUpdate }: { busines
 
   useEffect(() => {
     if (businessProfile) {
+      const defaultWorkingHours = {
+        monday: { open: '09:00', close: '18:00', closed: false },
+        tuesday: { open: '09:00', close: '18:00', closed: false },
+        wednesday: { open: '09:00', close: '18:00', closed: false },
+        thursday: { open: '09:00', close: '18:00', closed: false },
+        friday: { open: '09:00', close: '18:00', closed: false },
+        saturday: { open: '10:00', close: '16:00', closed: false },
+        sunday: { open: '00:00', close: '00:00', closed: true }
+      };
+      
+      const defaultSocialMedia = {
+        instagram: '',
+        facebook: '',
+        twitter: '',
+        linkedin: ''
+      };
+      
       setProfile({
         business_name: businessProfile.business_name || '',
         business_type: businessProfile.business_type || '',
@@ -55,8 +72,8 @@ export default function SettingsSection({ businessProfile, onUpdate }: { busines
         website: businessProfile.website || '',
         logo_url: businessProfile.logo_url || '',
         photos: businessProfile.photos || [],
-        working_hours: businessProfile.working_hours || profile.working_hours,
-        social_media: businessProfile.social_media || profile.social_media
+        working_hours: businessProfile.working_hours || defaultWorkingHours,
+        social_media: businessProfile.social_media || defaultSocialMedia
       });
     }
   }, [businessProfile]);
