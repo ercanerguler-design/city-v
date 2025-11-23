@@ -208,63 +208,60 @@ export async function POST(request: NextRequest) {
     });
 
     // 🔄 OTOMATIK DEVICE_ID EŞLEŞTİRME
-    // Eğer device_id gelmemişse, camera_id veya ip_address ile eşleştir
-    if (!data.device_id && (data.camera_id || data.ip_address)) {
-      console.log('🔍 Device ID yok, otomatik eşleştirme yapılıyor...');
+    // ESP32 camera_id gönderiyorsa, bunu direkt device_id olarak kullan (VARCHAR CAST)
+    if (!data.device_id && data.camera_id) {
+      console.log('🔍 Camera ID var, device_id olarak kullanılıyor:', data.camera_id);
       
-      let matchQuery;
-      if (data.camera_id) {
-        // Camera ID ile eşleştir
-        matchQuery = await sql`
-          SELECT device_id, id, camera_name, business_user_id
-          FROM business_cameras
-          WHERE id = ${data.camera_id}
-          LIMIT 1
-        `;
-      } else if (data.ip_address) {
-        // IP adresi ile eşleştir
-        matchQuery = await sql`
-          SELECT device_id, id, camera_name, business_user_id
-          FROM business_cameras
-          WHERE ip_address = ${data.ip_address}
-          LIMIT 1
-        `;
-      }
+      // Camera ID'nin varlığını kontrol et
+      const matchQuery = await sql`
+        SELECT id, camera_name, business_user_id, ip_address
+        FROM business_cameras
+        WHERE id = ${data.camera_id}
+        LIMIT 1
+      `;
       
       if (matchQuery && matchQuery.length > 0) {
         const camera = matchQuery[0];
         
-        // Eğer kameranın device_id'si yoksa, oluştur ve ata
-        if (!camera.device_id) {
-          const newDeviceId = `CITYV-CAM-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-          console.log('🆕 Yeni device_id oluşturuluyor:', newDeviceId);
-          
-          await sql`
-            UPDATE business_cameras
-            SET device_id = ${newDeviceId}
-            WHERE id = ${camera.id}
-          `;
-          
-          data.device_id = newDeviceId;
-          console.log(`✅ Camera #${camera.id} (${camera.camera_name}) device_id atandı: ${newDeviceId}`);
-        } else {
-          // Kameranın mevcut device_id'sini kullan
-          data.device_id = camera.device_id;
-          console.log(`✅ Mevcut device_id kullanılıyor: ${camera.device_id}`);
-        }
+        // camera_id'yi String olarak device_id'ye ata
+        data.device_id = String(data.camera_id);
+        
+        console.log(`✅ Camera #${camera.id} (${camera.camera_name}) eşleştirildi`);
+        console.log(`   📍 Device ID: ${data.device_id}`);
+        console.log(`   🏢 Business User ID: ${camera.business_user_id}`);
       } else {
-        console.log('⚠️ Eşleşen kamera bulunamadı!');
+        console.log('⚠️ Camera ID ile eşleşen kamera bulunamadı:', data.camera_id);
+      }
+    } else if (!data.device_id && data.ip_address) {
+      // IP adresi ile eşleştirme (fallback)
+      console.log('🔍 IP adresi ile eşleştirme yapılıyor:', data.ip_address);
+      
+      const matchQuery = await sql`
+        SELECT id, camera_name, business_user_id
+        FROM business_cameras
+        WHERE ip_address = ${data.ip_address}
+        LIMIT 1
+      `;
+      
+      if (matchQuery && matchQuery.length > 0) {
+        const camera = matchQuery[0];
+        data.device_id = String(camera.id); // Camera ID'yi device_id olarak kullan
+        console.log(`✅ IP ${data.ip_address} ile Camera #${camera.id} eşleştirildi`);
+      } else {
+        console.log('⚠️ IP adresi ile eşleşen kamera bulunamadı:', data.ip_address);
       }
     }
     
     // Eğer hala device_id yoksa, hata döndür
     if (!data.device_id) {
       console.error('❌ Device ID bulunamadı ve oluşturulamadı');
+      console.error('   📥 Gelen data:', { camera_id: data.camera_id, ip_address: data.ip_address });
       return NextResponse.json(
         { 
           success: false, 
           error: 'Device ID gerekli. Lütfen camera_id veya ip_address gönderin.',
-          hint: 'ESP32\'den camera_id veya ip_address göndermelisiniz'
+          hint: 'ESP32\'den camera_id veya ip_address göndermelisiniz',
+          received: { camera_id: data.camera_id, ip_address: data.ip_address }
         },
         { status: 400 }
       );

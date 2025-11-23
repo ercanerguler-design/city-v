@@ -773,7 +773,12 @@ void sendAIData(int humans, float density) {
   
   // JSON payload oluştur
   String payload = "{";
-  payload += "\"camera_id\":" + CAMERA_ID + ",";
+  
+  // Camera ID - EEPROM'dan okunmuş ID varsa kullan, yoksa boş bırak
+  if (CAMERA_ID.length() > 0) {
+    payload += "\"camera_id\":" + CAMERA_ID + ",";
+  }
+  
   payload += "\"ip_address\":\"" + CAMERA_IP + "\",";
   payload += "\"analysis_type\":\"esp32_cam_ai\",";
   payload += "\"location_type\":\"entrance\",";
