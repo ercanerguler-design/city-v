@@ -47,7 +47,6 @@ import LiveCrowdSidebar from '@/components/RealTime/LiveCrowdSidebar';
 import QRScanner from '@/components/Camera/QRScanner';
 import PhotoGallery from '@/components/Camera/PhotoGallery';
 import AddReviewModal from '@/components/ui/AddReviewModal';
-import UltraSimpleModal from '@/components/ui/UltraSimpleModal';
 
 // Business Box Promotion Components
 import BusinessBoxBanner from '@/components/business-box/BusinessBoxBanner';
@@ -83,6 +82,11 @@ const MapView = dynamic(() => import('@/components/Map/MapViewEnhanced'), {
       </div>
     </div>
   ),
+});
+
+const UltraSimpleModal = dynamic(() => import('@/components/ui/UltraSimpleModal'), {
+  ssr: false,
+  loading: () => null,
 });
 
 // Mesafe hesaplama fonksiyonu - Component dışında tanımla
