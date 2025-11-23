@@ -129,7 +129,7 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
           
           // Tüm işletmeleri listele
           businesses.forEach((biz: any, index: number) => {
-            console.log(`  ${index + 1}. ${biz.name} - ID: ${biz.id}, Location: ${biz.location_id}, Profile: ${biz.business_profile_id}`);
+            console.log(`  ${index + 1}. ${biz.name} - ID: ${biz.id}, Location: ${biz.location_id}, Profile: ${biz.business_profile_id}, Menu: ${biz.hasMenu ? '✅' : '❌'} (${biz.menuCategoryCount} categories)`);
           });
         } else {
           console.log('ℹ️ Hiç business IoT verisi bulunamadı');
@@ -601,19 +601,39 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
                     </div>
                     
                     {/* Fiyatları Gör Butonu - Business Profile ID varsa ve menü varsa */}
-                    {business.business_profile_id && (business.hasMenu || business.menuCategoryCount > 0) && (
-                      <button
-                        onClick={() => {
-                          setSelectedBusinessId(business.business_profile_id); // Profile ID kullan
-                          setSelectedBusinessName(business.name);
-                          setMenuModalOpen(true);
-                        }}
-                        className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all font-medium shadow-sm hover:shadow-md"
-                      >
-                        <Receipt className="w-4 h-4" />
-                        <span>Fiyatları Gör ({business.menuCategoryCount || 1})</span>
-                      </button>
-                    )}
+                    {(() => {
+                      const hasProfileId = !!business.business_profile_id;
+                      const hasMenuData = business.hasMenu || business.menuCategoryCount > 0;
+                      const shouldShow = hasProfileId && hasMenuData;
+                      
+                      // Debug log (sadece ilk business için)
+                      if (businessIoTData.indexOf(business) === 0) {
+                        console.log('🔍 Menu Button Debug:', {
+                          name: business.name,
+                          business_profile_id: business.business_profile_id,
+                          hasMenu: business.hasMenu,
+                          menuCategoryCount: business.menuCategoryCount,
+                          hasProfileId,
+                          hasMenuData,
+                          shouldShow
+                        });
+                      }
+                      
+                      return shouldShow && (
+                        <button
+                          onClick={() => {
+                            console.log('🍽️ Opening menu for:', business.name, 'Profile ID:', business.business_profile_id);
+                            setSelectedBusinessId(business.business_profile_id);
+                            setSelectedBusinessName(business.name);
+                            setMenuModalOpen(true);
+                          }}
+                          className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all font-medium shadow-sm hover:shadow-md"
+                        >
+                          <Receipt className="w-4 h-4" />
+                          <span>Fiyatları Gör ({business.menuCategoryCount || 1})</span>
+                        </button>
+                      );
+                    })()}
                     
                     <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
                       <div className="flex items-center gap-1">
