@@ -10,9 +10,13 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['leaflet'],
   },
-  // Force new build hash - invalidate CDN cache
+  // Force new build hash - invalidate CDN cache + Vercel build cache
   generateBuildId: async () => {
-    return `build-${Date.now()}`
+    // Unique ID: timestamp + random string + process ID
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 15);
+    const processId = process.pid || 0;
+    return `build-${timestamp}-${random}-${processId}`;
   },
   // Disable caching for production debugging
   headers: async () => {
