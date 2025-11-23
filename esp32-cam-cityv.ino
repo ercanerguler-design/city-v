@@ -75,10 +75,15 @@ WebServer server(80);
 #define DEVICE_ID_ADDR 0
 #define DEVICE_NAME_ADDR 50
 #define CAMERA_ID_ADDR 100
+#define STATIC_IP_ADDR 150
 
 // Değişkenler - Camera ID için
 String CAMERA_ID = "";
 String CAMERA_IP = "";
+bool useStaticIP = false;
+IPAddress staticIP(192, 168, 1, 100);  // Varsayılan statik IP
+IPAddress gateway(192, 168, 1, 1);
+IPAddress subnet(255, 255, 255, 0);
 
 // Struct tanımları - AI için
 struct Blob {
@@ -356,31 +361,64 @@ void performanceReport() {
 // WEB SERVER - STREAM VE API + WiFi YÖNETİMİ
 // ====================================================================
 void setupWebServer() {
-  // Ana sayfa - WiFi Ayarları ile birlikte
+  // Ana sayfa - Profesyonel Dashboard
   server.on("/", HTTP_GET, [](){
     String html = "<!DOCTYPE html><html><head>";
-    html += "<title>ESP32-CAM AI Professional</title>";
-    html += "<meta charset='UTF-8'>";
-    html += "<style>body{font-family:Arial;margin:20px;background:#f0f0f0;}";
-    html += ".container{max-width:800px;margin:auto;background:white;padding:20px;border-radius:10px;}";
-    html += ".btn{background:#007bff;color:white;padding:10px 20px;border:none;border-radius:5px;margin:5px;cursor:pointer;}";
-    html += ".btn:hover{background:#0056b3;}";
-    html += ".status{background:#28a745;color:white;padding:10px;border-radius:5px;margin:10px 0;}";
+    html += "<meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'>";
+    html += "<title>CityV AI Camera Pro</title>";
+    html += "<style>";
+    html += "*{margin:0;padding:0;box-sizing:border-box}";
+    html += "body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px}";
+    html += ".container{max-width:1200px;margin:auto}";
+    html += ".card{background:rgba(255,255,255,0.95);backdrop-filter:blur(10px);border-radius:20px;padding:30px;margin-bottom:20px;box-shadow:0 20px 60px rgba(0,0,0,0.3)}";
+    html += ".header{text-align:center;margin-bottom:30px}";
+    html += ".header h1{color:#2d3748;font-size:2.5em;margin-bottom:10px;font-weight:700}";
+    html += ".header p{color:#718096;font-size:1.1em}";
+    html += ".status-badge{display:inline-block;padding:10px 20px;background:linear-gradient(135deg,#48bb78,#38a169);color:white;border-radius:50px;font-weight:600;margin:20px 0;box-shadow:0 4px 15px rgba(72,187,120,0.4)}";
+    html += ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin:20px 0}";
+    html += ".stat-card{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:25px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.2)}";
+    html += ".stat-card h3{font-size:0.9em;opacity:0.9;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}";
+    html += ".stat-card p{font-size:2em;font-weight:700;margin:10px 0}";
+    html += ".btn{display:inline-block;padding:15px 30px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;text-decoration:none;border-radius:10px;font-weight:600;border:none;cursor:pointer;transition:all 0.3s;box-shadow:0 5px 15px rgba(102,126,234,0.4);margin:10px 5px}";
+    html += ".btn:hover{transform:translateY(-3px);box-shadow:0 10px 25px rgba(102,126,234,0.6)}";
+    html += ".btn-danger{background:linear-gradient(135deg,#fc8181,#f56565)}";
+    html += ".btn-danger:hover{box-shadow:0 10px 25px rgba(252,129,129,0.6)}";
+    html += ".info-row{display:flex;justify-content:space-between;padding:15px;background:#f7fafc;border-radius:10px;margin:10px 0}";
+    html += ".info-label{color:#718096;font-weight:600}";
+    html += ".info-value{color:#2d3748;font-weight:700}";
+    html += "@media(max-width:768px){.header h1{font-size:1.8em}.grid{grid-template-columns:1fr}.btn{display:block;margin:10px 0}}";
     html += "</style></head><body>";
     html += "<div class='container'>";
-    html += "<h1>CityV Professional AI Camera</h1>";
-    html += "<div class='status'>✅ System Active - Live Monitoring Ready</div>";
-    html += "<h3>📹 Canlı İzleme</h3>";
-    html += "<a href='/stream' target='_blank'><button class='btn'>📺 Canlı Stream</button></a>";
-    html += "<a href='/status' target='_blank'><button class='btn'>📊 AI Durumu</button></a>";
-    html += "<h3>⚙️ WiFi Ayarları</h3>";
-    html += "<p>Mevcut WiFi: <strong>" + WiFi.SSID() + "</strong></p>";
-    html += "<p>IP Adresi: <strong>" + WiFi.localIP().toString() + "</strong></p>";
-    html += "<p>Sinyal Gücü: <strong>" + String(WiFi.RSSI()) + " dBm</strong></p>";
-    html += "<p>LED Durumu: <strong>💡 WiFi Bağlantısı Aktif</strong></p>";
-    html += "<button class='btn' onclick='resetWiFi()'>🔄 WiFi Ayarlarını Sıfırla</button>";
-    html += "<script>function resetWiFi(){if(confirm('WiFi ayarları sıfırlanacak. Devam?')){fetch('/reset-wifi').then(()=>alert('WiFi sıfırlandı! Cihaz yeniden başlıyor...'));}}</script>";
-    html += "</div></body></html>";
+    html += "<div class='card'>";
+    html += "<div class='header'>";
+    html += "<h1>🎥 CityV AI Camera Pro</h1>";
+    html += "<p>Professional IoT Monitoring System</p>";
+    html += "<div class='status-badge'>✅ System Online</div>";
+    html += "</div>";
+    
+    html += "<div class='grid'>";
+    html += "<div class='stat-card'><h3>📡 Network</h3><p>" + WiFi.SSID() + "</p></div>";
+    html += "<div class='stat-card'><h3>🌐 IP Address</h3><p style='font-size:1.2em'>" + WiFi.localIP().toString() + "</p></div>";
+    html += "<div class='stat-card'><h3>📶 Signal</h3><p>" + String(WiFi.RSSI()) + " dBm</p></div>";
+    html += "<div class='stat-card'><h3>🎯 Camera ID</h3><p>" + (CAMERA_ID.length() > 0 ? CAMERA_ID : "Not Set") + "</p></div>";
+    html += "</div>";
+    
+    html += "<div style='text-align:center;margin-top:30px'>";
+    html += "<a href='/stream' target='_blank' class='btn'>📺 Live Stream</a>";
+    html += "<a href='/status' target='_blank' class='btn'>📊 AI Status</a>";
+    html += "<button onclick='resetWiFi()' class='btn btn-danger'>🔄 Reset WiFi</button>";
+    html += "</div>";
+    
+    html += "<div style='margin-top:30px'>";
+    html += "<div class='info-row'><span class='info-label'>Gateway:</span><span class='info-value'>" + WiFi.gatewayIP().toString() + "</span></div>";
+    html += "<div class='info-row'><span class='info-label'>MAC Address:</span><span class='info-value'>" + WiFi.macAddress() + "</span></div>";
+    html += "<div class='info-row'><span class='info-label'>Uptime:</span><span class='info-value'>" + String(millis()/1000/60) + " minutes</span></div>";
+    html += "<div class='info-row'><span class='info-label'>Status:</span><span class='info-value'>💡 LED Active</span></div>";
+    html += "</div>";
+    
+    html += "</div></div>";
+    html += "<script>function resetWiFi(){if(confirm('⚠️ WiFi settings will be reset. Continue?')){fetch('/reset-wifi').then(()=>{alert('✅ WiFi reset! Device rebooting...');setTimeout(()=>location.reload(),3000)})}}</script>";
+    html += "</body></html>";
     server.send(200, "text/html", html);
   });
 
@@ -441,28 +479,115 @@ void setupWebServer() {
 }
 
 // ====================================================================
-// WiFi KURULUM - OTOMATIK VE UZAKTAN YÖNETİM
+// WiFi KURULUM - OTOMATIK VE UZAKTAN YÖNETİM + STATİK IP
 // ====================================================================
 void setupWiFi() {
   Serial.println("📶 WiFi Manager başlatılıyor...");
   
+  // EEPROM'dan kayıtlı Camera ID'yi oku
+  EEPROM.begin(EEPROM_SIZE);
+  char savedCameraId[32] = "";
+  for(int i = 0; i < 32; i++) {
+    savedCameraId[i] = EEPROM.read(CAMERA_ID_ADDR + i);
+    if(savedCameraId[i] == 0) break;
+  }
+  CAMERA_ID = String(savedCameraId);
+  
+  // Statik IP oku
+  char savedStaticIP[16] = "";
+  for(int i = 0; i < 16; i++) {
+    savedStaticIP[i] = EEPROM.read(STATIC_IP_ADDR + i);
+    if(savedStaticIP[i] == 0) break;
+  }
+  
+  if(strlen(savedStaticIP) > 6) {
+    useStaticIP = true;
+    staticIP.fromString(String(savedStaticIP));
+    Serial.println("🌐 Statik IP bulundu: " + String(savedStaticIP));
+  }
+  
+  // Custom parametreler ekle
+  WiFiManagerParameter custom_camera_id(
+    "camera_id", 
+    "📷 Camera ID (Dashboard'dan)", 
+    savedCameraId, 
+    32,
+    "placeholder='62' type='number' min='1' style='width:100%;padding:12px;font-size:16px;border:2px solid #3b82f6;border-radius:8px;'"
+  );
+  
+  WiFiManagerParameter custom_static_ip(
+    "static_ip",
+    "🌐 Statik IP (Opsiyonel - Örn: 192.168.1.100)",
+    savedStaticIP,
+    16,
+    "placeholder='192.168.1.100' style='width:100%;padding:12px;font-size:16px;border:2px solid #10b981;border-radius:8px;'"
+  );
+  
+  wifiManager.addParameter(&custom_camera_id);
+  wifiManager.addParameter(&custom_static_ip);
+  
+  // Statik IP ayarla (WiFi bağlanmadan önce)
+  if(useStaticIP) {
+    Serial.println("🌐 Statik IP ayarlanıyor: " + staticIP.toString());
+    wifiManager.setSTAStaticIPConfig(staticIP, gateway, subnet);
+  }
+  
+  // Kaydetme callback - Camera ID ve Statik IP'yi EEPROM'a yaz
+  wifiManager.setSaveConfigCallback([&custom_camera_id, &custom_static_ip](){
+    Serial.println("💾 Ayarlar kaydediliyor...");
+    
+    // Camera ID'yi kaydet
+    String newCameraId = custom_camera_id.getValue();
+    if(newCameraId.length() > 0) {
+      CAMERA_ID = newCameraId;
+      
+      for(int i = 0; i < 32; i++) {
+        if(i < newCameraId.length()) {
+          EEPROM.write(CAMERA_ID_ADDR + i, newCameraId[i]);
+        } else {
+          EEPROM.write(CAMERA_ID_ADDR + i, 0);
+        }
+      }
+      EEPROM.commit();
+      Serial.println("✅ Camera ID: " + CAMERA_ID);
+    }
+    
+    // Statik IP'yi kaydet
+    String newStaticIP = custom_static_ip.getValue();
+    if(newStaticIP.length() > 6) {
+      for(int i = 0; i < 16; i++) {
+        if(i < newStaticIP.length()) {
+          EEPROM.write(STATIC_IP_ADDR + i, newStaticIP[i]);
+        } else {
+          EEPROM.write(STATIC_IP_ADDR + i, 0);
+        }
+      }
+      EEPROM.commit();
+      Serial.println("✅ Statik IP: " + newStaticIP);
+    }
+  });
+  
   // WiFi Manager konfigürasyonu
   wifiManager.setDebugOutput(true);
   wifiManager.setAPCallback([](WiFiManager *myWiFiManager) {
-    Serial.println("\n� ===== WiFi KURULUM MODU =====");
+    Serial.println("\n📱 ===== WiFi KURULUM MODU =====");
     Serial.println("📶 Hotspot: " + String(myWiFiManager->getConfigPortalSSID()));
     Serial.println("🔑 Şifre: cityv2024");
     Serial.println("🌐 Adres: http://192.168.4.1");
     Serial.println("📱 Telefonunuzla bu WiFi'ye bağlanın!");
+    Serial.println("📋 1) WiFi ağını seçin");
+    Serial.println("📋 2) Camera ID girin (Dashboard'dan)");
+    Serial.println("📋 3) Statik IP girin (Opsiyonel)");
+    Serial.println("📋 4) Save butonuna basın");
     Serial.println("==============================");
   });
   
   // Özelleştirilmiş WiFi ayar sayfası
-  wifiManager.setCustomHeadElement("<style>body{background:#f0f8ff;font-family:Arial;}</style>");
+  wifiManager.setCustomHeadElement("<style>body{background:linear-gradient(135deg,#667eea,#764ba2);font-family:Arial;}input{border-radius:8px!important}</style>");
   wifiManager.setTitle("CityV AI Professional Camera");
   
-  // Timeout ayarla (3 dakika)
-  wifiManager.setConfigPortalTimeout(180);
+  // Timeout ayarla (5 dakika)
+  wifiManager.setConfigPortalTimeout(300);
   
   // Otomatik bağlanmaya çalış
   Serial.println("🔍 Kayıtlı WiFi aranıyor...");
@@ -478,7 +603,7 @@ void setupWiFi() {
   
   Serial.println("\n✅ ===== WiFi BAĞLANDI =====");
   Serial.println("📶 Network: " + WiFi.SSID());
-  Serial.println("📡 IP Adresi: " + CAMERA_IP);
+  Serial.println("📡 IP Adresi: " + CAMERA_IP + (useStaticIP ? " (STATİK)" : " (DHCP)"));
   Serial.println("💪 Sinyal Gücü: " + String(WiFi.RSSI()) + " dBm");
   Serial.println("🌐 Gateway: " + WiFi.gatewayIP().toString());
   Serial.println("🎯 Camera ID: " + (CAMERA_ID.length() > 0 ? CAMERA_ID : "YOK - AYARLAYINIZ!"));
