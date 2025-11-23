@@ -629,16 +629,21 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
                         camera.status === 'active' ? 'text-green-600' : 'text-gray-400'
                       }`} />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
-                        {camera.camera_name}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900">
+                          {camera.camera_name}
+                        </h3>
+                        <span className="px-3 py-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-bold rounded-full shadow-sm">
+                          ID: #{camera.id}
+                        </span>
                         {isNgrokCamera(camera) && (
-                          <span className="ml-2 text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                          <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
                             CityV Remote
                           </span>
                         )}
-                      </h3>
-                      <p className="text-sm text-gray-500">{camera.location_description}</p>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">{camera.location_description}</p>
                     </div>
                   </div>
                   {getStatusIcon(camera.status)}
