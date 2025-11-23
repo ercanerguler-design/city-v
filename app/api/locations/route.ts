@@ -34,19 +34,12 @@ export async function GET(req: NextRequest) {
     const userLng = searchParams.get('lng');
     const radius = parseFloat(searchParams.get('radius') || '7'); // Default 7km
 
-    console.log('🗺️ Locations API - Global Mode', { userLat, userLng, radius });
+    console.log('🗺️ Locations API - Global Mode (Real Businesses Only)', { userLat, userLng, radius });
 
-    // Önce static location'ları al (ankaraData'dan)
-    const { ankaraLocations } = await import('@/lib/ankaraData');
-    const staticLocations = ankaraLocations.map(loc => ({
-      ...loc,
-      source: 'static',
-      isBusiness: false
-    }));
-
-    console.log('📍 Static locations loaded:', staticLocations.length);
-
-    // Business locations'ı almayı dene, hata olursa static ile devam et
+    // ❌ Static/mock locations removed - Show ONLY real businesses from database
+    // User requested: "City-v sayfasındaki mock dataları kaldır marker v.s çünkü burada sadece eklediğim işletmeleri görmek istiyorum"
+    
+    // Business locations'ı al - sadece gerçek işletmeler
     let businessLocations: any[] = [];
     
     try {
@@ -83,12 +76,18 @@ export async function GET(req: NextRequest) {
 
       console.log('✅ Business locations loaded:', businessLocations.length);
     } catch (dbError) {
-      console.error('⚠️ Database error, using static only:', dbError);
-      // Business location'lar alınamazsa sadece static kullan
+      console.error('⚠️ Database error:', dbError);
+      // Return empty if database fails
+      return NextResponse.json({
+        success: false,
+        error: 'Veritabanı bağlantı hatası',
+        locations: [],
+        total: 0
+      }, { status: 500 });
     }
 
-    // Combine both
-    let allLocations = [...businessLocations, ...staticLocations];
+    // ✅ ONLY use business locations - no mock/static data
+    let allLocations = [...businessLocations];
 
     // Apply distance filtering if user location provided
     if (userLat && userLng) {
@@ -108,16 +107,16 @@ export async function GET(req: NextRequest) {
     }
 
     console.log('📊 Total locations returned:', allLocations.length);
-    console.log('   ↳ Business:', businessLocations.filter(b => !userLat || allLocations.some(a => a.id === b.id)).length);
-    console.log('   ↳ Static:', staticLocations.filter(s => !userLat || allLocations.some(a => a.id === s.id)).length);
+    console.log('   ↳ Real Business Locations:', allLocations.length);
+    console.log('   ↳ Mock/Static Locations: 0 (removed per user request)');
 
     return NextResponse.json({
       success: true,
       locations: allLocations,
       total: allLocations.length,
       business: businessLocations.length,
-      static: staticLocations.length,
-      mode: businessLocations.length > 0 ? 'full' : 'static-only'
+      static: 0, // No static locations
+      mode: 'real-businesses-only'
     });
 
   } catch (error: any) {
@@ -203,19 +202,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Fallback to static locations
-    const { ankaraLocations } = await import('@/lib/ankaraData');
-    const staticLocation = ankaraLocations.find(loc => loc.id === locationId);
-
-    if (staticLocation) {
-      return NextResponse.json({
-        success: true,
-        location: { ...staticLocation, source: 'static' }
-      });
-    }
-
+    // ❌ No fallback to static/mock locations - only show real businesses
     return NextResponse.json(
-      { success: false, error: 'Lokasyon bulunamadı' },
+      { success: false, error: 'Lokasyon bulunamadı (sadece gerçek işletmeler gösteriliyor)' },
       { status: 404 }
     );
 
