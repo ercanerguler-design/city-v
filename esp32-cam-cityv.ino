@@ -25,6 +25,8 @@
 #include "img_converters.h"
 #include "fb_gfx.h"
 #include <time.h>
+#include "SD_MMC.h"
+#include "FS.h"
 
 // Pin tanımları AI-Thinker ESP32-CAM için
 #define PWDN_GPIO_NUM     32
@@ -108,6 +110,16 @@ String DEVICE_ID = "";
 String DEVICE_NAME = "";
 WiFiManagerParameter* custom_camera_id;
 
+// SD Kart Değişkenleri
+bool sdCardAvailable = false;
+const char* SD_DATA_FILE = "/cityv_data.json";
+const char* SD_SYNC_FILE = "/sync_queue.json";
+int offlineDataCount = 0;
+int syncedDataCount = 0;
+unsigned long lastSyncAttempt = 0;
+const unsigned long SYNC_INTERVAL = 10000; // 10 saniye
+const int MAX_OFFLINE_RECORDS = 1000; // Maksimum offline kayıt
+
 // ====================================================================
 // SETUP - AI SİSTEMİ BAŞLATMA
 // ====================================================================
@@ -125,27 +137,31 @@ void setup() {
   delay(500);
   
   // AI Sistemleri başlat
-  Serial.println("\n[STEP 1/6] 🧠 AI Systems Starting...");
+  Serial.println("\n[STEP 1/7] 🧠 AI Systems Starting...");
   initAISystem();
   
+  // SD Kart başlat
+  Serial.println("\n[STEP 2/7] 💾 SD Card Initializing...");
+  initSDCard();
+  
   // Ayarları yükle  
-  Serial.println("\n[STEP 2/6] ⚙️ Loading Settings...");
+  Serial.println("\n[STEP 3/7] ⚙️ Loading Settings...");
   loadSettings();
   
   // WiFi bağlantısı
-  Serial.println("\n[STEP 3/6] 📶 WiFi Connecting...");
+  Serial.println("\n[STEP 4/7] 📶 WiFi Connecting...");
   setupWiFi();
   
   // Kamera başlat
-  Serial.println("\n[STEP 4/6] 📹 Camera Initializing...");
+  Serial.println("\n[STEP 5/7] 📹 Camera Initializing...");
   initCamera();
   
   // Web server başlat
-  Serial.println("\n[STEP 5/6] 🌐 Web Server Starting...");
+  Serial.println("\n[STEP 6/7] 🌐 Web Server Starting...");
   setupWebServer();
   
   // API kaydı
-  Serial.println("\n[STEP 6/6] 🔗 API Registration...");
+  Serial.println("\n[STEP 7/7] 🔗 API Registration...");
   registerDevice();
   
   Serial.println("\n✅ CITYV AI CAMERA SYSTEM READY!");
@@ -153,6 +169,7 @@ void setup() {
   Serial.println("AI Analysis: ACTIVE");
   Serial.println("Heat Mapping: ENABLED");
   Serial.println("Performance Mode: MAXIMUM");
+  Serial.println("SD Card: " + String(sdCardAvailable ? "✅ ACTIVE - OFFLINE MODE ENABLED" : "❌ NOT AVAILABLE"));
 }
 
 // ====================================================================
@@ -165,13 +182,19 @@ void loop() {
   // WiFi durumu kontrol et ve LED'i kontrol et
   checkWiFiStatus();
   
+  // Offline verileri senkronize et (WiFi varsa)
+  if (currentTime - lastSyncAttempt >= SYNC_INTERVAL) {
+    syncOfflineData();
+    lastSyncAttempt = currentTime;
+  }
+  
   // Heartbeat gönder
   if (currentTime - lastHeartbeat >= HEARTBEAT_INTERVAL) {
     sendHeartbeat();
     lastHeartbeat = currentTime;
   }
   
-  // ULTRA HIZLI AI Analizi
+  // ULTRA HIZLI AI Analizi - SÜREKLI ÇALIŞIR
   if (currentTime - lastAnalysis >= ANALYSIS_INTERVAL) {
     performUltraFastAI();
     lastAnalysis = currentTime;
@@ -401,6 +424,10 @@ void setupWebServer() {
     html += "<div class='stat-card'><h3>🌐 IP Address</h3><p style='font-size:1.2em'>" + WiFi.localIP().toString() + "</p></div>";
     html += "<div class='stat-card'><h3>📶 Signal</h3><p>" + String(WiFi.RSSI()) + " dBm</p></div>";
     html += "<div class='stat-card'><h3>🎯 Camera ID</h3><p>" + (CAMERA_ID.length() > 0 ? CAMERA_ID : "Not Set") + "</p></div>";
+    html += "<div class='stat-card'><h3>💾 SD Card</h3><p>" + String(sdCardAvailable ? "✅ Active" : "❌ Not Found") + "</p></div>";
+    html += "<div class='stat-card'><h3>📦 Offline Queue</h3><p>" + String(offlineDataCount) + " records</p></div>";
+    html += "<div class='stat-card'><h3>📤 Synced</h3><p>" + String(syncedDataCount) + " total</p></div>";
+    html += "<div class='stat-card'><h3>🔄 Mode</h3><p>" + String(WiFi.status() == WL_CONNECTED ? "🟢 Online" : "🔴 Offline") + "</p></div>";
     html += "</div>";
     
     html += "<div style='text-align:center;margin-top:30px'>";
@@ -710,91 +737,106 @@ void sendAIData(int humans, float density) {
     return;
   }
   
+  // Giriş/Çıkış hesaplama
+  int entryCount = 0;
+  int exitCount = 0;
+  
+  if (humans > lastHumanCount) {
+    entryCount = humans - lastHumanCount;
+    totalEntries += entryCount;
+    currentOccupancy += entryCount;
+  } else if (humans < lastHumanCount) {
+    exitCount = lastHumanCount - humans;
+    totalExits += exitCount;
+    currentOccupancy -= exitCount;
+    if (currentOccupancy < 0) currentOccupancy = 0;
+  }
+  
+  lastHumanCount = humans;
+  
+  // Yoğunluk seviyesi hesapla
+  String crowdDensity = "empty";
+  if (humans == 0) crowdDensity = "empty";
+  else if (humans <= 3) crowdDensity = "low";
+  else if (humans <= 6) crowdDensity = "medium";
+  else if (humans <= 10) crowdDensity = "high";
+  else crowdDensity = "overcrowded";
+  
+  // Trend yönü
+  String trendDirection = "stable";
+  if (entryCount > 0) trendDirection = "increasing";
+  else if (exitCount > 0) trendDirection = "decreasing";
+  
+  // Güven skoru
+  float confidenceScore = detectionSensitivity / 100.0;
+  float accuracyEstimate = confidenceScore * 100.0;
+  
+  // JSON payload oluştur
+  String payload = "{";
+  payload += "\"camera_id\":" + CAMERA_ID + ",";
+  payload += "\"ip_address\":\"" + CAMERA_IP + "\",";
+  payload += "\"analysis_type\":\"esp32_cam_ai\",";
+  payload += "\"location_type\":\"entrance\",";
+  payload += "\"people_count\":" + String(humans) + ",";
+  payload += "\"crowd_density\":\"" + crowdDensity + "\",";
+  payload += "\"confidence_score\":" + String(confidenceScore, 2) + ",";
+  payload += "\"accuracy_estimate\":" + String(accuracyEstimate, 1) + ",";
+  payload += "\"entry_count\":" + String(entryCount) + ",";
+  payload += "\"exit_count\":" + String(exitCount) + ",";
+  payload += "\"current_occupancy\":" + String(currentOccupancy) + ",";
+  payload += "\"trend_direction\":\"" + trendDirection + "\",";
+  payload += "\"movement_detected\":" + String(humans > 0 ? 1 : 0) + ",";
+  payload += "\"detection_method\":\"pro_multi_stage_ai\",";
+  payload += "\"algorithm_version\":\"3.0_professional\",";
+  payload += "\"analysis_stages\":\"histogram|background|blob_hog|optical_flow|kalman\",";
+  payload += "\"foreground_percentage\":" + String(density, 2) + ",";
+  payload += "\"frame_number\":" + String(processedFrames) + ",";
+  payload += "\"processing_time_ms\":200,";
+  payload += "\"temperature\":25.0,";
+  payload += "\"humidity\":50,";
+  payload += "\"weather_condition\":\"clear\",";
+  payload += "\"timestamp\":" + String(millis());
+  payload += "}";
+  
+  // WiFi varsa online gönder
   if (WiFi.status() == WL_CONNECTED) {
-    // Giriş/Çıkış hesaplama (basit simülasyon - gerçek tracking için optical flow gerekir)
-    int entryCount = 0;
-    int exitCount = 0;
-    
-    if (humans > lastHumanCount) {
-      entryCount = humans - lastHumanCount;
-      totalEntries += entryCount;
-      currentOccupancy += entryCount;
-    } else if (humans < lastHumanCount) {
-      exitCount = lastHumanCount - humans;
-      totalExits += exitCount;
-      currentOccupancy -= exitCount;
-      if (currentOccupancy < 0) currentOccupancy = 0;
-    }
-    
-    lastHumanCount = humans;
-    
-    // Yoğunluk seviyesi hesapla
-    String crowdDensity = "empty";
-    if (humans == 0) crowdDensity = "empty";
-    else if (humans <= 3) crowdDensity = "low";
-    else if (humans <= 6) crowdDensity = "medium";
-    else if (humans <= 10) crowdDensity = "high";
-    else crowdDensity = "overcrowded";
-    
-    // Trend yönü
-    String trendDirection = "stable";
-    if (entryCount > 0) trendDirection = "increasing";
-    else if (exitCount > 0) trendDirection = "decreasing";
-    
-    // Güven skoru (AI hassasiyetinden)
-    float confidenceScore = detectionSensitivity / 100.0;
-    float accuracyEstimate = confidenceScore * 100.0;
-    
     http.begin(API_BASE_URL + API_ENDPOINT);
     http.addHeader("Content-Type", "application/json");
     
-    // Vercel endpoint'inin beklediği format - CAMERA_ID ve IP_ADDRESS ile otomatik eşleşme
-    String payload = "{";
-    payload += "\"camera_id\":" + CAMERA_ID + ",";  // Backend otomatik device_id oluşturacak
-    payload += "\"ip_address\":\"" + CAMERA_IP + "\",";
-    payload += "\"analysis_type\":\"esp32_cam_ai\",";
-    payload += "\"location_type\":\"entrance\",";
-    payload += "\"people_count\":" + String(humans) + ",";
-    payload += "\"crowd_density\":\"" + crowdDensity + "\",";
-    payload += "\"confidence_score\":" + String(confidenceScore, 2) + ",";
-    payload += "\"accuracy_estimate\":" + String(accuracyEstimate, 1) + ",";
-    payload += "\"entry_count\":" + String(entryCount) + ",";
-    payload += "\"exit_count\":" + String(exitCount) + ",";
-    payload += "\"current_occupancy\":" + String(currentOccupancy) + ",";
-    payload += "\"trend_direction\":\"" + trendDirection + "\",";
-    payload += "\"movement_detected\":" + String(humans > 0 ? 1 : 0) + ",";
-    payload += "\"detection_method\":\"pro_multi_stage_ai\",";
-    payload += "\"algorithm_version\":\"3.0_professional\",";
-    payload += "\"analysis_stages\":\"histogram|background|blob_hog|optical_flow|kalman\",";
-    payload += "\"foreground_percentage\":" + String(density, 2) + ",";
-    payload += "\"frame_number\":" + String(processedFrames) + ",";
-    payload += "\"processing_time_ms\":200,";
-    payload += "\"temperature\":25.0,";
-    payload += "\"humidity\":50,";
-    payload += "\"weather_condition\":\"clear\"";
-    payload += "}";
-    
     int httpResponseCode = http.POST(payload);
     
-    if (httpResponseCode > 0) {
+    if (httpResponseCode > 0 && httpResponseCode < 400) {
       String response = http.getString();
-      Serial.println("📤 AI Data SENT:");
+      Serial.println("📤 ONLINE: Veri gönderildi");
       Serial.println("   🎯 Camera ID: " + CAMERA_ID);
-      Serial.println("   📡 IP: " + CAMERA_IP);
       Serial.println("   👥 People: " + String(humans));
       Serial.println("   📊 Density: " + crowdDensity);
-      Serial.println("   🎯 Accuracy: " + String(accuracyEstimate, 1) + "%");
-      Serial.println("   ➡️ Entry: " + String(totalEntries) + " | ⬅️ Exit: " + String(totalExits));
-      Serial.println("   🏢 Occupancy: " + String(currentOccupancy));
-      Serial.println("   📈 Trend: " + trendDirection);
       Serial.println("   ✅ Response: " + response);
     } else {
-      Serial.println("❌ AI Data FAILED: " + String(httpResponseCode));
+      Serial.println("❌ ONLINE FAILED: " + String(httpResponseCode));
+      
+      // Online gönderim başarısız - SD'ye kaydet
+      if (sdCardAvailable) {
+        saveDataToSD(payload);
+        Serial.println("💾 Veri SD karta kaydedildi (offline mode)");
+      }
     }
     
     http.end();
-    lastSend = millis();
+  } else {
+    // WiFi yok - SD karta kaydet (OFFLINE MODE)
+    if (sdCardAvailable) {
+      saveDataToSD(payload);
+      Serial.println("📴 OFFLINE MODE: Veri SD karta kaydedildi");
+      Serial.println("   👥 People: " + String(humans));
+      Serial.println("   📊 Density: " + crowdDensity);
+      Serial.println("   💾 Bekleyen: " + String(offlineDataCount));
+    } else {
+      Serial.println("⚠️ WiFi YOK & SD Kart YOK - Veri kaybedildi!");
+    }
   }
+  
+  lastSend = millis();
 }
 
 // ====================================================================
@@ -849,4 +891,160 @@ void resetWiFiSettings() {
   
   delay(2000);
   ESP.restart();
+}
+
+// ====================================================================
+// SD KART FONKSİYONLARI - OFFLINE VERI KAYDETME
+// ====================================================================
+
+void initSDCard() {
+  Serial.println("💾 SD Kart başlatılıyor...");
+  
+  // SD_MMC 1-bit mode (ESP32-CAM için)
+  if (!SD_MMC.begin("/sdcard", true)) {
+    Serial.println("❌ SD Kart takılı değil veya hatalı!");
+    Serial.println("⚠️ Offline mode devre dışı - sadece online çalışacak");
+    sdCardAvailable = false;
+    return;
+  }
+  
+  uint8_t cardType = SD_MMC.cardType();
+  if (cardType == CARD_NONE) {
+    Serial.println("❌ SD Kart bulunamadı!");
+    sdCardAvailable = false;
+    return;
+  }
+  
+  sdCardAvailable = true;
+  
+  // SD Kart bilgileri
+  uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
+  Serial.println("✅ SD Kart başarıyla başlatıldı!");
+  Serial.println("📊 Kart Tipi: " + String(cardType == CARD_MMC ? "MMC" : "SD"));
+  Serial.println("💾 Kapasite: " + String(cardSize) + " MB");
+  
+  // Sync queue dosyası yoksa oluştur
+  if (!SD_MMC.exists(SD_SYNC_FILE)) {
+    File file = SD_MMC.open(SD_SYNC_FILE, FILE_WRITE);
+    if (file) {
+      file.println("[]"); // Boş JSON array
+      file.close();
+      Serial.println("📝 Sync queue dosyası oluşturuldu");
+    }
+  }
+  
+  // Offline kayıt sayısını oku
+  offlineDataCount = getOfflineDataCount();
+  Serial.println("📦 Bekleyen offline veri: " + String(offlineDataCount));
+}
+
+void saveDataToSD(String jsonData) {
+  if (!sdCardAvailable) return;
+  
+  // Sync queue'ya ekle
+  File file = SD_MMC.open(SD_SYNC_FILE, FILE_APPEND);
+  if (file) {
+    file.println(jsonData);
+    file.close();
+    offlineDataCount++;
+    Serial.println("💾 Veri SD karta kaydedildi (" + String(offlineDataCount) + " bekliyor)");
+    
+    // Maksimum kayıt kontrolü
+    if (offlineDataCount > MAX_OFFLINE_RECORDS) {
+      Serial.println("⚠️ Maksimum offline kayıt sayısına ulaşıldı!");
+    }
+  } else {
+    Serial.println("❌ SD karta yazma hatası!");
+  }
+}
+
+int getOfflineDataCount() {
+  if (!sdCardAvailable) return 0;
+  
+  File file = SD_MMC.open(SD_SYNC_FILE, FILE_READ);
+  if (!file) return 0;
+  
+  int count = 0;
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+    if (line.length() > 10) { // Geçerli JSON satırı
+      count++;
+    }
+  }
+  file.close();
+  return count;
+}
+
+void syncOfflineData() {
+  // WiFi yoksa veya SD kart yoksa sync yapma
+  if (WiFi.status() != WL_CONNECTED || !sdCardAvailable || offlineDataCount == 0) {
+    return;
+  }
+  
+  Serial.println("\n🔄 Offline veriler senkronize ediliyor...");
+  Serial.println("📊 Toplam bekleyen: " + String(offlineDataCount));
+  
+  File file = SD_MMC.open(SD_SYNC_FILE, FILE_READ);
+  if (!file) {
+    Serial.println("❌ Sync dosyası okunamadı!");
+    return;
+  }
+  
+  int successCount = 0;
+  int failCount = 0;
+  String tempData = "";
+  
+  // Her satırı oku ve gönder
+  while (file.available() && successCount < 10) { // Batch size: 10
+    String line = file.readStringUntil('\n');
+    line.trim();
+    
+    if (line.length() > 10) {
+      // API'ye gönder
+      http.begin(API_BASE_URL + API_ENDPOINT);
+      http.addHeader("Content-Type", "application/json");
+      
+      int httpResponseCode = http.POST(line);
+      
+      if (httpResponseCode > 0 && httpResponseCode < 400) {
+        successCount++;
+        syncedDataCount++;
+        Serial.println("✅ Sync OK (" + String(successCount) + ")");
+      } else {
+        failCount++;
+        tempData += line + "\n"; // Başarısız olanları sakla
+        Serial.println("❌ Sync FAILED: " + String(httpResponseCode));
+      }
+      
+      http.end();
+      delay(100); // Rate limiting
+    }
+  }
+  
+  // Geri kalan verileri oku
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+    if (line.length() > 10) {
+      tempData += line + "\n";
+    }
+  }
+  file.close();
+  
+  // Sync dosyasını güncelle (başarılı olanları sil)
+  if (successCount > 0) {
+    file = SD_MMC.open(SD_SYNC_FILE, FILE_WRITE);
+    if (file) {
+      if (tempData.length() > 0) {
+        file.print(tempData);
+      }
+      file.close();
+      offlineDataCount -= successCount;
+      
+      Serial.println("✅ Sync tamamlandı!");
+      Serial.println("   📤 Başarılı: " + String(successCount));
+      Serial.println("   ❌ Başarısız: " + String(failCount));
+      Serial.println("   📦 Kalan: " + String(offlineDataCount));
+      Serial.println("   📊 Toplam sync: " + String(syncedDataCount));
+    }
+  }
 }
