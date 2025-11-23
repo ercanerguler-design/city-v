@@ -1,5 +1,5 @@
 ﻿import { Location } from '@/types';
-import { getDefaultWorkingHours, isLocationOpen } from './workingHours';
+import { isLocationOpen } from './workingHours';
 import { findNearbyRealPlaces, ANKARA_REAL_PLACES, type RealPlace } from './ankaraRealPlaces';
 
 /**
@@ -85,10 +85,9 @@ function calculateDistanceToAnkara(userLat: number, userLng: number): number {
  */
 function convertRealPlaceToLocation(place: RealPlace, index: number): Location {
   const currentHour = new Date().getHours();
-  const workingHours = getDefaultWorkingHours(place.category);
   
-  // Açık mı kontrol et
-  const tempLocation = { category: place.category, workingHours };
+  // Static locations için working hours yok - varsayılan olarak açık kabul et
+  const tempLocation = { category: place.category, isBusiness: false };
   const { isOpen } = isLocationOpen(tempLocation);
   
   // Kalabalık seviyesi hesapla (sadece açıksa)
@@ -172,7 +171,8 @@ export function addWorkingHoursToLocations(locations: Location[]): Location[] {
     
     return {
       ...loc,
-      workingHours: loc.workingHours || getDefaultWorkingHours(loc.category),
+      // Static locations için workingHours null bırak - business locations zaten dolu
+      workingHours: loc.workingHours || null,
       phone: loc.phone || `0312 ${phoneBase} ${phone1} ${phone2}`,
     };
   });
