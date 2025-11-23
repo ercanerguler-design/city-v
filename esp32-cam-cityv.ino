@@ -182,9 +182,13 @@ void loop() {
   // WiFi durumu kontrol et ve LED'i kontrol et
   checkWiFiStatus();
   
-  // Offline verileri senkronize et (WiFi varsa)
+  // Offline verileri senkronize et (WiFi varsa ve bekleyen veri varsa)
+  // SYNC_INTERVAL = 10 saniye (daha sık kontrol)
   if (currentTime - lastSyncAttempt >= SYNC_INTERVAL) {
-    syncOfflineData();
+    if (WiFi.status() == WL_CONNECTED && offlineDataCount > 0) {
+      Serial.println("🔄 Otomatik sync başlatılıyor... (" + String(offlineDataCount) + " bekleyen)");
+      syncOfflineData();
+    }
     lastSyncAttempt = currentTime;
   }
   
@@ -385,7 +389,14 @@ void performanceReport() {
 // ====================================================================
 void setupWebServer() {
   // Ana sayfa - Profesyonel Dashboard
+  // 🆕 WEB AÇILDIĞINDA OTOMATIK SYNC BAŞLAT
   server.on("/", HTTP_GET, [](){
+    // Web arayüzü açıldı - sync tetikle
+    if (WiFi.status() == WL_CONNECTED && offlineDataCount > 0 && sdCardAvailable) {
+      Serial.println("\n🌐 WEB ARAYÜZÜ AÇILDI!");
+      Serial.println("🔄 Biriktirilen verileri gönderme başlatılıyor...");
+      syncOfflineData();
+    }
     String html = "<!DOCTYPE html><html><head>";
     html += "<meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'>";
     html += "<title>CityV AI Camera Pro</title>";
@@ -433,6 +444,7 @@ void setupWebServer() {
     html += "<div style='text-align:center;margin-top:30px'>";
     html += "<a href='/stream' target='_blank' class='btn'>📺 Live Stream</a>";
     html += "<a href='/status' target='_blank' class='btn'>📊 AI Status</a>";
+    html += "<button onclick='syncNow()' class='btn' style='background:linear-gradient(135deg,#10b981,#059669)'>🔄 Sync Now (" + String(offlineDataCount) + ")</button>";
     html += "<button onclick='resetWiFi()' class='btn btn-danger'>🔄 Reset WiFi</button>";
     html += "</div>";
     
@@ -444,7 +456,10 @@ void setupWebServer() {
     html += "</div>";
     
     html += "</div></div>";
-    html += "<script>function resetWiFi(){if(confirm('⚠️ WiFi settings will be reset. Continue?')){fetch('/reset-wifi').then(()=>{alert('✅ WiFi reset! Device rebooting...');setTimeout(()=>location.reload(),3000)})}}</script>";
+    html += "<script>";
+    html += "function resetWiFi(){if(confirm('⚠️ WiFi settings will be reset. Continue?')){fetch('/reset-wifi').then(()=>{alert('✅ WiFi reset! Device rebooting...');setTimeout(()=>location.reload(),3000)})}}";
+    html += "function syncNow(){if(confirm('🔄 " + String(offlineDataCount) + " kayıt gönderilecek. Devam?')){fetch('/sync-now').then(res=>res.text()).then(msg=>{alert(msg);setTimeout(()=>location.reload(),2000)})}}";
+    html += "</script>";
     html += "</body></html>";
     server.send(200, "text/html", html);
   });
@@ -455,9 +470,37 @@ void setupWebServer() {
     delay(1000);
     resetWiFiSettings();
   });
+  
+  // 🆕 Manual Sync Endpoint - Butona basınca çalışır
+  server.on("/sync-now", HTTP_GET, [](){
+    if (!sdCardAvailable) {
+      server.send(400, "text/plain", "❌ SD Kart bulunamadı!");
+      return;
+    }
+    
+    if (offlineDataCount == 0) {
+      server.send(200, "text/plain", "✅ Gönderilecek veri yok!");
+      return;
+    }
+    
+    if (WiFi.status() != WL_CONNECTED) {
+      server.send(400, "text/plain", "❌ WiFi bağlı değil!");
+      return;
+    }
+    
+    server.send(200, "text/plain", "🔄 " + String(offlineDataCount) + " kayıt gönderiliyor...");
+    syncOfflineData();
+  });
 
   // MJPEG Stream with CORS support for AI detection
+  // 🆕 STREAM AÇILDIĞINDA DA SYNC BAŞLAT
   server.on("/stream", HTTP_GET, [](){
+    // Stream açıldı - sync tetikle
+    if (WiFi.status() == WL_CONNECTED && offlineDataCount > 0 && sdCardAvailable) {
+      Serial.println("\n📺 STREAM AÇILDI!");
+      Serial.println("🔄 Biriktirilen verileri gönderme başlatılıyor...");
+      syncOfflineData();
+    }
     WiFiClient client = server.client();
     String response = "HTTP/1.1 200 OK\r\n";
     response += "Content-Type: multipart/x-mixed-replace; boundary=frame\r\n";
@@ -727,7 +770,8 @@ void sendAIData(int humans, float density) {
   static int totalExits = 0;
   static int currentOccupancy = 0;
   
-  // Her 5 saniyede bir gönder (çok sık göndermeyi engelle)
+  // ⚠️ HER ZAMAN SD KARTA KAYDET - WEB AÇILDIĞINDA VEYA İNTERNET GELDİĞİNDE GÖNDER
+  // Her 5 saniyede bir veri oluştur
   if (millis() - lastSend < 5000) return;
   
   // Camera ID yoksa veri gönderme
@@ -803,43 +847,22 @@ void sendAIData(int humans, float density) {
   payload += "\"timestamp\":" + String(millis());
   payload += "}";
   
-  // WiFi varsa online gönder
-  if (WiFi.status() == WL_CONNECTED) {
-    http.begin(API_BASE_URL + API_ENDPOINT);
-    http.addHeader("Content-Type", "application/json");
-    
-    int httpResponseCode = http.POST(payload);
-    
-    if (httpResponseCode > 0 && httpResponseCode < 400) {
-      String response = http.getString();
-      Serial.println("📤 ONLINE: Veri gönderildi");
-      Serial.println("   🎯 Camera ID: " + CAMERA_ID);
-      Serial.println("   👥 People: " + String(humans));
-      Serial.println("   📊 Density: " + crowdDensity);
-      Serial.println("   ✅ Response: " + response);
-    } else {
-      Serial.println("❌ ONLINE FAILED: " + String(httpResponseCode));
-      
-      // Online gönderim başarısız - SD'ye kaydet
-      if (sdCardAvailable) {
-        saveDataToSD(payload);
-        Serial.println("💾 Veri SD karta kaydedildi (offline mode)");
-      }
-    }
-    
-    http.end();
+  // 🆕 YENİ MANTIK: HER ZAMAN SD KARTA KAYDET, WEB AÇILDIĞINDA GÖNDER
+  // WiFi bağlı OLSA BİLE önce SD karta kaydet
+  if (sdCardAvailable) {
+    saveDataToSD(payload);
+    Serial.println("💾 Veri SD karta kaydedildi (batch mode)");
+    Serial.println("   🎯 Camera ID: " + CAMERA_ID);
+    Serial.println("   👥 People: " + String(humans));
+    Serial.println("   📊 Density: " + crowdDensity);
+    Serial.println("   📦 Bekleyen: " + String(offlineDataCount));
   } else {
-    // WiFi yok - SD karta kaydet (OFFLINE MODE)
-    if (sdCardAvailable) {
-      saveDataToSD(payload);
-      Serial.println("📴 OFFLINE MODE: Veri SD karta kaydedildi");
-      Serial.println("   👥 People: " + String(humans));
-      Serial.println("   📊 Density: " + crowdDensity);
-      Serial.println("   💾 Bekleyen: " + String(offlineDataCount));
-    } else {
-      Serial.println("⚠️ WiFi YOK & SD Kart YOK - Veri kaybedildi!");
-    }
+    Serial.println("❌ SD Kart yok - Veri kaybedildi!");
+    Serial.println("⚠️ SD kart takmadan sistem çalışmaz!");
   }
+  
+  // syncOfflineData() fonksiyonu zaten loop() içinde çağrılıyor
+  // Web açıldığında veya internet geldiğinde otomatik gönderim yapılacak
   
   lastSend = millis();
 }
@@ -986,7 +1009,9 @@ void syncOfflineData() {
     return;
   }
   
-  Serial.println("\n🔄 Offline veriler senkronize ediliyor...");
+  Serial.println("\n╔════════════════════════════════════════╗");
+  Serial.println("║   🔄 BATCH SYNC BAŞLADI               ║");
+  Serial.println("╚════════════════════════════════════════╝");
   Serial.println("📊 Toplam bekleyen: " + String(offlineDataCount));
   
   File file = SD_MMC.open(SD_SYNC_FILE, FILE_READ);
@@ -999,8 +1024,8 @@ void syncOfflineData() {
   int failCount = 0;
   String tempData = "";
   
-  // Her satırı oku ve gönder
-  while (file.available() && successCount < 10) { // Batch size: 10
+  // Her satırı oku ve gönder (Batch size: 50 - daha hızlı)
+  while (file.available() && successCount < 50) { // Batch size: 50
     String line = file.readStringUntil('\n');
     line.trim();
     
@@ -1014,7 +1039,10 @@ void syncOfflineData() {
       if (httpResponseCode > 0 && httpResponseCode < 400) {
         successCount++;
         syncedDataCount++;
-        Serial.println("✅ Sync OK (" + String(successCount) + ")");
+        Serial.print("✅");
+        if (successCount % 10 == 0) {
+          Serial.println(" [" + String(successCount) + "]");
+        }
       } else {
         failCount++;
         tempData += line + "\n"; // Başarısız olanları sakla
@@ -1022,7 +1050,7 @@ void syncOfflineData() {
       }
       
       http.end();
-      delay(100); // Rate limiting
+      delay(50); // Rate limiting (daha hızlı)
     }
   }
   
@@ -1045,11 +1073,14 @@ void syncOfflineData() {
       file.close();
       offlineDataCount -= successCount;
       
-      Serial.println("✅ Sync tamamlandı!");
-      Serial.println("   📤 Başarılı: " + String(successCount));
-      Serial.println("   ❌ Başarısız: " + String(failCount));
-      Serial.println("   📦 Kalan: " + String(offlineDataCount));
-      Serial.println("   📊 Toplam sync: " + String(syncedDataCount));
+      Serial.println("\n╔════════════════════════════════════════╗");
+      Serial.println("║   ✅ BATCH SYNC TAMAMLANDI            ║");
+      Serial.println("╚════════════════════════════════════════╝");
+      Serial.println("📤 Başarılı: " + String(successCount));
+      Serial.println("❌ Başarısız: " + String(failCount));
+      Serial.println("📦 Kalan: " + String(offlineDataCount));
+      Serial.println("📊 Toplam sync: " + String(syncedDataCount));
+      Serial.println("════════════════════════════════════════\n");
     }
   }
 }
