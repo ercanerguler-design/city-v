@@ -74,6 +74,11 @@ WebServer server(80);
 #define EEPROM_SIZE 512
 #define DEVICE_ID_ADDR 0
 #define DEVICE_NAME_ADDR 50
+#define CAMERA_ID_ADDR 100
+
+// Değişkenler - Camera ID için
+String CAMERA_ID = "";
+String CAMERA_IP = "";
 
 // Struct tanımları - AI için
 struct Blob {
@@ -96,6 +101,7 @@ struct HOGFeatures {
 // Değişkenler
 String DEVICE_ID = "";
 String DEVICE_NAME = "";
+WiFiManagerParameter* custom_camera_id;
 
 // ====================================================================
 // SETUP - AI SİSTEMİ BAŞLATMA
@@ -468,11 +474,14 @@ void setupWiFi() {
   }
   
   // Başarılı bağlantı
+  CAMERA_IP = WiFi.localIP().toString();
+  
   Serial.println("\n✅ ===== WiFi BAĞLANDI =====");
   Serial.println("📶 Network: " + WiFi.SSID());
-  Serial.println("📡 IP Adresi: " + WiFi.localIP().toString());
+  Serial.println("📡 IP Adresi: " + CAMERA_IP);
   Serial.println("💪 Sinyal Gücü: " + String(WiFi.RSSI()) + " dBm");
   Serial.println("🌐 Gateway: " + WiFi.gatewayIP().toString());
+  Serial.println("🎯 Camera ID: " + (CAMERA_ID.length() > 0 ? CAMERA_ID : "YOK - AYARLAYINIZ!"));
   
   // WiFi bağlantısı başarılı - Yeşil LED yak
   digitalWrite(FLASH_LED_PIN, HIGH);
@@ -569,6 +578,13 @@ void sendAIData(int humans, float density) {
   // Her 5 saniyede bir gönder (çok sık göndermeyi engelle)
   if (millis() - lastSend < 5000) return;
   
+  // Camera ID yoksa veri gönderme
+  if (CAMERA_ID.length() == 0) {
+    Serial.println("⚠️ Camera ID ayarlanmamış! Veri gönderilemiyor.");
+    Serial.println("📱 WiFi ayarlarını sıfırlayıp Camera ID'yi girin.");
+    return;
+  }
+  
   if (WiFi.status() == WL_CONNECTED) {
     // Giriş/Çıkış hesaplama (basit simülasyon - gerçek tracking için optical flow gerekir)
     int entryCount = 0;
@@ -607,9 +623,10 @@ void sendAIData(int humans, float density) {
     http.begin(API_BASE_URL + API_ENDPOINT);
     http.addHeader("Content-Type", "application/json");
     
-    // Vercel endpoint'inin beklediği format
+    // Vercel endpoint'inin beklediği format - CAMERA_ID ve IP_ADDRESS ile otomatik eşleşme
     String payload = "{";
-    payload += "\"device_id\":\"" + DEVICE_ID + "\",";
+    payload += "\"camera_id\":" + CAMERA_ID + ",";  // Backend otomatik device_id oluşturacak
+    payload += "\"ip_address\":\"" + CAMERA_IP + "\",";
     payload += "\"analysis_type\":\"esp32_cam_ai\",";
     payload += "\"location_type\":\"entrance\",";
     payload += "\"people_count\":" + String(humans) + ",";
@@ -637,6 +654,8 @@ void sendAIData(int humans, float density) {
     if (httpResponseCode > 0) {
       String response = http.getString();
       Serial.println("📤 AI Data SENT:");
+      Serial.println("   🎯 Camera ID: " + CAMERA_ID);
+      Serial.println("   📡 IP: " + CAMERA_IP);
       Serial.println("   👥 People: " + String(humans));
       Serial.println("   📊 Density: " + crowdDensity);
       Serial.println("   🎯 Accuracy: " + String(accuracyEstimate, 1) + "%");
