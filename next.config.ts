@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
     const processId = process.pid || 0;
     return `build-${timestamp}-${random}-${processId}`;
   },
-  // Disable caching for production debugging
+  // Disable caching for production debugging + FORCE CDN INVALIDATION
   headers: async () => {
     return [
       {
@@ -32,6 +32,24 @@ const nextConfig: NextConfig = {
           {
             key: 'Content-Security-Policy',
             value: "img-src 'self' data: blob: http: https:; media-src 'self' data: blob: http: https:;"
+          },
+        ],
+      },
+      // CRITICAL: Force no-cache for _next/static chunks (CDN bypass)
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate, max-age=0',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
           },
         ],
       },
