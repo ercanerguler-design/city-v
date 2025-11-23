@@ -54,22 +54,29 @@ export default function AddReviewModal({ isOpen, onClose, locationId, locationNa
                            : sentiment?.startsWith('negative') ? 'negative'
                            : sentiment === 'neutral' ? 'neutral' : null;
 
+      const payload = {
+        locationId,
+        userId: user?.id,
+        userEmail: user?.email,
+        userName: user?.fullName || user?.name,
+        rating: rating > 0 ? rating : null,
+        comment: comment.trim() || null,
+        sentiment: sentimentValue,
+        priceRating
+      };
+
+      console.log('📤 Sending review:', payload);
+
       const response = await fetch('/api/locations/reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          locationId,
-          userId: user?.id,
-          userEmail: user?.email,
-          userName: user?.fullName || user?.name,
-          rating: rating > 0 ? rating : null,
-          comment: comment.trim() || null,
-          sentiment: sentimentValue,
-          priceRating
-        })
+        body: JSON.stringify(payload)
       });
 
+      console.log('📥 Response status:', response.status, response.statusText);
+
       const data = await response.json();
+      console.log('📥 Response data:', data);
 
       if (data.success) {
         toast.success('✅ Yorumunuz eklendi!');

@@ -31,7 +31,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('💬 Adding review:', { locationId, userId, sentiment, priceRating });
+    console.log('💬 Adding review:', { 
+      locationId, 
+      userId, 
+      userEmail,
+      userName,
+      rating,
+      comment: comment ? comment.substring(0, 50) + '...' : null,
+      sentiment, 
+      priceRating 
+    });
 
     // Insert review - WITHOUT tags (column doesn't exist)
     const result = await sql`
@@ -51,7 +60,7 @@ export async function POST(req: NextRequest) {
       RETURNING id, created_at
     `;
 
-    console.log('✅ Review added:', result[0]);
+    console.log('✅ Review added successfully:', result[0]);
 
     // 🔔 Create notification for business owner
     try {
@@ -110,7 +119,12 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Review add error:', error);
+    console.error('❌ Review add error:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack?.split('\n').slice(0, 3).join('\n')
+    });
     
     // Handle unique constraint violation (spam prevention)
     if (error.code === '23505') {
@@ -119,12 +133,21 @@ export async function POST(req: NextRequest) {
         { status: 409 }
       );
     }
+
+    // Handle foreign key violation
+    if (error.code === '23503') {
+      return NextResponse.json(
+        { success: false, error: 'Geçersiz konum veya kullanıcı ID' },
+        { status: 400 }
+      );
+    }
     
     return NextResponse.json(
       { 
         success: false, 
         error: 'Yorum eklenemedi',
-        details: error.message 
+        details: error.message,
+        code: error.code
       },
       { status: 500 }
     );
