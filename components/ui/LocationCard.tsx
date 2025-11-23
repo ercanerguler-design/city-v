@@ -85,7 +85,6 @@ export default function LocationCard({ location, onReportClick, onLocationClick,
     
     // Load live crowd data from API (ONLY FOR PREMIUM USERS)
     const loadLiveCrowdData = async () => {
-      console.log('🔐 Premium check:', { isPremium, userTier: user?.membershipTier });
       if (!isPremium) return; // Premium check
       if (loadingCrowd) return; // Prevent multiple simultaneous calls
       

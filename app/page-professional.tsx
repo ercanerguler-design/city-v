@@ -222,14 +222,6 @@ export default function ProfessionalHome() {
     }
   }, [userLocation]);
 
-  // DEV MODE: Auto-create premium test user if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated) {
-      console.log('🧪 DEV MODE: Creating premium test user');
-      createTestUser('premium');
-    }
-  }, []);
-
   // Kullanıcı login olduğunda favorileri veritabanından yükle
   useEffect(() => {
     if (isAuthenticated && user?.id && !isLoaded) {
