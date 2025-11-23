@@ -1,5 +1,5 @@
 import { Location } from '@/types';
-import { getDefaultWorkingHours, isLocationOpen } from './workingHours';
+import { isLocationOpen } from './workingHours';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -300,7 +300,7 @@ export async function fetchNearbyPlacesFromGoogle(
               averageWaitTime: estimateWaitTime(ourCategory, place),
               lastUpdated: new Date(),
               description: place.types.join(', '),
-              workingHours: parseGoogleWorkingHours(place) || getDefaultWorkingHours(ourCategory),
+              workingHours: parseGoogleWorkingHours(place) || null,
               phone: '',
               rating: place.rating,
               reviewCount: place.user_ratings_total,
@@ -356,9 +356,8 @@ export async function fetchNearbyPlacesFromGoogle(
 function estimateCrowdLevel(place: GooglePlace, category: string): 'empty' | 'low' | 'moderate' | 'high' | 'very_high' {
   const currentHour = new Date().getHours();
   
-  // Bizim working hours sistemimizi kullan
-  const workingHours = getDefaultWorkingHours(category);
-  const tempLocation = { category, workingHours };
+  // Basit açık/kapalı kontrolü (working hours olmadan)
+  const tempLocation = { category, isBusiness: false };
   const { isOpen } = isLocationOpen(tempLocation);
   
   if (!isOpen) return 'empty';
@@ -492,10 +491,10 @@ export async function updateLocationWorkingHours(location: Location): Promise<Lo
     }
   }
 
-  // Google API'den veri alınamazsa varsayılan saatleri kullan
+  // Google API'den veri alınamazsa null çalışma saatleri
   return {
     ...location,
-    workingHours: getDefaultWorkingHours(location.category)
+    workingHours: null
   };
 }
 

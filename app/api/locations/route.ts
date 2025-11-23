@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
         address: row.address || '',
         phone: row.phone || '',
         working_hours: row.working_hours || null,
+        workingHours: row.working_hours || null, // Frontend için camelCase
         currentCrowdLevel: 'moderate',
         source: 'business',
         isBusiness: true,
