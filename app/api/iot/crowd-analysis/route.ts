@@ -352,7 +352,7 @@ export async function POST(request: NextRequest) {
     console.log(`${accuracySymbol} AI Analiz kaydedildi: ${crowd_density} | ${data.people_count} kişi | Doğruluk: ${accuracyPercent.toFixed(1)}%`);
     console.log(`📈 Algorithm: ${data.algorithm_version || 'N/A'} | Stages: ${data.analysis_stages || 'N/A'}`);
 
-    // Return ESP32-CAM compatible response format
+    // Return ESP32-CAM compatible response format with CORS headers
     return NextResponse.json({
       success: true,
       analysis: {
@@ -366,13 +366,39 @@ export async function POST(request: NextRequest) {
       accuracy: accuracyPercent,
       timestamp: new Date().toISOString(),
       device_id: data.device_id
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Camera-ID, X-Location-Zone'
+      }
     });
 
   } catch (error) {
     console.error('❌ Yoğunluk analizi ekleme hatası:', error);
     return NextResponse.json(
       { success: false, error: 'Yoğunluk analizi eklenemedi' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Camera-ID, X-Location-Zone'
+        }
+      }
     );
   }
+}
+
+// OPTIONS - CORS preflight (ESP32 için gerekli)
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Camera-ID, X-Location-Zone',
+      'Access-Control-Max-Age': '86400'
+    }
+  });
 }

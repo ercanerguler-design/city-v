@@ -968,22 +968,30 @@ void resetWiFiSettings() {
 
 void initSDCard() {
   Serial.println("💾 SD Kart başlatılıyor...");
+  Serial.println("📋 AI-Thinker ESP32-CAM SD pinleri:");
+  Serial.println("   CLK:  GPIO14 | CMD:  GPIO15");
+  Serial.println("   D0:   GPIO2  | D1:   GPIO4");
+  Serial.println("   D2:   GPIO12 | D3:   GPIO13");
   
-  // SD_MMC 4-bit mode dene, başarısız olursa 1-bit
-  Serial.println("   🔧 4-bit mode deneniyor...");
-  if (!SD_MMC.begin("/sdcard", false)) {
-    Serial.println("   ⚠️ 4-bit başarısız, 1-bit deneniyor...");
-    if (!SD_MMC.begin("/sdcard", true)) {
-      Serial.println("❌ SD Kart takılı değil veya hatalı!");
-      Serial.println("⚠️ Offline mode devre dışı - sadece online çalışacak");
-      sdCardAvailable = false;
-      return;
-    } else {
-      Serial.println("✅ SD Kart (1-bit mode)");
-    }
-  } else {
-    Serial.println("✅ SD Kart (4-bit mode)");
+  // SD_MMC 1-bit mode (AI-Thinker ESP32-CAM için tek seçenek)
+  // Not: 4-bit mode bu kart için çalışmaz, pin conflict var
+  Serial.println("   🔧 1-bit mode başlatılıyor (AI-Thinker için zorunlu)...");
+  
+  if (!SD_MMC.begin("/sdcard", true)) {
+    Serial.println("\n❌ SD KART BAŞLATMA HATASI!");
+    Serial.println("📋 Kontrol listesi:");
+    Serial.println("   1. SD kart FAT32 formatında mı?");
+    Serial.println("   2. SD kart yuvasına doğru takıldı mı?");
+    Serial.println("   3. SD kart kapasitesi 32GB veya altında mı?");
+    Serial.println("   4. Metal pin kontaklarında pas/kir var mı?");
+    Serial.println("\n⚠️ ÇÖZÜM: SD kartı çıkarıp tekrar takın");
+    Serial.println("⚠️ Sistem SADECE ONLINE modda çalışacak");
+    Serial.println("⚠️ Veriler buffer'da toplanacak ama SD'ye yazılamayacak!\n");
+    sdCardAvailable = false;
+    return;
   }
+  
+  Serial.println("✅ SD Kart (1-bit mode - AI-Thinker)");
   
   uint8_t cardType = SD_MMC.cardType();
   if (cardType == CARD_NONE) {
