@@ -299,29 +299,50 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // ✅ FIX: Vercel Postgres için dinamik SQL oluştur
+    // ✅ FIX: Vercel Postgres için Manuel UPDATE (her alan için if/else)
     let result;
     
-    if (updateFields.length === 1) {
-      const field = Object.keys(updates)[0];
-      const value = updates[field];
-      
-      result = await sql`
-        UPDATE business_campaigns 
-        SET ${sql(field)} = ${value}, updated_at = NOW()
-        WHERE id = ${campaignId}
-        RETURNING *
-      `;
+    // Tek tek alanlara göre UPDATE yap (Vercel Postgres limitation)
+    const field = Object.keys(updates).find(key => allowedFields.includes(key));
+    
+    if (!field) {
+      return NextResponse.json(
+        { error: 'Geçerli alan bulunamadı' },
+        { status: 400 }
+      );
+    }
+
+    // Manuel field mapping (Vercel Postgres sql`` template literal için)
+    if (field === 'title') {
+      result = await sql`UPDATE business_campaigns SET title = ${updates.title}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
+    } else if (field === 'description') {
+      result = await sql`UPDATE business_campaigns SET description = ${updates.description}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
+    } else if (field === 'discount_percent') {
+      result = await sql`UPDATE business_campaigns SET discount_percent = ${updates.discount_percent}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
+    } else if (field === 'discount_amount') {
+      result = await sql`UPDATE business_campaigns SET discount_amount = ${updates.discount_amount}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
+    } else if (field === 'start_date') {
+      result = await sql`UPDATE business_campaigns SET start_date = ${updates.start_date}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
+    } else if (field === 'end_date') {
+      result = await sql`UPDATE business_campaigns SET end_date = ${updates.end_date}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
+    } else if (field === 'target_audience') {
+      result = await sql`UPDATE business_campaigns SET target_audience = ${updates.target_audience}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
+    } else if (field === 'is_active') {
+      result = await sql`UPDATE business_campaigns SET is_active = ${updates.is_active}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
     } else {
-      // Çoklu güncelleme için object kullan
-      const setClause = Object.keys(updates)
-        .filter(key => allowedFields.includes(key))
-        .map(key => `${key} = '${updates[key]}'`)
-        .join(', ');
-      
+      // Çoklu alan güncellemesi - tüm alanları birlikte güncelle
       result = await sql`
         UPDATE business_campaigns 
-        SET ${sql.raw(setClause)}, updated_at = NOW()
+        SET 
+          title = COALESCE(${updates.title || null}, title),
+          description = COALESCE(${updates.description || null}, description),
+          discount_percent = COALESCE(${updates.discount_percent || null}, discount_percent),
+          discount_amount = COALESCE(${updates.discount_amount || null}, discount_amount),
+          start_date = COALESCE(${updates.start_date || null}, start_date),
+          end_date = COALESCE(${updates.end_date || null}, end_date),
+          target_audience = COALESCE(${updates.target_audience || null}, target_audience),
+          is_active = COALESCE(${updates.is_active !== undefined ? updates.is_active : null}, is_active),
+          updated_at = NOW()
         WHERE id = ${campaignId}
         RETURNING *
       `;
