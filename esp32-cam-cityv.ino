@@ -442,10 +442,10 @@ void setupWebServer() {
     html += "<div class='stat-card'><h3>🌐 IP Address</h3><p style='font-size:1.2em'>" + WiFi.localIP().toString() + "</p></div>";
     html += "<div class='stat-card'><h3>📶 Signal</h3><p>" + String(WiFi.RSSI()) + " dBm</p></div>";
     html += "<div class='stat-card'><h3>🎯 Camera ID</h3><p>" + (CAMERA_ID.length() > 0 ? CAMERA_ID : "Not Set") + "</p></div>";
-    html += "<div class='stat-card'><h3>💾 SD Card</h3><p>" + String(sdCardAvailable ? "✅ Active" : "❌ Not Found") + "</p></div>";
-    html += "<div class='stat-card'><h3>📦 Offline Queue</h3><p>" + String(offlineDataCount) + " records</p></div>";
-    html += "<div class='stat-card'><h3>📤 Synced</h3><p>" + String(syncedDataCount) + " total</p></div>";
-    html += "<div class='stat-card'><h3>🔄 Mode</h3><p>" + String(WiFi.status() == WL_CONNECTED ? "🟢 Online" : "🔴 Offline") + "</p></div>";
+    html += "<div class='stat-card'><h3>💾 SD Card</h3><p id='sd-status'>" + String(sdCardAvailable ? "✅ Active" : "❌ Not Found") + "</p></div>";
+    html += "<div class='stat-card'><h3>📦 Offline Queue</h3><p id='queue-count'>" + String(offlineDataCount) + "</p></div>";
+    html += "<div class='stat-card'><h3>📤 Synced</h3><p id='sync-count'>" + String(syncedDataCount) + "</p></div>";
+    html += "<div class='stat-card'><h3>🔄 Mode</h3><p id='mode-status'>" + String(WiFi.status() == WL_CONNECTED ? "🟢 Online" : "🔴 Offline") + "</p></div>";
     html += "</div>";
     
     html += "<div style='text-align:center;margin-top:30px'>";
@@ -466,6 +466,7 @@ void setupWebServer() {
     html += "<script>";
     html += "function resetWiFi(){if(confirm('⚠️ WiFi settings will be reset. Continue?')){fetch('/reset-wifi').then(()=>{alert('✅ WiFi reset! Device rebooting...');setTimeout(()=>location.reload(),3000)})}}";
     html += "function syncNow(){if(confirm('🔄 " + String(offlineDataCount) + " kayıt gönderilecek. Devam?')){fetch('/sync-now').then(res=>res.text()).then(msg=>{alert(msg);setTimeout(()=>location.reload(),2000)})}}";
+    html += "setInterval(()=>{fetch('/status').then(r=>r.json()).then(d=>{document.getElementById('queue-count').textContent=d.queue||'0';document.getElementById('sync-count').textContent=d.synced||'0';})},5000);";
     html += "</script>";
     html += "</body></html>";
     server.send(200, "text/html", html);
@@ -509,6 +510,10 @@ void setupWebServer() {
       syncOfflineData();
     }
     WiFiClient client = server.client();
+    
+    // Memory leak fix: timeout ekle
+    client.setTimeout(2000); // 2 saniye timeout
+    
     String response = "HTTP/1.1 200 OK\r\n";
     response += "Content-Type: multipart/x-mixed-replace; boundary=frame\r\n";
     response += "Access-Control-Allow-Origin: *\r\n";
@@ -519,9 +524,21 @@ void setupWebServer() {
     response += "Expires: 0\r\n\r\n";
     client.print(response);
     
+    int frameCount = 0;
+    unsigned long lastFrame = millis();
+    
     while(client.connected()) {
+      // Memory safety: maksimum 200 frame sonra disconnect
+      if (frameCount > 200 || (millis() - lastFrame > 10000)) {
+        Serial.println("🔄 Stream timeout/limit - reconnect");
+        break;
+      }
+      
       camera_fb_t * fb = esp_camera_fb_get();
-      if (!fb) break;
+      if (!fb) {
+        delay(100);
+        continue;
+      }
       
       client.print("--frame\r\n");
       client.print("Content-Type: image/jpeg\r\n");
@@ -530,8 +547,13 @@ void setupWebServer() {
       client.print("\r\n");
       
       esp_camera_fb_return(fb);
+      frameCount++;
+      lastFrame = millis();
       delay(50); // 20 FPS
     }
+    
+    client.stop(); // Explicitly close connection
+    Serial.println("📺 Stream closed (" + String(frameCount) + " frames)");
   });
   
   // Status API
@@ -544,7 +566,10 @@ void setupWebServer() {
     json += "\"sensitivity\":" + String(detectionSensitivity) + ",";
     json += "\"resolution\":" + String(heatMapResolution) + ",";
     json += "\"uptime\":" + String(millis()) + ",";
-    json += "\"fps\":" + String(processedFrames) + "";
+    json += "\"fps\":" + String(processedFrames) + ",";
+    json += "\"queue\":" + String(offlineDataCount) + ",";
+    json += "\"synced\":" + String(syncedDataCount) + ",";
+    json += "\"buffer\":" + String(bufferCount) + "";
     json += "}";
     
     server.sendHeader("Access-Control-Allow-Origin", "*");
@@ -944,12 +969,20 @@ void resetWiFiSettings() {
 void initSDCard() {
   Serial.println("💾 SD Kart başlatılıyor...");
   
-  // SD_MMC 1-bit mode (ESP32-CAM için)
-  if (!SD_MMC.begin("/sdcard", true)) {
-    Serial.println("❌ SD Kart takılı değil veya hatalı!");
-    Serial.println("⚠️ Offline mode devre dışı - sadece online çalışacak");
-    sdCardAvailable = false;
-    return;
+  // SD_MMC 4-bit mode dene, başarısız olursa 1-bit
+  Serial.println("   🔧 4-bit mode deneniyor...");
+  if (!SD_MMC.begin("/sdcard", false)) {
+    Serial.println("   ⚠️ 4-bit başarısız, 1-bit deneniyor...");
+    if (!SD_MMC.begin("/sdcard", true)) {
+      Serial.println("❌ SD Kart takılı değil veya hatalı!");
+      Serial.println("⚠️ Offline mode devre dışı - sadece online çalışacak");
+      sdCardAvailable = false;
+      return;
+    } else {
+      Serial.println("✅ SD Kart (1-bit mode)");
+    }
+  } else {
+    Serial.println("✅ SD Kart (4-bit mode)");
   }
   
   uint8_t cardType = SD_MMC.cardType();

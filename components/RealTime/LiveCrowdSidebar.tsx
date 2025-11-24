@@ -491,10 +491,10 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
                   const locationData = locations?.find((loc: any) => loc.id === business.location_id);
                   const { isOpen: isBusinessOpen } = locationData ? isLocationOpen(locationData) : { isOpen: true };
                   
-                  // Business IoT summary verilerini kullan
-                  const currentPeopleCount = business.summary?.currentPeople || 0;
-                  const averageOccupancy = business.summary?.averageOccupancy || 0;
-                  const crowdLevel = business.summary?.crowdLevel || 'low';
+                  // Business IoT summary verilerini kullan - API'den dönen field isimleri
+                  const currentPeopleCount = business.summary?.totalPeople || 0; // FIX: currentPeople → totalPeople
+                  const averageOccupancy = business.summary?.avgOccupancy || 0; // FIX: averageOccupancy → avgOccupancy
+                  const crowdLevel = business.summary?.crowdLevel || 'empty';
                   const hasRealtimeData = business.summary?.hasRealtimeData || false;
                   
                   return (
