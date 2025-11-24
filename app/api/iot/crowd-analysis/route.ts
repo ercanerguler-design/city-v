@@ -326,7 +326,7 @@ export async function POST(request: NextRequest) {
         WHERE id IN (
           SELECT business_camera_id 
           FROM iot_devices 
-          WHERE id = CAST(${data.device_id} AS INTEGER)
+          WHERE device_id = ${data.device_id}
         )
       `;
       console.log('✅ Camera last_seen updated for device_id:', data.device_id);

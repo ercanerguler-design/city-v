@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
         END as is_online
        FROM business_cameras bc
        LEFT JOIN iot_devices id ON id.business_camera_id = bc.id
-       LEFT JOIN iot_crowd_analysis ica ON CAST(ica.device_id AS INTEGER) = id.id
+       LEFT JOIN iot_crowd_analysis ica ON ica.device_id = id.device_id
        WHERE bc.business_user_id = $1
          AND bc.is_active = true
          AND bc.last_seen >= NOW() - INTERVAL '5 minutes'
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
         MAX(ica.analysis_timestamp) as last_update
        FROM business_cameras bc
        LEFT JOIN iot_devices id ON id.business_camera_id = bc.id
-       LEFT JOIN iot_crowd_analysis ica ON CAST(ica.device_id AS INTEGER) = id.id
+       LEFT JOIN iot_crowd_analysis ica ON ica.device_id = id.device_id
        WHERE bc.business_user_id = $1
          AND bc.is_active = true
          AND DATE(ica.analysis_timestamp) = CURRENT_DATE`,

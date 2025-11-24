@@ -46,36 +46,48 @@ export async function GET(req: NextRequest) {
     const cameraIds = activeCameras.map(c => c.id);
 
     // 2. Son 24 saatin IoT verilerini çek
-    const todayData = await sql`
-      SELECT 
-        camera_id,
-        person_count,
-        crowd_level,
-        avg_age,
-        male_count,
-        female_count,
-        created_at,
-        EXTRACT(HOUR FROM created_at AT TIME ZONE 'Europe/Istanbul') as hour
-      FROM iot_ai_analysis
-      WHERE camera_id = ANY(${cameraIds})
-        AND created_at >= NOW() - INTERVAL '24 hours'
-      ORDER BY created_at DESC
-    `;
+    let todayData;
+    try {
+      todayData = await sql`
+        SELECT 
+          camera_id,
+          person_count,
+          crowd_level,
+          avg_age,
+          male_count,
+          female_count,
+          created_at,
+          EXTRACT(HOUR FROM created_at AT TIME ZONE 'Europe/Istanbul') as hour
+        FROM iot_ai_analysis
+        WHERE camera_id = ANY(${cameraIds})
+          AND created_at >= NOW() - INTERVAL '24 hours'
+        ORDER BY created_at DESC
+      `;
+    } catch (error: any) {
+      console.warn('⚠️ iot_ai_analysis table error:', error.message);
+      todayData = { rows: [] };
+    }
 
     // 3. Son 7 günün verilerini çek (trend analizi için)
-    const weekData = await sql`
-      SELECT 
-        camera_id,
-        person_count,
-        crowd_level,
-        created_at,
-        EXTRACT(HOUR FROM created_at AT TIME ZONE 'Europe/Istanbul') as hour,
-        EXTRACT(DOW FROM created_at AT TIME ZONE 'Europe/Istanbul') as day_of_week
-      FROM iot_ai_analysis
-      WHERE camera_id = ANY(${cameraIds})
-        AND created_at >= NOW() - INTERVAL '7 days'
-      ORDER BY created_at DESC
-    `;
+    let weekData;
+    try {
+      weekData = await sql`
+        SELECT 
+          camera_id,
+          person_count,
+          crowd_level,
+          created_at,
+          EXTRACT(HOUR FROM created_at AT TIME ZONE 'Europe/Istanbul') as hour,
+          EXTRACT(DOW FROM created_at AT TIME ZONE 'Europe/Istanbul') as day_of_week
+        FROM iot_ai_analysis
+        WHERE camera_id = ANY(${cameraIds})
+          AND created_at >= NOW() - INTERVAL '7 days'
+        ORDER BY created_at DESC
+      `;
+    } catch (error: any) {
+      console.warn('⚠️ iot_ai_analysis weekly data error:', error.message);
+      weekData = { rows: [] };
+    }
 
     console.log('📊 Data:', {
       today: todayData.rows.length,
