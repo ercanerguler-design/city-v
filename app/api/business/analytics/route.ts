@@ -98,16 +98,17 @@ export async function GET(req: NextRequest) {
 
     // 6. Saatlik yoğunluk analizi (bugün için)
     // ✅ FIX: people_count yerine current_occupancy MAX değerini kullan
+    // ✅ FIX: UTC+3 (Türkiye saati) timezone ekle
     const hourlyAnalysisResult = await query(
       `SELECT 
-        EXTRACT(HOUR FROM ia.created_at) as hour,
+        EXTRACT(HOUR FROM (ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul')) as hour,
         MAX(CAST((ia.detection_objects->>'current_occupancy') AS INTEGER)) as avg_occupancy,
         COUNT(*) as data_points
        FROM iot_ai_analysis ia
        JOIN business_cameras bc ON ia.camera_id = bc.id
        WHERE bc.business_user_id = $1
-         AND DATE(ia.created_at) = CURRENT_DATE
-       GROUP BY EXTRACT(HOUR FROM ia.created_at)
+         AND DATE(ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul') = CURRENT_DATE
+       GROUP BY EXTRACT(HOUR FROM (ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul'))
        ORDER BY hour`,
       [parseInt(businessId)]
     );
@@ -131,15 +132,16 @@ export async function GET(req: NextRequest) {
 
     // 8. En yoğun ve en boş saatler
     // ✅ FIX: AVG people_count yerine MAX current_occupancy kullan
+    // ✅ FIX: UTC+3 (Türkiye saati) timezone ekle
     const peakHoursResult = await query(
       `SELECT 
-        EXTRACT(HOUR FROM ia.created_at) as hour,
+        EXTRACT(HOUR FROM (ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul')) as hour,
         MAX(CAST((ia.detection_objects->>'current_occupancy') AS INTEGER)) as avg_occupancy
        FROM iot_ai_analysis ia
        JOIN business_cameras bc ON ia.camera_id = bc.id
        WHERE bc.business_user_id = $1
-         AND ia.created_at >= CURRENT_DATE - INTERVAL '7 days'
-       GROUP BY EXTRACT(HOUR FROM ia.created_at)
+         AND (ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul') >= CURRENT_DATE - INTERVAL '7 days'
+       GROUP BY EXTRACT(HOUR FROM (ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul'))
        ORDER BY avg_occupancy DESC
        LIMIT 10`,
       [parseInt(businessId)]

@@ -56,9 +56,9 @@ function checkRealWorkingHours(workingHours: any, now: Date): { isOpen: boolean,
   }
 
   // Saat aralığını kontrol et - güvenli parse
-  // Backward compatibility: 'open'/'close' veya 'openTime'/'closeTime' formatını destekle
-  const openTimeStr = todayHours.openTime || todayHours.open;
-  const closeTimeStr = todayHours.closeTime || todayHours.close;
+  // ✅ FIX: Önce 'open'/'close' kullan (daha güvenilir), fallback 'openTime'/'closeTime'
+  const openTimeStr = todayHours.open || todayHours.openTime;
+  const closeTimeStr = todayHours.close || todayHours.closeTime;
 
   if (!openTimeStr || !closeTimeStr) {
     console.warn('⚠️ Working hours format error:', { 
