@@ -58,13 +58,13 @@ export async function GET(req: NextRequest) {
           female_count,
           created_at,
           EXTRACT(HOUR FROM created_at AT TIME ZONE 'Europe/Istanbul') as hour
-        FROM iot_ai_analysis
+        FROM iot_crowd_analysis
         WHERE camera_id = ANY(${cameraIds})
           AND created_at >= NOW() - INTERVAL '24 hours'
         ORDER BY created_at DESC
       `;
     } catch (error: any) {
-      console.warn('⚠️ iot_ai_analysis table error:', error.message);
+      console.warn('⚠️ iot_crowd_analysis table error:', error.message);
       todayData = { rows: [] };
     }
 
@@ -79,13 +79,13 @@ export async function GET(req: NextRequest) {
           created_at,
           EXTRACT(HOUR FROM created_at AT TIME ZONE 'Europe/Istanbul') as hour,
           EXTRACT(DOW FROM created_at AT TIME ZONE 'Europe/Istanbul') as day_of_week
-        FROM iot_ai_analysis
+        FROM iot_crowd_analysis
         WHERE camera_id = ANY(${cameraIds})
           AND created_at >= NOW() - INTERVAL '7 days'
         ORDER BY created_at DESC
       `;
     } catch (error: any) {
-      console.warn('⚠️ iot_ai_analysis weekly data error:', error.message);
+      console.warn('⚠️ iot_crowd_analysis weekly data error:', error.message);
       weekData = { rows: [] };
     }
 

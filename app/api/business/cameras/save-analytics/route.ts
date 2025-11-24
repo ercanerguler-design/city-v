@@ -43,9 +43,9 @@ export async function POST(req: NextRequest) {
       }, { status: 404 });
     }
 
-    // 2. iot_ai_analysis tablosuna kaydet (mevcut tablo kullanılıyor)
+    // 2. iot_crowd_analysis tablosuna kaydet (mevcut tablo kullanılıyor)
     const result = await query(
-      `INSERT INTO iot_ai_analysis (
+      `INSERT INTO iot_crowd_analysis (
         camera_id,
         person_count,
         crowd_density,
@@ -147,36 +147,36 @@ export async function GET(req: NextRequest) {
       whereClause += ` AND timestamp >= NOW() - INTERVAL '${hours} hours'`;
     }
 
-    // iot_ai_analysis tablosundan veri çek
+    // iot_crowd_analysis tablosundan veri çek
     let query_text = '';
     if (cameraId === 'all' && businessUserId) {
       query_text = `SELECT 
         ia.id,
-        ia.created_at as timestamp,
-        ia.person_count as people_count,
+        ca.analysis_timestamp as timestamp,
+        ca.people_count as people_count,
         COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0) as entries_count,
         COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0) as exits_count,
         COALESCE((ia.detection_objects->>'current_occupancy')::INTEGER, 0) as current_occupancy,
         ROUND((ia.crowd_density * 100)::numeric, 1) as density_level,
         ia.detection_objects as zone_data
-       FROM iot_ai_analysis ia
-       JOIN business_cameras bc ON ia.camera_id = bc.id
+       FROM iot_crowd_analysis ia
+       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
        WHERE bc.business_user_id = $1
-       ORDER BY ia.created_at DESC
+       ORDER BY ca.analysis_timestamp DESC
        LIMIT 100`;
     } else {
       query_text = `SELECT 
         ia.id,
-        ia.created_at as timestamp,
-        ia.person_count as people_count,
+        ca.analysis_timestamp as timestamp,
+        ca.people_count as people_count,
         COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0) as entries_count,
         COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0) as exits_count,
         COALESCE((ia.detection_objects->>'current_occupancy')::INTEGER, 0) as current_occupancy,
         ROUND((ia.crowd_density * 100)::numeric, 1) as density_level,
         ia.detection_objects as zone_data
-       FROM iot_ai_analysis ia
-       WHERE ia.camera_id = $1
-       ORDER BY ia.created_at DESC
+       FROM iot_crowd_analysis ia
+       WHERE CAST(bc.id AS VARCHAR) = ca.device_id = $1
+       ORDER BY ca.analysis_timestamp DESC
        LIMIT 100`;
     }
 

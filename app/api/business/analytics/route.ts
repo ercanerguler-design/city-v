@@ -256,15 +256,16 @@ export async function GET(req: NextRequest) {
     }));
 
     // 10. Giriş-Çıkış Analizi (basitleştirilmiş - lokasyon bazlı)
+    // ✅ iot_crowd_analysis kullan - people_count değişimlerinden hesapla
     const entryExitResult = await query(
       `SELECT 
         bc.location_description as location_name,
-        SUM(COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0)) as entries,
-        SUM(COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0)) as exits
-       FROM iot_ai_analysis ia
-       JOIN business_cameras bc ON ia.camera_id = bc.id
+        COUNT(CASE WHEN ca.people_count > LAG(ca.people_count) OVER (PARTITION BY bc.id ORDER BY ca.analysis_timestamp) THEN 1 END) as entries,
+        COUNT(CASE WHEN ca.people_count < LAG(ca.people_count) OVER (PARTITION BY bc.id ORDER BY ca.analysis_timestamp) THEN 1 END) as exits
+       FROM business_cameras bc
+       LEFT JOIN iot_crowd_analysis ca ON CAST(bc.id AS VARCHAR) = ca.device_id
        WHERE bc.business_user_id = $1::integer 
-         AND DATE(ia.created_at) = CURRENT_DATE
+         AND DATE(ca.analysis_timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul') = CURRENT_DATE
        GROUP BY bc.location_description
        ORDER BY entries DESC
        LIMIT 5`,
@@ -279,16 +280,17 @@ export async function GET(req: NextRequest) {
     }));
 
     // 11. Bölge Yoğunluk Analizi
+    // ✅ iot_crowd_analysis kullan - people_count ortalamalarını al
     const zoneAnalysisResult = await query(
       `SELECT 
         bc.location_description as zone,
-        AVG(ia.person_count) as avg_occupancy,
-        MAX(ia.person_count) as max_occupancy,
+        AVG(ca.people_count) as avg_occupancy,
+        MAX(ca.people_count) as max_occupancy,
         COUNT(*) as data_points
-       FROM iot_ai_analysis ia
-       JOIN business_cameras bc ON ia.camera_id = bc.id
+       FROM business_cameras bc
+       LEFT JOIN iot_crowd_analysis ca ON CAST(bc.id AS VARCHAR) = ca.device_id
        WHERE bc.business_user_id = $1::integer 
-         AND DATE(ia.created_at) = CURRENT_DATE
+         AND DATE(ca.analysis_timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul') = CURRENT_DATE
        GROUP BY bc.location_description
        ORDER BY avg_occupancy DESC`,
       [businessId]
@@ -303,16 +305,17 @@ export async function GET(req: NextRequest) {
     }));
 
     // 12. Isı Haritası Verisi (location bazlı yoğunluk)
+    // ✅ iot_crowd_analysis kullan - son 7 günün saatlik yoğunluğunu al
     const heatmapResult = await query(
       `SELECT 
         bc.location_description as location_name,
-        EXTRACT(HOUR FROM ia.created_at) as hour,
-        AVG(ia.person_count) as intensity
-       FROM iot_ai_analysis ia
-       JOIN business_cameras bc ON ia.camera_id = bc.id
+        EXTRACT(HOUR FROM (ca.analysis_timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul')) as hour,
+        AVG(ca.people_count) as intensity
+       FROM business_cameras bc
+       LEFT JOIN iot_crowd_analysis ca ON CAST(bc.id AS VARCHAR) = ca.device_id
        WHERE bc.business_user_id = $1::integer 
-         AND ia.created_at >= CURRENT_DATE - INTERVAL '7 days'
-       GROUP BY bc.location_description, EXTRACT(HOUR FROM ia.created_at)
+         AND ca.analysis_timestamp >= CURRENT_DATE - INTERVAL '7 days'
+       GROUP BY bc.location_description, EXTRACT(HOUR FROM (ca.analysis_timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul'))
        ORDER BY bc.location_description, hour`,
       [businessId]
     );
@@ -332,15 +335,16 @@ export async function GET(req: NextRequest) {
     };
 
     // 13. En yoğun lokasyonlar (heatmap için)
+    // ✅ iot_crowd_analysis kullan - son 1 saatteki en yoğun yerler
     const topLocationsResult = await query(
       `SELECT 
         bc.location_description as location_name,
-        AVG(ia.person_count) as avg_occupancy,
+        AVG(ca.people_count) as avg_occupancy,
         COUNT(*) as data_points
-       FROM iot_ai_analysis ia
-       JOIN business_cameras bc ON ia.camera_id = bc.id
+       FROM business_cameras bc
+       LEFT JOIN iot_crowd_analysis ca ON CAST(bc.id AS VARCHAR) = ca.device_id
        WHERE bc.business_user_id = $1::integer 
-         AND ia.created_at >= NOW() - INTERVAL '1 hour'
+         AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'
        GROUP BY bc.location_description
        ORDER BY avg_occupancy DESC
        LIMIT 10`,

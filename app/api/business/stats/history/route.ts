@@ -77,16 +77,16 @@ export async function POST(request: NextRequest) {
     // Bugünkü istatistikleri hesapla
     const stats = await sql`
       SELECT 
-        COALESCE(SUM(ia.person_count), 0)::INTEGER as total_visitors,
+        COALESCE(SUM(ca.people_count), 0)::INTEGER as total_visitors,
         COALESCE(SUM((ia.detection_objects->>'people_in')::INTEGER), 0)::INTEGER as total_entries,
         COALESCE(SUM((ia.detection_objects->>'people_out')::INTEGER), 0)::INTEGER as total_exits,
-        COALESCE(MAX(ia.person_count), 0)::INTEGER as peak_occupancy,
-        COALESCE(AVG(ia.person_count), 0)::NUMERIC as avg_occupancy,
+        COALESCE(MAX(ca.people_count), 0)::INTEGER as peak_occupancy,
+        COALESCE(AVG(ca.people_count), 0)::NUMERIC as avg_occupancy,
         COUNT(DISTINCT bc.id)::INTEGER as active_cameras
-      FROM iot_ai_analysis ia
-      JOIN business_cameras bc ON ia.camera_id = bc.id
+      FROM iot_crowd_analysis ia
+      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
-        AND DATE(ia.created_at) = CURRENT_DATE
+        AND DATE(ca.analysis_timestamp) = CURRENT_DATE
     `;
 
     const statData = stats.rows[0];

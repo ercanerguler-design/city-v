@@ -26,33 +26,33 @@ export async function GET(request: NextRequest) {
     }
 
     // Time range mapping - use direct SQL intervals
-    let timeCondition = "ia.created_at >= NOW() - INTERVAL '1 hour'";
-    if (timeRange === '24hours') timeCondition = "ia.created_at >= NOW() - INTERVAL '24 hours'";
-    else if (timeRange === '7days') timeCondition = "ia.created_at >= NOW() - INTERVAL '7 days'";
-    else if (timeRange === '30days') timeCondition = "ia.created_at >= NOW() - INTERVAL '30 days'";
+    let timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'";
+    if (timeRange === '24hours') timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'";
+    else if (timeRange === '7days') timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '7 days'";
+    else if (timeRange === '30days') timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '30 days'";
 
-    // 1. Latest crowd analytics from iot_ai_analysis
+    // 1. Latest crowd analytics from iot_crowd_analysis
     const latestAnalytics = await sql`
       SELECT 
         bc.location_description as zone_name,
-        ia.person_count as current_people_count,
+        ca.people_count as current_people_count,
         COALESCE((ia.detection_objects->>'current_occupancy')::INTEGER, 0) as max_capacity,
         COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0) as entry_count,
         COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0) as exit_count,
         0 as queue_length,
         0 as avg_wait_time,
         CASE 
-          WHEN ia.person_count > 15 THEN 'high'
-          WHEN ia.person_count > 8 THEN 'medium'
+          WHEN ca.people_count > 15 THEN 'high'
+          WHEN ca.people_count > 8 THEN 'medium'
           ELSE 'low'
         END as crowd_level,
         ia.crowd_density,
-        ia.created_at as timestamp
-      FROM iot_ai_analysis ia
-      JOIN business_cameras bc ON ia.camera_id = bc.id
+        ca.analysis_timestamp as timestamp
+      FROM iot_crowd_analysis ia
+      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
-        AND ia.created_at >= NOW() - INTERVAL '1 hour'
-      ORDER BY ia.created_at DESC
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'
+      ORDER BY ca.analysis_timestamp DESC
       LIMIT 100
     `;
 
@@ -60,19 +60,19 @@ export async function GET(request: NextRequest) {
     const zoneSummary = await sql`
       SELECT 
         bc.location_description as zone_name,
-        AVG(ia.person_count) as avg_people,
-        MAX(ia.person_count) as max_people,
+        AVG(ca.people_count) as avg_people,
+        MAX(ca.people_count) as max_people,
         AVG(0) as avg_queue,
         CASE 
-          WHEN AVG(ia.person_count) > 15 THEN 15
-          WHEN AVG(ia.person_count) > 8 THEN 8
+          WHEN AVG(ca.people_count) > 15 THEN 15
+          WHEN AVG(ca.people_count) > 8 THEN 8
           ELSE 3
         END as avg_density,
         COUNT(*) as data_points
-      FROM iot_ai_analysis ia
-      JOIN business_cameras bc ON ia.camera_id = bc.id
+      FROM iot_crowd_analysis ia
+      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
-        AND ia.created_at >= NOW() - INTERVAL '1 hour'
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'
       GROUP BY bc.location_description
       ORDER BY avg_people DESC
     `;
@@ -84,28 +84,28 @@ export async function GET(request: NextRequest) {
         SUM(COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0)) as total_exits,
         SUM(COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0)) - 
         SUM(COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0)) as net_occupancy
-      FROM iot_ai_analysis ia
-      JOIN business_cameras bc ON ia.camera_id = bc.id
+      FROM iot_crowd_analysis ia
+      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
-        AND ia.created_at >= NOW() - INTERVAL '1 hour'
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'
     `;
 
     // 4. Peak hours analysis
     const peakHours = await sql`
       SELECT 
-        EXTRACT(HOUR FROM ia.created_at) as hour,
-        AVG(ia.person_count) as avg_people,
+        EXTRACT(HOUR FROM ca.analysis_timestamp) as hour,
+        AVG(ca.people_count) as avg_people,
         AVG(ia.crowd_density) as avg_density,
         CASE 
-          WHEN AVG(ia.person_count) > 15 THEN 'high'
-          WHEN AVG(ia.person_count) > 8 THEN 'medium'
+          WHEN AVG(ca.people_count) > 15 THEN 'high'
+          WHEN AVG(ca.people_count) > 8 THEN 'medium'
           ELSE 'low'
         END as max_crowd_level
-      FROM iot_ai_analysis ia
-      JOIN business_cameras bc ON ia.camera_id = bc.id
+      FROM iot_crowd_analysis ia
+      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
-        AND ia.created_at >= NOW() - INTERVAL '1 hour'
-      GROUP BY EXTRACT(HOUR FROM ia.created_at)
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'
+      GROUP BY EXTRACT(HOUR FROM ca.analysis_timestamp)
       ORDER BY avg_people DESC
       LIMIT 5
     `;

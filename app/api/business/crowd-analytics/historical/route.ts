@@ -22,17 +22,17 @@ export async function GET(request: NextRequest) {
     // Geçmiş dönem verileri çek
     const historicalData = await sql`
       SELECT 
-        EXTRACT(HOUR FROM ia.created_at) as hour,
-        EXTRACT(DAY FROM ia.created_at) as day,
-        AVG(ia.person_count) as avg_people,
+        EXTRACT(HOUR FROM ca.analysis_timestamp) as hour,
+        EXTRACT(DAY FROM ca.analysis_timestamp) as day,
+        AVG(ca.people_count) as avg_people,
         AVG(ia.crowd_density) as avg_density,
         COUNT(*) as data_points
-      FROM iot_ai_analysis ia
-      JOIN business_cameras bc ON ia.camera_id = bc.id
+      FROM iot_crowd_analysis ia
+      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
-        AND ia.created_at >= ${start.toISOString()}
-        AND ia.created_at <= ${end.toISOString()}
-      GROUP BY EXTRACT(HOUR FROM ia.created_at), EXTRACT(DAY FROM ia.created_at)
+        AND ca.analysis_timestamp >= ${start.toISOString()}
+        AND ca.analysis_timestamp <= ${end.toISOString()}
+      GROUP BY EXTRACT(HOUR FROM ca.analysis_timestamp), EXTRACT(DAY FROM ca.analysis_timestamp)
       ORDER BY day, hour
     `;
 
@@ -41,11 +41,11 @@ export async function GET(request: NextRequest) {
       SELECT 
         SUM(COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0)) as total_entries,
         SUM(COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0)) as total_exits
-      FROM iot_ai_analysis ia
-      JOIN business_cameras bc ON ia.camera_id = bc.id
+      FROM iot_crowd_analysis ia
+      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
-        AND ia.created_at >= ${start.toISOString()}
-        AND ia.created_at <= ${end.toISOString()}
+        AND ca.analysis_timestamp >= ${start.toISOString()}
+        AND ca.analysis_timestamp <= ${end.toISOString()}
     `;
 
     // Peak hour calculation

@@ -20,21 +20,21 @@ export async function GET(request: NextRequest) {
 
     console.log(`📋 Fetching recent activities for business user ${businessUserId}, limit: ${limit}`);
 
-    // Son aktiviteleri getir - iot_ai_analysis + business_cameras join
+    // Son aktiviteleri getir - iot_crowd_analysis + business_cameras join
     const result = await sql`
       SELECT 
         ia.id,
-        ia.person_count,
+        ca.people_count,
         ia.crowd_density,
         ia.detection_objects,
-        ia.created_at,
+        ca.analysis_timestamp,
         bc.camera_name,
         bc.id as camera_id,
         bc.location_description
-      FROM iot_ai_analysis ia
-      INNER JOIN business_cameras bc ON ia.camera_id = bc.id
+      FROM iot_crowd_analysis ia
+      INNER JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
-      ORDER BY ia.created_at DESC
+      ORDER BY ca.analysis_timestamp DESC
       LIMIT ${limit}
     `;
 

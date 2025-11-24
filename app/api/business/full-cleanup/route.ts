@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
     // 1. IoT AI Analysis
     const iotResult = await sql`
-      DELETE FROM iot_ai_analysis 
+      DELETE FROM iot_crowd_analysis 
       WHERE camera_id IN (
         SELECT id FROM business_cameras WHERE business_user_id = ${businessUserId}
       )

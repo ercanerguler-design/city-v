@@ -35,7 +35,7 @@ export async function DELETE(request: Request) {
 
     // 1. Delete all IoT AI analysis data
     const iotResult = await sql`
-      DELETE FROM iot_ai_analysis 
+      DELETE FROM iot_crowd_analysis 
       WHERE camera_id IN (
         SELECT id FROM business_cameras WHERE business_user_id = ${businessUserId}
       )
