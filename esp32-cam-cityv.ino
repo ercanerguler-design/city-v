@@ -1136,6 +1136,7 @@ void syncOfflineData() {
       
       http.begin(API_BASE_URL + API_ENDPOINT);
       http.addHeader("Content-Type", "application/json");
+      http.addHeader("x-vercel-protection-bypass", "cityv-esp32-bypass-token-2024"); // Vercel bypass
       http.setTimeout(10000); // 10 saniye timeout
       
       int httpResponseCode = http.POST(line);
