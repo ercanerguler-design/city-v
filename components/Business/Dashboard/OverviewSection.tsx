@@ -71,6 +71,7 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [recentActivities, setRecentActivities] = useState<ActivityLog[]>([]);
   const [aiPredictions, setAiPredictions] = useState<AIPrediction | null>(null);
+  const [aiRecommendations, setAiRecommendations] = useState<any>(null); // 🤖 GERÇEK AI ÖNERİLERİ
   const [analytics, setAnalytics] = useState<any>(null);
   const [metrics, setMetrics] = useState<MetricCard[]>([
     {
@@ -129,16 +130,23 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
       const businessId = businessProfile?.user_id || businessProfile?.id || 6;
       console.log('📊 Loading analytics for businessId:', businessId, 'from profile:', businessProfile);
       
-      // 🔄 REAL-TIME: İki kaynaktan veri çek - hem IoT hem Camera Analytics
-      const [iotResponse, cameraResponse] = await Promise.all([
+      // 🔄 REAL-TIME: Üç kaynaktan veri çek - IoT, Camera Analytics ve AI Recommendations
+      const [iotResponse, cameraResponse, aiRecommendationsResponse] = await Promise.all([
         fetch(`/api/business/analytics?businessId=${businessId}`),
-        fetch(`/api/business/cameras/analytics/summary?businessUserId=${businessId}`)
+        fetch(`/api/business/cameras/analytics/summary?businessUserId=${businessId}`),
+        fetch(`/api/business/ai-recommendations?businessUserId=${businessId}`)
       ]);
 
       const iotData = await iotResponse.json();
       const cameraData = await cameraResponse.json();
+      const aiRecData = await aiRecommendationsResponse.json();
 
-      console.log('📊 Analytics data:', { iot: iotData, camera: cameraData });
+      console.log('📊 Analytics data:', { iot: iotData, camera: cameraData, ai: aiRecData });
+      
+      // 🤖 AI Recommendations'ı state'e kaydet
+      if (aiRecData.success) {
+        setAiRecommendations(aiRecData);
+      }
 
       // Crowd level'a göre renk belirleme
       const getCrowdColor = (level: string) => {
@@ -906,48 +914,86 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
                 </div>
               </div>
               
-              {analytics.hourlyData.reduce((sum, h) => sum + h.visitors, 0) === 0 ? (
+              {!aiRecommendations || !aiRecommendations.hasData ? (
                 <div className="space-y-2">
                   <p className="text-sm text-indigo-800">
                     🔄 <strong>Veri toplama başlatıldı:</strong> AI analizi için City-V Kamera cihazlarınızdan gerçek zamanlı veri bekleniyor.
                   </p>
                   <p className="text-xs text-indigo-600 bg-indigo-100 p-2 rounded">
-                    ⚡ <em>İlk analiz sonuçları 5-10 dakika içinde hazır olacak.</em>
+                    ⚡ <em>İlk analiz sonuçları 5-10 dakika içinde hazır olacak. Kameralarınızın aktif olduğundan emin olun.</em>
                   </p>
+                  {aiRecommendations?.recommendations?.immediate && (
+                    <div className="mt-2 space-y-1">
+                      {aiRecommendations.recommendations.immediate.map((rec: string, idx: number) => (
+                        <p key={idx} className="text-xs text-indigo-700 bg-white/70 p-2 rounded">{rec}</p>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* Main Recommendation */}
+                  {/* 🤖 GERÇEK AI TAHMİNLERİ */}
                   <div className="bg-white/70 rounded-lg p-3 border border-indigo-100">
                     <p className="text-sm text-indigo-900 font-medium">
-                      🏆 <strong>En Yoğun Saat Analizi:</strong> 
-                      {` ${String(aiPredictions.peakTime.hour).padStart(2, '0')}:00 saatinde ${aiPredictions.peakTime.expectedVisitors} kişi bekleniyor.`}
+                      🎯 <strong>Gelecek Saat Tahmini:</strong> 
+                      {` ${aiRecommendations.predictions.nextHour.time} - ${aiRecommendations.predictions.nextHour.expectedVisitors} kişi (%${aiRecommendations.predictions.nextHour.confidence} güven)`}
+                    </p>
+                    <p className="text-sm text-indigo-800 mt-1">
+                      🏆 <strong>Peak Saat:</strong> 
+                      {` ${aiRecommendations.predictions.peakTime.time} - ${aiRecommendations.predictions.peakTime.expectedVisitors} kişi bekleniyor`}
                     </p>
                   </div>
                   
-                  {/* Smart Suggestions */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                    {analytics.averageOccupancy > 75 && (
-                      <div className="bg-orange-50 border border-orange-200 rounded p-2">
-                        <span className="text-orange-800">⚠️ <strong>Kapasite Uyarısı:</strong> Ek personel önerin</span>
+                  {/* 🔥 ANLİK ÖNERİLER */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-indigo-900 flex items-center gap-1">
+                      <span className="bg-red-500 text-white px-1.5 py-0.5 rounded text-[10px]">ŞİMDİ</span>
+                      Anlık Öneriler
+                    </p>
+                    {aiRecommendations.recommendations.immediate.map((rec: string, idx: number) => (
+                      <div key={idx} className="bg-red-50 border border-red-200 rounded p-2">
+                        <span className="text-red-800 text-xs">{rec}</span>
                       </div>
-                    )}
-                    
-                    {new Date().getHours() === aiPredictions.peakTime.hour && (
-                      <div className="bg-red-50 border border-red-200 rounded p-2">
-                        <span className="text-red-800">🔥 <strong>Şu Anda Peak Saat:</strong> Maksimum dikkat</span>
-                      </div>
-                    )}
-                    
-                    {analytics.todayVisitors > 100 && (
-                      <div className="bg-green-50 border border-green-200 rounded p-2">
-                        <span className="text-green-800">📈 <strong>Güçlü Performans:</strong> Hedefler aşılıyor</span>
-                      </div>
-                    )}
-                    
-                    {analytics.activeCameras < analytics.totalCameras && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
-                        <span className="text-yellow-800">📹 <strong>Kamera Kontrolü:</strong> {analytics.totalCameras - analytics.activeCameras} offline</span>
+                    ))}
+                  </div>
+
+                  {/* 📊 KISA VADELİ ÖNERİLER */}
+                  {aiRecommendations.recommendations.shortTerm.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-indigo-900 flex items-center gap-1">
+                        <span className="bg-blue-500 text-white px-1.5 py-0.5 rounded text-[10px]">BU HAFTA</span>
+                        Kısa Vadeli Öneriler
+                      </p>
+                      {aiRecommendations.recommendations.shortTerm.slice(0, 2).map((rec: string, idx: number) => (
+                        <div key={idx} className="bg-blue-50 border border-blue-200 rounded p-2">
+                          <span className="text-blue-800 text-xs">{rec}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 💡 STRATEJİK ÖNERİLER */}
+                  {aiRecommendations.recommendations.strategic.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-indigo-900 flex items-center gap-1">
+                        <span className="bg-purple-500 text-white px-1.5 py-0.5 rounded text-[10px]">UZUN VADELİ</span>
+                        Stratejik Öneriler
+                      </p>
+                      {aiRecommendations.recommendations.strategic.slice(0, 2).map((rec: string, idx: number) => (
+                        <div key={idx} className="bg-purple-50 border border-purple-200 rounded p-2">
+                          <span className="text-purple-800 text-xs">{rec}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 📈 VERİ KALİTESİ */}
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded p-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-green-800">
+                        📊 <strong>Veri Kalitesi:</strong> {aiRecommendations.dataQuality.sampleSize} analiz • {aiRecommendations.dataQuality.reliability === 'high' ? '✅ Yüksek' : aiRecommendations.dataQuality.reliability === 'medium' ? '⚡ Orta' : '⚠️ Düşük'} güvenilirlik
+                      </span>
+                    </div>
                       </div>
                     )}
                   </div>
