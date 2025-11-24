@@ -95,6 +95,7 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
   const [cityvStats, setCityvStats] = useState<any>(null);
   const [favoritesData, setFavoritesData] = useState<any>(null);
   const [detectionData, setDetectionData] = useState<any>(null);
+  const [detectionsLoading, setDetectionsLoading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -107,17 +108,38 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
       loadFavorites();
       loadDetections();
       
-      // 30 saniyede bir güncelle
+      // 30 saniyede bir güncelle (genel veriler)
       const interval = setInterval(() => {
         loadAnalytics();
         loadCityVStats();
         loadFavorites();
-        loadDetections();
+        // Detection'ı burada güncelleme - ayrı interval var
       }, 30000);
 
       return () => clearInterval(interval);
     }
   }, [businessProfile]);
+
+  // 🔥 REAL-TIME: AI Detection Tab aktifken 5 saniyede bir güncelle
+  useEffect(() => {
+    if (activeTab === 'detections' && businessProfile) {
+      console.log('🤖 [REAL-TIME] AI Detection tab active - starting 5s interval');
+      
+      // İlk yüklemede hemen çağır
+      loadDetections();
+      
+      // 5 saniyede bir güncelle
+      const detectionInterval = setInterval(() => {
+        console.log('🔄 [REAL-TIME] Refreshing detection data...');
+        loadDetections();
+      }, 5000);
+
+      return () => {
+        console.log('🛑 [REAL-TIME] AI Detection tab inactive - stopping interval');
+        clearInterval(detectionInterval);
+      };
+    }
+  }, [activeTab, businessProfile]);
 
   const loadCityVStats = async () => {
     try {
@@ -151,6 +173,7 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
 
   const loadDetections = async () => {
     try {
+      setDetectionsLoading(true);
       const businessId = businessProfile?.user_id || businessProfile?.id || businessProfile?.business_id;
       if (!businessId) return;
 
@@ -161,6 +184,8 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
       console.log('🤖 TensorFlow detections loaded:', data);
     } catch (error) {
       console.error('❌ Detections load error:', error);
+    } finally {
+      setDetectionsLoading(false);
     }
   };
 
@@ -941,15 +966,44 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           {detectionData && detectionData.success ? (
             <>
+              {/* Live Update Banner */}
+              <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl p-4 border border-green-400 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="w-3 h-3 bg-white rounded-full shadow-lg"
+                    />
+                    <div>
+                      <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                        🔴 CANLI - TensorFlow/COCO Detection Akışı
+                        {detectionsLoading && (
+                          <span className="text-xs bg-white/30 px-2 py-0.5 rounded-full animate-pulse">Güncelleniyor...</span>
+                        )}
+                      </h3>
+                      <p className="text-green-100 text-sm">5 saniyede bir otomatik güncellenir • Son güncelleme: {new Date(detectionData.summary.lastUpdate).toLocaleTimeString('tr-TR')}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-xl p-6 text-white">
-                  <div className="flex items-center justify-between mb-2">
-                    <Eye className="w-8 h-8" />
-                    <span className="text-sm font-medium opacity-90">Toplam</span>
+                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-xl p-6 text-white relative overflow-hidden">
+                  <motion.div
+                    animate={{ opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="absolute top-0 right-0 w-20 h-20 bg-white rounded-full blur-3xl"
+                  />
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-2">
+                      <Eye className="w-8 h-8" />
+                      <span className="text-sm font-medium opacity-90">Toplam</span>
+                    </div>
+                    <div className="text-3xl font-black">{detectionData.summary.totalDetections}</div>
+                    <div className="text-sm opacity-90">Detection</div>
                   </div>
-                  <div className="text-3xl font-black">{detectionData.summary.totalDetections}</div>
-                  <div className="text-sm opacity-90">Detection</div>
                 </div>
 
                 <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white">
@@ -1084,40 +1138,80 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
 
               {/* Recent Detections */}
               <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                  <Zap className="w-6 h-6 text-orange-600" />
-                  Son Deteksiyonlar
-                </h3>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <Zap className="w-6 h-6 text-orange-600" />
+                    Son Deteksiyonlar - CANLI
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <motion.div
+                      animate={{ scale: [1, 1.3, 1], opacity: [1, 0.5, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="w-2 h-2 bg-red-500 rounded-full"
+                    />
+                    <span className="text-xs text-red-600 font-bold">LIVE</span>
+                  </div>
+                </div>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {detectionData.recentDetections && detectionData.recentDetections.length > 0 ? (
-                    detectionData.recentDetections.map((det: any, idx: number) => (
-                      <div key={idx} className="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-3 border border-orange-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-gray-900">{det.cameraName}</span>
-                            <span className="text-xs text-gray-500">{det.location}</span>
+                    detectionData.recentDetections.map((det: any, idx: number) => {
+                      const detectionTime = new Date(det.timestamp);
+                      const now = new Date();
+                      const secondsAgo = Math.floor((now.getTime() - detectionTime.getTime()) / 1000);
+                      const isRecent = secondsAgo < 30; // Son 30 saniye
+
+                      return (
+                        <motion.div 
+                          key={idx} 
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className={`rounded-lg p-3 border ${
+                            isRecent 
+                              ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 shadow-lg' 
+                              : 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              {isRecent && (
+                                <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full font-bold animate-pulse">
+                                  YENİ
+                                </span>
+                              )}
+                              <span className="font-bold text-gray-900">{det.cameraName}</span>
+                              <span className="text-xs text-gray-500">{det.location}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-gray-700">
+                                {secondsAgo < 60 
+                                  ? `${secondsAgo}s önce` 
+                                  : `${Math.floor(secondsAgo / 60)}dk önce`}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {detectionTime.toLocaleTimeString('tr-TR')}
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-xs text-gray-500">
-                            {new Date(det.timestamp).toLocaleTimeString('tr-TR')}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className="bg-white px-2 py-1 rounded border text-xs font-medium">
-                            👥 {det.peopleCount} kişi
+                          <div className="flex items-center gap-2 flex-wrap mt-2">
+                            <div className="bg-white px-2 py-1 rounded border text-xs font-medium shadow-sm">
+                              👥 <span className="font-bold text-blue-600">{det.peopleCount}</span> kişi
+                            </div>
+                            <div className="bg-white px-2 py-1 rounded border text-xs font-medium shadow-sm">
+                              🎯 <span className="font-bold text-green-600">{det.confidence}%</span> güven
+                            </div>
+                            {det.objects && det.objects.length > 0 && (
+                              det.objects.map((obj: any, oidx: number) => (
+                                <div key={oidx} className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold border border-purple-300 shadow-sm">
+                                  🔍 {obj.type} ({obj.count})
+                                </div>
+                              ))
+                            )}
                           </div>
-                          <div className="bg-white px-2 py-1 rounded border text-xs font-medium">
-                            🎯 {det.confidence}% güven
-                          </div>
-                          {det.objects && det.objects.length > 0 && (
-                            det.objects.map((obj: any, oidx: number) => (
-                              <div key={oidx} className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">
-                                {obj.type} ({obj.count})
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    ))
+                        </motion.div>
+                      );
+                    })
+                  )
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-gray-500">Henüz detection verisi yok</p>
