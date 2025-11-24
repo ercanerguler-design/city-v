@@ -145,13 +145,17 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
     }
   };
 
-  // Location stats yükle
+  // Location stats ve Business IoT data yükle
   useEffect(() => {
     if (isOpen && locations && locations.length > 0) {
       loadLocationStats();
+      loadBusinessIoTData(); // ✅ Business IoT verilerini yükle
       
       // Her 2 dakikada bir stats'i güncelle (performance için)
-      const statsInterval = setInterval(loadLocationStats, 120000);
+      const statsInterval = setInterval(() => {
+        loadLocationStats();
+        loadBusinessIoTData();
+      }, 120000);
       
       return () => clearInterval(statsInterval);
     }

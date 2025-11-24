@@ -8,7 +8,6 @@ import dynamic from 'next/dynamic';
 const CampaignCreationModal = dynamic(() => import('./CampaignCreationModal'), { ssr: false });
 const DailySummaryCards = dynamic(() => import('./DailySummaryCards'), { ssr: false });
 const BusinessFavoritesSync = dynamic(() => import('./BusinessFavoritesSync'), { ssr: false });
-const RealTimeDataManager = dynamic(() => import('./RealTimeDataManager'), { ssr: false });
 
 interface MetricCard {
   title: string;
@@ -447,23 +446,7 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
         })}
       </div>
 
-      {/* Real-Time Data Manager */}
-      {businessProfile?.user_id && (
-        <RealTimeDataManager 
-          businessId={businessProfile.user_id.toString()}
-          onDataUpdate={(data) => {
-            console.log('📊 Real-time data updated:', data);
-            // Metrics'i real-time data ile güncelle
-            setMetrics(prev => [
-              { ...prev[0], value: data.totalPeople.toString(), change: `+${data.totalEntries - data.totalExits}` },
-              { ...prev[1], value: data.activeCameras.toString(), change: `${data.cameras.filter(c => c.isOnline).length}/${data.cameras.length}` },
-              { ...prev[2], value: `${Math.round(data.avgOccupancy)}%`, change: data.crowdLevel === 'high' ? 'Yoğun' : data.crowdLevel === 'medium' ? 'Orta' : 'Az' },
-              { ...prev[3], value: `${Math.round(data.avgOccupancy * 2)}dk`, change: '+0dk' },
-              { ...prev[4] }
-            ]);
-          }}
-        />
-      )}
+
 
       {/* AI Features */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

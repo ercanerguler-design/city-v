@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         SELECT people_count, crowd_density, current_occupancy, analysis_timestamp
         FROM iot_crowd_analysis
         WHERE device_id = CAST(bc.id AS VARCHAR)
-          AND analysis_timestamp >= NOW() - INTERVAL '5 minutes'
+          AND analysis_timestamp >= NOW() - INTERVAL '30 minutes'
         ORDER BY analysis_timestamp DESC
         LIMIT 1
       ) ca ON true

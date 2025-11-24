@@ -85,14 +85,14 @@ export default function ProHeader({
           
           // Yeni bir kampanya varsa popup ve Chrome notification göster
           const latestCampaign = data.campaigns[0];
-          const campaignId = latestCampaign.id || latestCampaign.campaign_id;
+          const campaignId = String(latestCampaign.id || latestCampaign.campaign_id);
           
           console.log('🎯 Latest campaign ID:', campaignId, 'Last shown:', lastShownCampaignId);
           
-          if (campaignId && campaignId !== lastShownCampaignId) {
+          if (campaignId && campaignId !== String(lastShownCampaignId)) {
             console.log('🎉 YENİ KAMPANYA TESPİT EDİLDİ! Bildirim gösteriliyor...');
             setShowNotificationPopup(true);
-            setLastShownCampaignId(campaignId);
+            setLastShownCampaignId(String(campaignId));
             setTimeout(() => setShowNotificationPopup(false), 5000);
             
             // Sağdan Kayan Panel
