@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
 
     // 1. Bugünkü toplam ziyaretçi sayısı (iot_ai_analysis)
     // ✅ FIX: SUM yerine current_occupancy kullan (tekrar saymaması için)
+    // ✅ FIX: UTC+3 timezone ekle
     const todayVisitorsResult = await query(
       `SELECT 
         COALESCE(MAX(CAST((ia.detection_objects->>'current_occupancy') AS INTEGER)), 0) as total_visitors,
@@ -29,18 +30,19 @@ export async function GET(req: NextRequest) {
        FROM iot_ai_analysis ia
        JOIN business_cameras bc ON ia.camera_id = bc.id
        WHERE bc.business_user_id = $1
-         AND DATE(ia.created_at) = CURRENT_DATE`,
+         AND DATE(ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul') = CURRENT_DATE`,
       [parseInt(businessId)]
     );
 
     // 2. Dünkü ziyaretçi sayısı (büyüme hesabı için)
     // ✅ FIX: SUM yerine MAX current_occupancy kullan
+    // ✅ FIX: UTC+3 timezone ekle
     const yesterdayVisitorsResult = await query(
       `SELECT COALESCE(MAX(CAST((ia.detection_objects->>'current_occupancy') AS INTEGER)), 0) as total_visitors
        FROM iot_ai_analysis ia
        JOIN business_cameras bc ON ia.camera_id = bc.id
        WHERE bc.business_user_id = $1
-         AND DATE(ia.created_at) = CURRENT_DATE - INTERVAL '1 day'`,
+         AND DATE(ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul') = CURRENT_DATE - INTERVAL '1 day'`,
       [parseInt(businessId)]
     );
 
@@ -51,6 +53,7 @@ export async function GET(req: NextRequest) {
     );
 
     // 4. Son 1 saatteki ortalama yoğunluk
+    // ✅ FIX: UTC+3 timezone ekle
     const avgOccupancyResult = await query(
       `SELECT 
         COALESCE(AVG(COALESCE((ia.detection_objects->>'current_occupancy')::INTEGER, 0)), 0) as avg_occupancy,
@@ -58,7 +61,7 @@ export async function GET(req: NextRequest) {
        FROM iot_ai_analysis ia
        JOIN business_cameras bc ON ia.camera_id = bc.id
        WHERE bc.business_user_id = $1
-         AND ia.created_at >= NOW() - INTERVAL '1 hour'`,
+         AND (ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul') >= (NOW() AT TIME ZONE 'Europe/Istanbul') - INTERVAL '1 hour'`,
       [parseInt(businessId)]
     );
 
@@ -115,17 +118,18 @@ export async function GET(req: NextRequest) {
 
     // 7. Haftalık trend (son 7 gün)
     // ✅ FIX: SUM yerine MAX current_occupancy kullan
+    // ✅ FIX: UTC+3 timezone ekle
     const weeklyTrendResult = await query(
       `SELECT 
-        TO_CHAR(DATE(ia.created_at), 'Day') as day_name,
-        DATE(ia.created_at) as date,
+        TO_CHAR(DATE(ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul'), 'Day') as day_name,
+        DATE(ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul') as date,
         MAX(CAST((ia.detection_objects->>'current_occupancy') AS INTEGER)) as total_visitors,
         MAX(CAST((ia.detection_objects->>'current_occupancy') AS INTEGER)) as avg_occupancy
        FROM iot_ai_analysis ia
        JOIN business_cameras bc ON ia.camera_id = bc.id
        WHERE bc.business_user_id = $1
-         AND ia.created_at >= CURRENT_DATE - INTERVAL '7 days'
-       GROUP BY DATE(ia.created_at)
+         AND (ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul') >= (CURRENT_DATE AT TIME ZONE 'Europe/Istanbul') - INTERVAL '7 days'
+       GROUP BY DATE(ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul')
        ORDER BY date DESC`,
       [parseInt(businessId)]
     );
@@ -148,9 +152,10 @@ export async function GET(req: NextRequest) {
     );
 
     // 9. Son aktiviteler (son 10 kayıt)
+    // ✅ FIX: UTC+3 timezone ekle
     const recentActivitiesResult = await query(
       `SELECT 
-        ia.created_at as timestamp,
+        (ia.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul') as timestamp,
         ia.person_count as current_occupancy,
         bc.id as device_id,
         bc.camera_name as device_name,
