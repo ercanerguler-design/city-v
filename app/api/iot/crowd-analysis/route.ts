@@ -275,6 +275,14 @@ export async function POST(request: NextRequest) {
       else if (data.people_count > 15) crowd_density = 'overcrowded';
     }
 
+    console.log('💾 SAVING TO DATABASE:', {
+      device_id: data.device_id,
+      device_id_type: typeof data.device_id,
+      people_count: data.people_count,
+      crowd_density: crowd_density,
+      current_occupancy: data.current_occupancy || data.people_count
+    });
+
     const result = await sql`
       INSERT INTO iot_crowd_analysis (
         device_id, analysis_type, location_type, people_count, crowd_density,
@@ -302,6 +310,29 @@ export async function POST(request: NextRequest) {
         ${data.detection_method || 'pro_multi_stage_ai'}
       ) RETURNING *
     `;
+    
+    console.log('✅ DATABASE INSERT SUCCESS:', {
+      id: result.rows[0]?.id,
+      device_id: result.rows[0]?.device_id,
+      timestamp: result.rows[0]?.analysis_timestamp
+    });
+
+    // 🔥 CRITICAL: Kamera last_seen değerini güncelle (ONLINE durumu için)
+    // device_id ile eşleşen iot_devices -> business_cameras ilişkisini bul ve güncelle
+    try {
+      const updateLastSeen = await sql`
+        UPDATE business_cameras 
+        SET last_seen = NOW()
+        WHERE id IN (
+          SELECT business_camera_id 
+          FROM iot_devices 
+          WHERE id = CAST(${data.device_id} AS INTEGER)
+        )
+      `;
+      console.log('✅ Camera last_seen updated for device_id:', data.device_id);
+    } catch (updateError) {
+      console.warn('⚠️ Could not update camera last_seen:', updateError);
+    }
 
     // Realtime update gönder - ENHANCED with AI data
     await sql`
