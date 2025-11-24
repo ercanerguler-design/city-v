@@ -113,23 +113,46 @@ export async function GET(req: NextRequest) {
       ORDER BY count DESC
     `;
 
-    // Parse detection_objects JSONB
+    // Parse detection_objects JSONB (BACKWARD COMPATIBLE)
     const parsedDetections = recentDetectionsResult.rows.map(row => {
       let detectedObjects: any[] = [];
       
       try {
         const detectionData = row.detection_objects;
-        if (detectionData && typeof detectionData === 'object') {
-          // detection_objects içindeki her key bir object type (COCO: person, car, etc.)
+        
+        // ✅ HANDLE OLD DATA (NUMBER format) vs NEW DATA (JSONB array)
+        if (typeof detectionData === 'number') {
+          // Eski veri: sadece people_count
+          detectedObjects = [{
+            type: 'person',
+            count: detectionData,
+            confidence: row.confidence_score || 85
+          }];
+        } else if (Array.isArray(detectionData)) {
+          // Yeni veri: TensorFlow/COCO detection array
+          detectedObjects = detectionData.map((obj: any) => ({
+            type: obj.type || 'person',
+            count: 1,
+            confidence: Math.round((parseFloat(obj.confidence) || row.confidence_score || 0.85) * 100),
+            bbox: obj.bbox || null
+          }));
+        } else if (detectionData && typeof detectionData === 'object') {
+          // Object format (başka bir format)
           detectedObjects = Object.entries(detectionData).map(([objectType, data]: [string, any]) => ({
             type: objectType,
             count: Array.isArray(data) ? data.length : (data.count || 1),
-            confidence: data.confidence || row.confidence_score || 95,
+            confidence: data.confidence || row.confidence_score || 85,
             details: data
           }));
         }
       } catch (e) {
         console.warn('Detection parse error:', e);
+        // Fallback: people_count kullan
+        detectedObjects = [{
+          type: 'person',
+          count: row.people_count || 0,
+          confidence: row.confidence_score || 85
+        }];
       }
 
       return {
