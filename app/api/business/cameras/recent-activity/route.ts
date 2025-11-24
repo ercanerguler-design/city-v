@@ -20,20 +20,22 @@ export async function GET(request: NextRequest) {
 
     console.log(`📋 Fetching recent activities for business user ${businessUserId}, limit: ${limit}`);
 
+    // ✅ ESP32 FIRMWARE: iot_crowd_analysis tablosu kullanılıyor
     // Son aktiviteleri getir - iot_crowd_analysis + business_cameras join
     const result = await sql`
       SELECT 
-        ia.id,
+        ca.id,
         ca.people_count,
-        ia.crowd_density,
-        ia.detection_objects,
+        ca.crowd_density,
+        ca.current_occupancy,
         ca.analysis_timestamp,
         bc.camera_name,
         bc.id as camera_id,
         bc.location_description
-      FROM iot_crowd_analysis ia
+      FROM iot_crowd_analysis ca
       INNER JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
+        AND bc.is_active = true
       ORDER BY ca.analysis_timestamp DESC
       LIMIT ${limit}
     `;

@@ -196,13 +196,14 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
       const todayFavorites = favoritesData.success ? favoritesData.todayFavorites : 0;
       const totalFavorites = favoritesData.success ? favoritesData.totalFavorites : 0;
 
-      // Son aktiviteleri çek
+      // Son aktiviteleri çek - ✅ REAL-TIME: 5 saniyede bir güncelleniyor
       const activitiesResponse = await fetch(`/api/business/cameras/recent-activity?businessUserId=${businessId}&limit=5`);
       const activitiesData = await activitiesResponse.json();
       
       if (activitiesData.success && activitiesData.activities) {
         const formattedActivities = activitiesData.activities.map((act: any) => {
-          const timestamp = new Date(act.created_at);
+          // ✅ ESP32 timestamp: analysis_timestamp kullan (created_at değil)
+          const timestamp = new Date(act.analysis_timestamp || act.created_at);
           const now = new Date();
           const diffMinutes = Math.floor((now.getTime() - timestamp.getTime()) / (1000 * 60));
           
@@ -220,9 +221,9 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
             id: act.id,
             camera_name: act.camera_name || 'Kamera',
             event_type: crowdLevelText,
-            person_count: act.person_count || 0,
+            person_count: act.people_count || 0, // ✅ people_count (person_count değil)
             crowd_level: act.crowd_density || 'low',
-            timestamp: act.created_at,
+            timestamp: act.analysis_timestamp || act.created_at,
             timeAgo
           };
         });
