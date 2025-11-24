@@ -46,22 +46,24 @@ export async function GET(req: NextRequest) {
     const cameraIds = activeCameras.map(c => c.id);
 
     // 2. Son 24 saatin IoT verilerini çek
+    // ✅ ESP32 FIRMWARE: iot_crowd_analysis tablosu device_id (VARCHAR) kullanıyor
     let todayData;
     try {
       todayData = await sql`
         SELECT 
-          camera_id,
-          person_count,
-          crowd_level,
-          avg_age,
-          male_count,
-          female_count,
-          created_at,
-          EXTRACT(HOUR FROM created_at AT TIME ZONE 'Europe/Istanbul') as hour
-        FROM iot_crowd_analysis
-        WHERE camera_id = ANY(${cameraIds})
-          AND created_at >= NOW() - INTERVAL '24 hours'
-        ORDER BY created_at DESC
+          ca.device_id,
+          ca.people_count as person_count,
+          ca.crowd_density as crowd_level,
+          0 as avg_age,
+          0 as male_count,
+          0 as female_count,
+          ca.analysis_timestamp as created_at,
+          EXTRACT(HOUR FROM ca.analysis_timestamp AT TIME ZONE 'Europe/Istanbul') as hour
+        FROM iot_crowd_analysis ca
+        JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
+        WHERE bc.business_user_id = ${businessUserId}
+          AND ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'
+        ORDER BY ca.analysis_timestamp DESC
       `;
     } catch (error: any) {
       console.warn('⚠️ iot_crowd_analysis table error:', error.message);
@@ -73,16 +75,17 @@ export async function GET(req: NextRequest) {
     try {
       weekData = await sql`
         SELECT 
-          camera_id,
-          person_count,
-          crowd_level,
-          created_at,
-          EXTRACT(HOUR FROM created_at AT TIME ZONE 'Europe/Istanbul') as hour,
-          EXTRACT(DOW FROM created_at AT TIME ZONE 'Europe/Istanbul') as day_of_week
-        FROM iot_crowd_analysis
-        WHERE camera_id = ANY(${cameraIds})
-          AND created_at >= NOW() - INTERVAL '7 days'
-        ORDER BY created_at DESC
+          ca.device_id,
+          ca.people_count as person_count,
+          ca.crowd_density as crowd_level,
+          ca.analysis_timestamp as created_at,
+          EXTRACT(HOUR FROM ca.analysis_timestamp AT TIME ZONE 'Europe/Istanbul') as hour,
+          EXTRACT(DOW FROM ca.analysis_timestamp AT TIME ZONE 'Europe/Istanbul') as day_of_week
+        FROM iot_crowd_analysis ca
+        JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
+        WHERE bc.business_user_id = ${businessUserId}
+          AND ca.analysis_timestamp >= NOW() - INTERVAL '7 days'
+        ORDER BY ca.analysis_timestamp DESC
       `;
     } catch (error: any) {
       console.warn('⚠️ iot_crowd_analysis weekly data error:', error.message);
