@@ -42,13 +42,17 @@ export async function POST(req: NextRequest) {
       priceRating 
     });
 
-    // Insert review - WITHOUT tags (column doesn't exist)
+    // locationId aslında business_profiles.id (frontend'den gelen)
+    // Bunu VARCHAR olarak cast edip location_id'ye yazıyoruz
+    const locationIdStr = String(locationId);
+
+    // Insert review - location_id VARCHAR olarak
     const result = await sql`
       INSERT INTO location_reviews (
         location_id, user_id, user_email, user_name,
         rating, comment, sentiment, price_rating
       ) VALUES (
-        ${locationId},
+        ${locationIdStr},
         ${userId || null},
         ${userEmail || null},
         ${userName || 'Anonim Kullanıcı'},
@@ -64,11 +68,14 @@ export async function POST(req: NextRequest) {
 
     // 🔔 Create notification for business owner
     try {
-      // Find business_user_id from location_id
+      // locationId = business_profiles.id (frontend'den gelen)
+      // Cast to integer for query
+      const businessProfileId = parseInt(locationId);
+      
       const businessResult = await sql`
         SELECT bp.user_id, bp.business_name
         FROM business_profiles bp
-        WHERE bp.id = ${locationId}
+        WHERE bp.id = ${businessProfileId}
       `;
 
       if (businessResult.length > 0) {
