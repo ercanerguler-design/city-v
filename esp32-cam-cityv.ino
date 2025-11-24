@@ -51,7 +51,7 @@
 const char* AP_SSID = "CityV-AI-Camera";
 const char* AP_PASSWORD = "cityv2024";
 String API_BASE_URL = "https://city-v-ercanergulers-projects.vercel.app";
-String API_ENDPOINT = "/api/iot/crowd-analysis";
+String API_ENDPOINT = "/api/iot/ai-analysis";
 HTTPClient http;
 
 // AI Performans Ayarları - PROFESYONEL

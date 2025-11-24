@@ -90,11 +90,14 @@ export default function LiveCrowdCard({ businessId }: LiveCrowdCardProps) {
         
         console.log('✅ Using camera data:', { peopleCount, entryCount, exitCount, density, crowdLevel });
         
-        // Density'ye göre more precise level
-        if (density > 20) crowdLevel = 'very_high';
-        else if (density > 15) crowdLevel = 'high';
-        else if (density > 8) crowdLevel = 'medium';
-        else if (density > 3) crowdLevel = 'low';
+        // ✅ FIX: Density değerini doğru hesapla (avgOccupancy zaten % cinsinden)
+        density = Number(summary.avgOccupancy) || 0;
+        
+        // Yoğunluk seviyesini belirle
+        if (density > 75) crowdLevel = 'very_high';
+        else if (density > 50) crowdLevel = 'high';
+        else if (density > 25) crowdLevel = 'medium';
+        else if (density > 10) crowdLevel = 'low';
         else crowdLevel = 'very_low';
         
       } else if (iotData?.success && iotData.currentStatus) {

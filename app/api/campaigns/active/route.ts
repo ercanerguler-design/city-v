@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
          AND bc.is_active = true
          AND bc.start_date <= NOW()
          AND bc.end_date >= NOW()
-         AND pn.sent_at >= NOW() - INTERVAL '24 hours'
+         AND pn.sent_at >= NOW() - INTERVAL '48 hours'
        ORDER BY pn.sent_at DESC
        LIMIT 10`
     );
@@ -63,9 +63,9 @@ export async function GET(request: NextRequest) {
       businessType: row.business_type,
       title: row.title,
       description: row.description,
-      discount_percent: row.discount_percent,
-      discount_amount: row.discount_amount,
-      value: row.discount_percent || row.discount_amount,
+      discount_percent: row.discount_percent || 0,
+      discount_amount: row.discount_amount || 0,
+      value: row.discount_percent || row.discount_amount || 0,
       type: row.discount_percent ? 'percent' : 'amount',
       startDate: row.start_date,
       endDate: row.end_date,

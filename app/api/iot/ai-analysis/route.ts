@@ -5,11 +5,93 @@ import { query } from '@/lib/db';
 // Python AI servisinin URL'i (Railway, Render vb.)
 const PYTHON_AI_URL = process.env.PYTHON_AI_URL || null;
 
+// ✅ SD CARD DATA HANDLER - ESP32 offline'ken SD'ye yazdığı verileri alır
+async function handleSDCardData(request: NextRequest) {
+  try {
+    const jsonData = await request.json();
+    console.log('📦 SD Card JSON verisi:', jsonData);
+    
+    // ESP32'nin SD'den gönderdiği format:
+    // { camera_id, location_zone, person_count, crowd_density, timestamp, ... }
+    const {
+      camera_id,
+      location_zone,
+      person_count,
+      crowd_density,
+      detection_objects,
+      timestamp,
+      image_size
+    } = jsonData;
+    
+    // Validasyon
+    if (!camera_id || person_count === undefined) {
+      return NextResponse.json({
+        success: false,
+        error: 'camera_id ve person_count gerekli'
+      }, { status: 400 });
+    }
+    
+    // Veritabanına kaydet (timestamp'i koruyarak)
+    const dbResult = await query(`
+      INSERT INTO iot_ai_analysis 
+      (camera_id, location_zone, person_count, crowd_density, detection_objects, image_size, processing_time_ms, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id, created_at
+    `, [
+      parseInt(camera_id),
+      location_zone || 'Unknown',
+      parseInt(person_count) || 0,
+      crowd_density || 'low',
+      JSON.stringify(detection_objects || {}),
+      parseInt(image_size) || 0,
+      0, // Processing time (offline data)
+      timestamp ? new Date(timestamp) : new Date() // SD'deki timestamp'i kullan
+    ]);
+    
+    const analysisId = dbResult.rows[0].id;
+    
+    // Entry/Exit ve Zone tracking
+    await trackEntryExit(parseInt(camera_id), location_zone || 'Unknown', parseInt(person_count) || 0, analysisId);
+    await trackZoneOccupancy(parseInt(camera_id), location_zone || 'Unknown', {
+      person_count: parseInt(person_count) || 0,
+      crowd_density: crowd_density || 'low',
+      detection_objects: detection_objects || {}
+    }, analysisId);
+    
+    console.log(`✅ SD Card verisi kaydedildi - ID: ${analysisId}, Kişi: ${person_count}`);
+    
+    return NextResponse.json({
+      success: true,
+      message: 'SD Card verisi başarıyla kaydedildi',
+      analysis_id: analysisId,
+      person_count: parseInt(person_count) || 0
+    });
+    
+  } catch (error: any) {
+    console.error('❌ SD Card veri işleme hatası:', error);
+    return NextResponse.json({
+      success: false,
+      error: error.message || 'SD Card verisi işlenemedi'
+    }, { status: 500 });
+  }
+}
+
 // ESP32-CAM'den gelen fotoğrafı al ve analiz et
 export async function POST(request: NextRequest) {
   try {
     console.log('📸 ESP32 AI analiz isteği alındı');
     
+    // Content-Type kontrol: JSON mu Binary mi?
+    const contentType = request.headers.get('content-type') || '';
+    const isJsonMode = contentType.includes('application/json');
+    
+    if (isJsonMode) {
+      // ✅ SD CARD MODE: ESP32 offline'ken SD'ye yazdı, şimdi JSON olarak gönderiyor
+      console.log('💾 SD Card verileri işleniyor (JSON mode)...');
+      return await handleSDCardData(request);
+    }
+    
+    // ✅ LIVE MODE: ESP32 canlı fotoğraf gönderiyor
     // Headers'dan kamera bilgilerini al
     const cameraId = request.headers.get('X-Camera-ID') || '1';
     const locationZone = request.headers.get('X-Location-Zone') || 'Unknown';
