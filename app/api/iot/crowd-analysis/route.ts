@@ -208,31 +208,13 @@ export async function POST(request: NextRequest) {
     });
 
     // 🔄 OTOMATIK DEVICE_ID EŞLEŞTİRME
-    // ESP32 camera_id gönderiyorsa, bunu direkt device_id olarak kullan (VARCHAR CAST)
-    if (!data.device_id && data.camera_id) {
-      console.log('🔍 Camera ID var, device_id olarak kullanılıyor:', data.camera_id);
-      
-      // Camera ID'nin varlığını kontrol et
-      const matchQuery = await sql`
-        SELECT id, camera_name, business_user_id, ip_address
-        FROM business_cameras
-        WHERE id = ${data.camera_id}
-        LIMIT 1
-      `;
-      
-      if (matchQuery && matchQuery.length > 0) {
-        const camera = matchQuery[0];
-        
-        // camera_id'yi String olarak device_id'ye ata
-        data.device_id = String(data.camera_id);
-        
-        console.log(`✅ Camera #${camera.id} (${camera.camera_name}) eşleştirildi`);
-        console.log(`   📍 Device ID: ${data.device_id}`);
-        console.log(`   🏢 Business User ID: ${camera.business_user_id}`);
-      } else {
-        console.log('⚠️ Camera ID ile eşleşen kamera bulunamadı:', data.camera_id);
-      }
-    } else if (!data.device_id && data.ip_address) {
+    // ESP32 camera_id gönderiyorsa, bunu direkt device_id olarak kullan
+    if (data.camera_id) {
+      console.log('🔍 Camera ID mevcut:', data.camera_id);
+      // camera_id'yi String olarak device_id'ye ata (hemen, sorgulama olmadan)
+      data.device_id = String(data.camera_id);
+      console.log(`✅ Camera ID → Device ID: ${data.device_id}`);
+    } else if (data.ip_address && !data.device_id) {
       // IP adresi ile eşleştirme (fallback)
       console.log('🔍 IP adresi ile eşleştirme yapılıyor:', data.ip_address);
       
@@ -243,9 +225,9 @@ export async function POST(request: NextRequest) {
         LIMIT 1
       `;
       
-      if (matchQuery && matchQuery.length > 0) {
-        const camera = matchQuery[0];
-        data.device_id = String(camera.id); // Camera ID'yi device_id olarak kullan
+      if (matchQuery && matchQuery.rows && matchQuery.rows.length > 0) {
+        const camera = matchQuery.rows[0];
+        data.device_id = String(camera.id);
         console.log(`✅ IP ${data.ip_address} ile Camera #${camera.id} eşleştirildi`);
       } else {
         console.log('⚠️ IP adresi ile eşleşen kamera bulunamadı:', data.ip_address);
@@ -254,7 +236,7 @@ export async function POST(request: NextRequest) {
     
     // Eğer hala device_id yoksa, hata döndür
     if (!data.device_id) {
-      console.error('❌ Device ID bulunamadı ve oluşturulamadı');
+      console.error('❌ Device ID bulunamadı');
       console.error('   📥 Gelen data:', { camera_id: data.camera_id, ip_address: data.ip_address });
       return NextResponse.json(
         { 
