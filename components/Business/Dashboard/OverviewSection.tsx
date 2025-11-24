@@ -994,10 +994,8 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
                         📊 <strong>Veri Kalitesi:</strong> {aiRecommendations.dataQuality.sampleSize} analiz • {aiRecommendations.dataQuality.reliability === 'high' ? '✅ Yüksek' : aiRecommendations.dataQuality.reliability === 'medium' ? '⚡ Orta' : '⚠️ Düşük'} güvenilirlik
                       </span>
                     </div>
-                      </div>
-                    )}
                   </div>
-                  
+
                   {/* Performance Score */}
                   <div className="flex items-center justify-between bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg p-2 text-xs">
                     <span>🎯 <strong>Günlük Performans Skoru</strong></span>
