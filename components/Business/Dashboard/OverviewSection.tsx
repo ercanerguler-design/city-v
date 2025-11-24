@@ -222,22 +222,26 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
       
       // En yoğun saati bul - Gerçek analytics verilerinden
       let peakHourData;
-      if (analytics?.peakHours && analytics.peakHours.length > 0) {
-        // Analytics API'den gelen gerçek peak hours verisi
-        peakHourData = analytics.peakHours[0]; // En yoğun saat
+      // ✅ FIX: iotData.peakHours kullan (state analytics değil!)
+      if (iotData.success && iotData.peakHours && iotData.peakHours.length > 0) {
+        // Analytics API'den gelen gerçek peak hours verisi (UTC+3 ile)
+        peakHourData = iotData.peakHours[0]; // En yoğun saat
+        console.log('✅ Peak hour from API:', peakHourData);
       } else if (hourlyData.length > 0) {
         // Fallback: günlük hourly data'dan hesapla
         peakHourData = hourlyData.reduce((max: any, curr: any) => 
           (curr.avg_occupancy > (max?.avg_occupancy || 0)) ? curr : max, 
           hourlyData[0]
         );
+        console.log('⚠️ Peak hour calculated from hourly data:', peakHourData);
       } else {
         // Son fallback: varsayılan değerler
         peakHourData = { 
-          hour: 14, 
+          hour: currentHour, // ✅ FIX: Şu anki saat kullan (14 sabit değil)
           avg_occupancy: todayVisitors || 0,
           occupancy: todayVisitors || 0 
         };
+        console.log('⚠️ Peak hour fallback:', peakHourData);
       }
 
       // İstatistiksel analiz için son 7 günün verisi
@@ -313,13 +317,22 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
         }
       });
 
-      // Analytics state'ini güncelle
+      // Analytics state'ini güncelle - TÜM VERİLERİ EKLE
       setAnalytics({
         totalAnalysis: todayVisitors,
+        todayVisitors, // ✅ FIX: Alt kısım için
+        visitorGrowth, // ✅ FIX: Alt kısım için
+        activeCameras, // ✅ FIX: Alt kısım için
+        totalCameras, // ✅ FIX: Alt kısım için
+        averageOccupancy: Math.round(avgOccupancy), // ✅ FIX: Alt kısım için
+        crowdLevel, // ✅ FIX: Alt kısım için
         hourlyData: hourlyData.map((h: any) => ({
           hour: h.hour,
           visitors: h.avg_occupancy || 0
-        }))
+        })),
+        peakHours: iotData.success && iotData.peakHours ? iotData.peakHours : [],
+        weeklyTrend: iotData.success && iotData.weeklyTrend ? iotData.weeklyTrend : [],
+        aiInsights: iotData.success && iotData.aiInsights ? iotData.aiInsights : []
       });
 
       // Metrikleri güncelle

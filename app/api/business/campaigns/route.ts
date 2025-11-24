@@ -223,6 +223,17 @@ export async function GET(request: Request) {
       );
     }
 
+    // ✅ FIX: Süresi dolan kampanyaları otomatik deaktif et (Türkiye saatine göre)
+    await sql`
+      UPDATE business_campaigns 
+      SET is_active = false
+      WHERE business_id = ${businessId}
+        AND is_active = true
+        AND (end_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul') < (NOW() AT TIME ZONE 'Europe/Istanbul')
+    `;
+
+    console.log('✅ Süresi dolan kampanyalar deaktif edildi');
+
     const result = await sql`
       SELECT * FROM business_campaigns 
       WHERE business_id = ${businessId}
@@ -238,6 +249,102 @@ export async function GET(request: Request) {
     console.error('Kampanyaları getirme hatası:', error);
     return NextResponse.json(
       { error: 'Kampanyalar getirilemedi', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// Kampanya güncelleme
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { campaignId, ...updates } = body;
+
+    if (!campaignId) {
+      return NextResponse.json(
+        { error: 'Campaign ID gerekli' },
+        { status: 400 }
+      );
+    }
+
+    // Güncellenebilir alanlar
+    const allowedFields = ['title', 'description', 'discount_percent', 'discount_amount', 'start_date', 'end_date', 'target_audience', 'is_active'];
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+    let paramIndex = 1;
+
+    Object.keys(updates).forEach(key => {
+      if (allowedFields.includes(key)) {
+        updateFields.push(`${key} = $${paramIndex}`);
+        updateValues.push(updates[key]);
+        paramIndex++;
+      }
+    });
+
+    if (updateFields.length === 0) {
+      return NextResponse.json(
+        { error: 'Güncellenecek alan bulunamadı' },
+        { status: 400 }
+      );
+    }
+
+    const query = `
+      UPDATE business_campaigns 
+      SET ${updateFields.join(', ')}, updated_at = NOW()
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+    updateValues.push(campaignId);
+
+    const result = await sql.query(query, updateValues);
+
+    console.log('✅ Kampanya güncellendi:', campaignId);
+
+    return NextResponse.json({
+      success: true,
+      campaign: result.rows[0],
+      message: 'Kampanya başarıyla güncellendi'
+    });
+
+  } catch (error: any) {
+    console.error('Kampanya güncelleme hatası:', error);
+    return NextResponse.json(
+      { error: 'Kampanya güncellenemedi', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// Kampanya silme
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const campaignId = searchParams.get('campaignId');
+
+    if (!campaignId) {
+      return NextResponse.json(
+        { error: 'Campaign ID gerekli' },
+        { status: 400 }
+      );
+    }
+
+    // Kampanyayı sil
+    await sql`
+      DELETE FROM business_campaigns 
+      WHERE id = ${campaignId}
+    `;
+
+    console.log('✅ Kampanya silindi:', campaignId);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Kampanya başarıyla silindi'
+    });
+
+  } catch (error: any) {
+    console.error('Kampanya silme hatası:', error);
+    return NextResponse.json(
+      { error: 'Kampanya silinemedi', details: error.message },
       { status: 500 }
     );
   }
