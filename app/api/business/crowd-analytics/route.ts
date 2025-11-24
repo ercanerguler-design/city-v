@@ -63,14 +63,18 @@ export async function GET(request: NextRequest) {
         AVG(ia.person_count) as avg_people,
         MAX(ia.person_count) as max_people,
         AVG(0) as avg_queue,
-        AVG(ia.crowd_density) as avg_density,
+        CASE 
+          WHEN AVG(ia.person_count) > 15 THEN 15
+          WHEN AVG(ia.person_count) > 8 THEN 8
+          ELSE 3
+        END as avg_density,
         COUNT(*) as data_points
       FROM iot_ai_analysis ia
       JOIN business_cameras bc ON ia.camera_id = bc.id
       WHERE bc.business_user_id = ${parseInt(businessId)}
         AND ia.created_at >= NOW() - INTERVAL '1 hour'
       GROUP BY bc.location_description
-      ORDER BY avg_density DESC
+      ORDER BY avg_people DESC
     `;
 
     // 3. Entry/Exit totals

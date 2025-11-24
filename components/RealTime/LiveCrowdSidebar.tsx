@@ -150,45 +150,14 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
     if (isOpen && locations && locations.length > 0) {
       loadLocationStats();
       
-      // Her 60 saniyede bir stats'i güncelle
-      const statsInterval = setInterval(loadLocationStats, 60000);
+      // Her 2 dakikada bir stats'i güncelle (performance için)
+      const statsInterval = setInterval(loadLocationStats, 120000);
       
       return () => clearInterval(statsInterval);
     }
-  }, [isOpen, locations]);
+  }, [isOpen, locations?.length]); // Only depend on length, not full array
 
-  // Gerçek business locations ile analiz (mock data YOK)
-  useEffect(() => {
-    console.log('🔥 LiveCrowdSidebar useEffect tetiklendi:', {
-      isOpen,
-      hasLocations: !!locations,
-      locationsLength: locations?.length || 0
-    });
-    
-    if (isOpen && locations && locations.length > 0) {
-      console.log('🚀 Canlı kalabalk sistemi başlatlıyor...');
-      console.log('📊 Gerçek business sayısı:', locations.length);
-      
-      // İlk analizi hemen başlat - gerçek business locations ile
-      analyzeOpenLocations(locations);
-      
-      // Business IoT verilerini de yükle
-      console.log('📡 Business IoT verileri yükleniyor...');
-      loadBusinessIoTData();
-      
-      // Her 10 saniyede bir güncelle (Canlı veri için)
-      const interval = setInterval(() => {
-        console.log('🔄 Crowd analizi güncelleniyor (canlı)...');
-        analyzeOpenLocations(locations);
-        loadBusinessIoTData();
-      }, 10000);
-      
-      return () => {
-        clearInterval(interval);
-        console.log('🛑 Analiz interval temizlendi');
-      };
-    }
-  }, [isOpen, locations, analyzeOpenLocations]);
+  // Consolidated useEffect to prevent infinite loops - REMOVED DUPLICATE
   const handleToggle = onToggle || (() => setInternalIsOpen(!internalIsOpen));
   
   // Calculate total locations on map
@@ -218,10 +187,10 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
     // İlk analizi hemen başlat
     performAnalysis();
 
-    // Her 15 saniyede bir analiz yap
+    // Her 30 saniyede bir analiz yap (performance için sıklığı azalttık)
     analysisInterval.current = setInterval(() => {
       performAnalysis();
-    }, 15000);
+    }, 30000);
 
     return () => {
       if (analysisInterval.current) {
@@ -229,7 +198,7 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
       }
       setIsAnalyzing(false);
     };
-  }, [isOpen, user?.membershipTier, locations]);
+  }, [isOpen, user?.membershipTier]); // locations removed to prevent infinite loop
 
   const performAnalysis = async () => {
     console.log('⏳ performAnalysis fonksiyonu çağrıldı');

@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
     console.log(`📊 Günlük özet verisi sorgulanıyor: User ${businessUserId}, Tarih ${date}`);
 
     // Belirtilen tarihteki özet verileri al
-    const summaryResult = await sql(
-      `SELECT 
+    const summaryResult = await sql`
+      SELECT 
         id,
         business_user_id,
         summary_date,
@@ -60,9 +60,8 @@ export async function GET(request: NextRequest) {
         created_at,
         updated_at
       FROM daily_business_summaries
-      WHERE business_user_id = $1 AND summary_date = $2`,
-      [businessUserId, date]
-    );
+      WHERE business_user_id = ${businessUserId} AND summary_date = ${date}
+    `;
 
     if (summaryResult.length === 0) {
       console.log(`⚠️ ${date} tarihli günlük özet verisi bulunamadı`);

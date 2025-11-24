@@ -42,41 +42,53 @@ export default function LiveCrowdCard({ businessId }: LiveCrowdCardProps) {
     try {
       console.log('🔄 REAL-TIME UPDATE - Fetching crowd data for business:', businessId);
       
-      // 🔄 REAL-TIME: Camera analytics öncelikli + IoT fallback
-      const [cameraResponse, iotResponse] = await Promise.all([
-        fetch(`/api/business/cameras/analytics/summary?businessUserId=${businessId}`),
-        fetch(`/api/business/crowd-analytics?businessId=${businessId}&timeRange=1hour`)
-      ]);
-
-      const cameraData = await cameraResponse.json();
-      const iotData = await iotResponse.json();
-
-      console.log('📊 LiveCrowdCard REAL-TIME data:', { 
-        camera: cameraData, 
-        iot: iotData,
-        timestamp: new Date().toLocaleTimeString('tr-TR')
+      // 🔄 REAL-TIME: Camera analytics öncelikli, error handling ile
+      const cameraResponse = await fetch(`/api/business/cameras/analytics/summary?businessUserId=${businessId}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
       });
 
-      // Camera analytics öncelikli (daha real-time)
+      let cameraData = null;
+      let iotData = null;
+
+      // Camera data - primary source
+      if (cameraResponse.ok) {
+        cameraData = await cameraResponse.json();
+        console.log('📹 Camera analytics received:', cameraData.success ? 'SUCCESS' : 'FAILED');
+      } else {
+        console.warn('⚠️ Camera analytics failed, status:', cameraResponse.status);
+      }
+
+      // Fallback to IoT data if camera fails
+      if (!cameraData?.success) {
+        try {
+          const iotResponse = await fetch(`/api/business/crowd-analytics?businessId=${businessId}&timeRange=1hour`);
+          if (iotResponse.ok) {
+            iotData = await iotResponse.json();
+            console.log('📊 IoT fallback data:', iotData.success ? 'SUCCESS' : 'FAILED');
+          }
+        } catch (iotError) {
+          console.warn('⚠️ IoT fallback also failed:', iotError);
+        }
+      }
+
+      // Process data with better error handling
       let peopleCount = 0;
       let entryCount = 0;
       let exitCount = 0;
       let density = 0;
       let crowdLevel: any = 'low';
 
-      if (cameraData.success && cameraData.summary) {
-        peopleCount = cameraData.summary.totalPeople || 0;
-        entryCount = cameraData.summary.totalEntries || 0;
-        exitCount = cameraData.summary.totalExits || 0;
-        density = cameraData.summary.avgOccupancy || 0;
+      if (cameraData?.success && cameraData.summary) {
+        // Primary: Camera analytics data
+        const summary = cameraData.summary;
+        peopleCount = Number(summary.totalPeople) || 0;
+        entryCount = Number(summary.totalEntries) || 0;
+        exitCount = Number(summary.totalExits) || 0;
+        density = Number(summary.avgOccupancy) || 0;
+        crowdLevel = summary.crowdLevel || 'low';
         
-        // Crowd level mapping
-        const levelMap: Record<string, any> = {
-          'low': 'low',
-          'medium': 'medium',
-          'high': 'high'
-        };
-        crowdLevel = levelMap[cameraData.summary.crowdLevel] || 'low';
+        console.log('✅ Using camera data:', { peopleCount, entryCount, exitCount, density, crowdLevel });
         
         // Density'ye göre more precise level
         if (density > 20) crowdLevel = 'very_high';
@@ -84,13 +96,19 @@ export default function LiveCrowdCard({ businessId }: LiveCrowdCardProps) {
         else if (density > 8) crowdLevel = 'medium';
         else if (density > 3) crowdLevel = 'low';
         else crowdLevel = 'very_low';
-      } else if (iotData.success && iotData.currentStatus) {
-        // Fallback to IoT data
-        peopleCount = iotData.currentStatus.peopleCount || 0;
-        crowdLevel = iotData.currentStatus.crowdLevel || 'low';
-        density = iotData.currentStatus.density || 0;
-        entryCount = iotData.entryExit?.totalEntry || 0;
-        exitCount = iotData.entryExit?.totalExit || 0;
+        
+      } else if (iotData?.success && iotData.currentStatus) {
+        // Fallback: IoT data
+        const status = iotData.currentStatus;
+        peopleCount = Number(status.peopleCount) || 0;
+        crowdLevel = status.crowdLevel || 'low';
+        density = Number(status.density) || 0;
+        entryCount = Number(iotData.entryExit?.totalEntries) || 0;
+        exitCount = Number(iotData.entryExit?.totalExits) || 0;
+        
+        console.log('✅ Using IoT fallback:', { peopleCount, crowdLevel, density });
+      } else {
+        console.warn('⚠️ No valid data from any source, using defaults');
       }
 
       const newData = {
