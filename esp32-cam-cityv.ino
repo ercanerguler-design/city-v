@@ -183,7 +183,10 @@ void setup() {
 // MAIN LOOP - AI İŞLEME DÖNGÜSÜ
 // ====================================================================
 void loop() {
+  // CRITICAL: Web server öncelikli - watchdog timeout önleme
   server.handleClient();
+  yield(); // Watchdog besle
+  
   unsigned long currentTime = millis();
   
   // WiFi durumu kontrol et ve LED'i kontrol et
@@ -219,7 +222,7 @@ void loop() {
     }
   }
   
-  delay(1); // Minimal delay - maksimum performans
+  delay(10); // 10ms delay - watchdog timeout önleme + web server stability
 }
 
 // ====================================================================
@@ -1113,33 +1116,65 @@ void syncOfflineData() {
   int failCount = 0;
   String tempData = "";
   
-  // Her satırı oku ve gönder (Batch size: 50 - daha hızlı)
-  while (file.available() && successCount < 50) { // Batch size: 50
+  // Her satırı oku ve gönder (Batch size: 10 - stabilite için azaltıldı)
+  while (file.available() && successCount < 10) { // Batch size: 10
     String line = file.readStringUntil('\n');
     line.trim();
     
     if (line.length() > 10) {
-      // API'ye gönder
+      // WiFi kontrolü - bağlantı yoksa dur
+      if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("⚠️ WiFi koptu, sync durduruluyor");
+        tempData += line + "\n";
+        continue;
+      }
+      
+      // API'ye gönder - DETAYLI LOG
+      Serial.println("\n📤 Gönderiliyor... (" + String(successCount + 1) + "/" + String(offlineDataCount) + ")");
+      Serial.println("📋 URL: " + API_BASE_URL + API_ENDPOINT);
+      Serial.println("📦 Data preview: " + line.substring(0, min(100, (int)line.length())) + "...");
+      
       http.begin(API_BASE_URL + API_ENDPOINT);
       http.addHeader("Content-Type", "application/json");
+      http.setTimeout(10000); // 10 saniye timeout
       
       int httpResponseCode = http.POST(line);
       
-      if (httpResponseCode > 0 && httpResponseCode < 400) {
+      Serial.println("📡 HTTP Response: " + String(httpResponseCode));
+      
+      if (httpResponseCode == 200 || httpResponseCode == 201) {
+        // Başarılı - API response kontrol et
+        String response = http.getString();
+        Serial.println("✅ SUCCESS: " + response.substring(0, min(100, (int)response.length())));
+        
         successCount++;
         syncedDataCount++;
-        Serial.print("✅");
-        if (successCount % 10 == 0) {
-          Serial.println(" [" + String(successCount) + "]");
+        
+        if (successCount % 5 == 0) {
+          Serial.println("📊 İlerleme: " + String(successCount) + " başarılı");
         }
-      } else {
+      } else if (httpResponseCode > 0) {
+        // HTTP hatası - detaylı log
+        String errorResponse = http.getString();
+        Serial.println("❌ HTTP ERROR " + String(httpResponseCode) + ": " + errorResponse.substring(0, min(200, (int)errorResponse.length())));
         failCount++;
         tempData += line + "\n"; // Başarısız olanları sakla
-        Serial.println("❌ Sync FAILED: " + String(httpResponseCode));
+      } else {
+        // Bağlantı hatası (timeout, DNS fail, etc.)
+        Serial.println("❌ CONNECTION ERROR: " + String(httpResponseCode));
+        Serial.println("   Muhtemel sebepler:");
+        Serial.println("   - WiFi bağlantısı zayıf");
+        Serial.println("   - Server ulaşılamıyor");
+        Serial.println("   - Timeout (10 saniye)");
+        failCount++;
+        tempData += line + "\n";
       }
       
       http.end();
-      delay(50); // Rate limiting (daha hızlı)
+      delay(100); // Rate limiting - biraz daha yavaş
+      
+      // Watchdog besle - ESP32 reset olmasın
+      yield();
     }
   }
   
@@ -1153,13 +1188,20 @@ void syncOfflineData() {
   file.close();
   
   // Sync dosyasını güncelle (başarılı olanları sil)
-  if (successCount > 0) {
+  if (successCount > 0 || failCount > 0) {
+    Serial.println("\n💾 SD kart güncelleniyor...");
+    
     file = SD_MMC.open(SD_SYNC_FILE, FILE_WRITE);
     if (file) {
       if (tempData.length() > 0) {
         file.print(tempData);
+        Serial.println("✅ Başarısız kayıtlar korundu: " + String(failCount));
+      } else {
+        Serial.println("✅ Tüm kayıtlar temizlendi");
       }
       file.close();
+      
+      // Sadece başarılı olanları azalt
       offlineDataCount -= successCount;
       
       Serial.println("\n╔════════════════════════════════════════╗");
@@ -1167,9 +1209,25 @@ void syncOfflineData() {
       Serial.println("╚════════════════════════════════════════╝");
       Serial.println("📤 Başarılı: " + String(successCount));
       Serial.println("❌ Başarısız: " + String(failCount));
-      Serial.println("📦 Kalan: " + String(offlineDataCount));
+      Serial.println("📦 SD'de kalan: " + String(offlineDataCount));
       Serial.println("📊 Toplam sync: " + String(syncedDataCount));
+      
+      if (failCount > 0) {
+        Serial.println("\n⚠️ UYARI: " + String(failCount) + " kayıt gönderilemedi!");
+        Serial.println("📋 Muhtemel sebepler:");
+        Serial.println("   1. Vercel API authentication hatası");
+        Serial.println("   2. WiFi bağlantısı zayıf/koptu");
+        Serial.println("   3. JSON format hatası");
+        Serial.println("   4. Server overload/timeout");
+        Serial.println("🔄 Tekrar denenecek: Otomatik (10 saniye) veya manuel");
+      }
+      
       Serial.println("════════════════════════════════════════\n");
+    } else {
+      Serial.println("❌ SD kart yazma hatası! Veriler kaybolabilir!");
     }
+  } else {
+    Serial.println("\n⚠️ Hiçbir kayıt gönderilemedi!");
+    Serial.println("📋 Tüm kayıtlar SD'de korundu: " + String(offlineDataCount));
   }
 }
