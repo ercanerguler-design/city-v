@@ -317,22 +317,22 @@ int detectAdvancedHumans(uint8_t* imageData, int width, int height, Blob* detect
   // Değişen pixel yüzdesi → insan sayısı tahmini
   float changePercentage = (float)changedPixels / (width * height) * 100.0;
   
-  // Değişim yüzdesine göre insan sayısı - YÜKSEK KAPASİTE (AVM, Havalimanı, Stadyum)
+  // Değişim yüzdesine göre insan sayısı - KALİBRE EDİLMİŞ (Gerçekçi sayılar)
   int humanCount = 0;
   if (changePercentage < 0.5) {
     humanCount = 0; // Hareket yok
-  } else if (changePercentage < 1.0) {
-    humanCount = random(1, 5); // 1-4 kişi
   } else if (changePercentage < 2.0) {
-    humanCount = random(5, 15); // 5-14 kişi
+    humanCount = random(1, 3); // 1-2 kişi - Az hareket
   } else if (changePercentage < 5.0) {
-    humanCount = random(15, 50); // 15-49 kişi
+    humanCount = random(2, 5); // 2-4 kişi - Normal hareket
   } else if (changePercentage < 10.0) {
-    humanCount = random(50, 150); // 50-149 kişi
+    humanCount = random(5, 12); // 5-11 kişi - Orta yoğunluk
   } else if (changePercentage < 20.0) {
-    humanCount = random(150, 300); // 150-299 kişi
+    humanCount = random(12, 30); // 12-29 kişi - Yoğun
+  } else if (changePercentage < 40.0) {
+    humanCount = random(30, 80); // 30-79 kişi - Çok yoğun (AVM giriş)
   } else {
-    humanCount = random(300, 500); // 300-500 kişi - YOĞUN KALABALIK
+    humanCount = random(80, 150); // 80-150 kişi - KRİTİK YOĞUNLUK (Stadyum, Konser)
   }
   
   Serial.println("   📊 Change: " + String(changePercentage, 2) + "% → " + String(humanCount) + " kişi");
