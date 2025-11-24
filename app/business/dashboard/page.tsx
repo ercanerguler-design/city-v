@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, Camera, MapPin, Menu as MenuIcon, 
   Settings, LogOut, Users, TrendingUp, Activity,
-  Bell, Search, ChevronDown, UserCheck
+  Bell, Search, ChevronDown, UserCheck, Megaphone
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import authStorage from '@/lib/authStorage';
@@ -22,6 +22,7 @@ import PersonelSection from '@/components/Business/Dashboard/PersonelSection';
 import AnalyticsSection from '@/components/Business/Dashboard/AnalyticsSection';
 import AIAnalyticsSection from '@/components/Business/Dashboard/AIAnalyticsSection';
 import ReviewsAndSentiments from '@/components/Business/Dashboard/ReviewsAndSentiments';
+import CampaignsSection from '@/components/Business/Dashboard/CampaignsSection';
 import SettingsSection from '@/components/Business/Dashboard/SettingsSection';
 
 interface NavItem {
@@ -35,6 +36,7 @@ const navItems: NavItem[] = [
   { id: 'cameras', label: 'Kameralar', icon: Camera },
   { id: 'ai-analytics', label: 'AI Analytics', icon: Activity },
   { id: 'reviews', label: 'Duygular', icon: Users },
+  { id: 'campaigns', label: 'Kampanyalar', icon: Megaphone }, // Yeni!
   { id: 'location', label: 'Konum Yönetimi', icon: MapPin },
   { id: 'menu', label: 'Menü & Fiyatlar', icon: MenuIcon },
   { id: 'personel', label: 'Personel Yönetimi', icon: UserCheck },
@@ -428,6 +430,7 @@ export default function BusinessDashboard() {
           {activeSection === 'cameras' && <CamerasSection businessProfile={businessProfile} />}
           {activeSection === 'ai-analytics' && <AIAnalyticsSection businessId={businessUser?.id?.toString() || '6'} />}
           {activeSection === 'reviews' && <ReviewsAndSentiments businessUserId={businessUser?.id} />}
+          {activeSection === 'campaigns' && <CampaignsSection businessProfile={businessProfile} />}
           {activeSection === 'location' && <LocationSection businessProfile={businessProfile} />}
           {activeSection === 'menu' && <MenuSection businessProfile={businessProfile} />}
           {activeSection === 'personel' && <PersonelSection businessProfile={businessProfile} />}
