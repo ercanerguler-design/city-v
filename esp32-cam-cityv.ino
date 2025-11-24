@@ -57,8 +57,10 @@ HTTPClient http;
 // AI Performans Ayarları - PROFESYONEL
 unsigned long lastHeartbeat = 0;
 unsigned long lastAnalysis = 0;
+unsigned long lastSDWrite = 0;
 const unsigned long HEARTBEAT_INTERVAL = 30000; // 30 saniye
 const unsigned long ANALYSIS_INTERVAL = 1000;   // 1 saniye - ULTRA HIZLI
+const unsigned long SD_WRITE_INTERVAL = 30000;  // 30 saniye - SD yazma aralığı (performans için)
 
 // AI Sistemleri
 int detectionSensitivity = 90;  // %90 hassasiyet
@@ -119,6 +121,11 @@ int syncedDataCount = 0;
 unsigned long lastSyncAttempt = 0;
 const unsigned long SYNC_INTERVAL = 10000; // 10 saniye
 const int MAX_OFFLINE_RECORDS = 1000; // Maksimum offline kayıt
+
+// 🆕 BUFFER SİSTEMİ - SD yazma performansı için
+String dataBuffer = "";
+int bufferCount = 0;
+const int BUFFER_SIZE = 5; // 5 veri biriktir, sonra yaz
 
 // ====================================================================
 // SETUP - AI SİSTEMİ BAŞLATMA
@@ -770,8 +777,8 @@ void sendAIData(int humans, float density) {
   static int totalExits = 0;
   static int currentOccupancy = 0;
   
-  // ⚠️ HER ZAMAN SD KARTA KAYDET - WEB AÇILDIĞINDA VEYA İNTERNET GELDİĞİNDE GÖNDER
-  // Her 5 saniyede bir veri oluştur
+  // 🆕 BUFFER SİSTEMİ: Veriyi önce RAM'de biriktir, 30 saniyede bir SD'ye yaz
+  // Bu sayede SD yazma işlemi 6 kat azalır → ESP32 hızlı kalır
   if (millis() - lastSend < 5000) return;
   
   // Camera ID yoksa veri gönderme
@@ -847,15 +854,24 @@ void sendAIData(int humans, float density) {
   payload += "\"timestamp\":" + String(millis());
   payload += "}";
   
-  // 🆕 YENİ MANTIK: HER ZAMAN SD KARTA KAYDET, WEB AÇILDIĞINDA GÖNDER
-  // WiFi bağlı OLSA BİLE önce SD karta kaydet
+  // 🆕 BUFFER SİSTEMİ: RAM'de biriktir, 30 saniyede bir toplu yaz
+  // SD yazma işlemi çok yavaş → ESP32 donmasına sebep oluyor
   if (sdCardAvailable) {
-    saveDataToSD(payload);
-    Serial.println("💾 Veri SD karta kaydedildi (batch mode)");
+    // Veriyi buffer'a ekle
+    dataBuffer += payload + "\n";
+    bufferCount++;
+    
+    Serial.println("📝 Buffer'a eklendi");
     Serial.println("   🎯 Camera ID: " + CAMERA_ID);
     Serial.println("   👥 People: " + String(humans));
     Serial.println("   📊 Density: " + crowdDensity);
-    Serial.println("   📦 Bekleyen: " + String(offlineDataCount));
+    Serial.println("   📦 Buffer: " + String(bufferCount) + "/" + String(BUFFER_SIZE));
+    
+    // Buffer doldu veya 30 saniye geçti → SD'ye yaz
+    if (bufferCount >= BUFFER_SIZE || (millis() - lastSDWrite >= SD_WRITE_INTERVAL)) {
+      flushBufferToSD();
+      lastSDWrite = millis();
+    }
   } else {
     Serial.println("❌ SD Kart yok - Veri kaybedildi!");
     Serial.println("⚠️ SD kart takmadan sistem çalışmaz!");
@@ -966,21 +982,53 @@ void initSDCard() {
   Serial.println("📦 Bekleyen offline veri: " + String(offlineDataCount));
 }
 
+// 🆕 BUFFER'I SD'YE YAZ (TOPLU YAZMA - PERFORMANS OPTİMİZASYONU)
+void flushBufferToSD() {
+  if (!sdCardAvailable || dataBuffer.length() == 0) return;
+  
+  Serial.println("\n💾 BUFFER → SD (Toplu yazma başladı)");
+  Serial.println("   📦 Yazılacak: " + String(bufferCount) + " kayıt");
+  
+  unsigned long startTime = millis();
+  
+  // Sync queue'ya toplu ekle (TEK SEFERDE)
+  File file = SD_MMC.open(SD_SYNC_FILE, FILE_APPEND);
+  if (file) {
+    file.print(dataBuffer); // Buffer'ın tamamını yaz
+    file.close();
+    
+    offlineDataCount += bufferCount;
+    
+    unsigned long writeTime = millis() - startTime;
+    Serial.println("✅ SD yazma tamamlandı!");
+    Serial.println("   ⏱️ Süre: " + String(writeTime) + " ms");
+    Serial.println("   📦 Toplam bekleyen: " + String(offlineDataCount));
+    
+    // Buffer'ı temizle
+    dataBuffer = "";
+    bufferCount = 0;
+    
+    // Maksimum kayıt kontrolü
+    if (offlineDataCount > MAX_OFFLINE_RECORDS) {
+      Serial.println("⚠️ Maksimum offline kayıt sayısına ulaşıldı!");
+    }
+  } else {
+    Serial.println("❌ SD karta yazma hatası!");
+  }
+}
+
 void saveDataToSD(String jsonData) {
   if (!sdCardAvailable) return;
   
-  // Sync queue'ya ekle
+  // BU FONKSİYON ARTIK KULLANILMIYOR - flushBufferToSD() kullanılıyor
+  // Geriye dönük uyumluluk için bırakıldı
+  
   File file = SD_MMC.open(SD_SYNC_FILE, FILE_APPEND);
   if (file) {
     file.println(jsonData);
     file.close();
     offlineDataCount++;
     Serial.println("💾 Veri SD karta kaydedildi (" + String(offlineDataCount) + " bekliyor)");
-    
-    // Maksimum kayıt kontrolü
-    if (offlineDataCount > MAX_OFFLINE_RECORDS) {
-      Serial.println("⚠️ Maksimum offline kayıt sayısına ulaşıldı!");
-    }
   } else {
     Serial.println("❌ SD karta yazma hatası!");
   }
