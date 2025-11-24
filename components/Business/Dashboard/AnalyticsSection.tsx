@@ -91,9 +91,10 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<'analytics' | 'cityv' | 'notifications' | 'favorites'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'cityv' | 'notifications' | 'favorites' | 'detections'>('analytics');
   const [cityvStats, setCityvStats] = useState<any>(null);
   const [favoritesData, setFavoritesData] = useState<any>(null);
+  const [detectionData, setDetectionData] = useState<any>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -104,12 +105,14 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
       loadAnalytics();
       loadCityVStats();
       loadFavorites();
+      loadDetections();
       
       // 30 saniyede bir güncelle
       const interval = setInterval(() => {
         loadAnalytics();
         loadCityVStats();
         loadFavorites();
+        loadDetections();
       }, 30000);
 
       return () => clearInterval(interval);
@@ -143,6 +146,21 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
       console.log('⭐ Favorites loaded:', data);
     } catch (error) {
       console.error('❌ Favorites load error:', error);
+    }
+  };
+
+  const loadDetections = async () => {
+    try {
+      const businessId = businessProfile?.user_id || businessProfile?.id || businessProfile?.business_id;
+      if (!businessId) return;
+
+      const response = await fetch(`/api/business/object-detections?businessUserId=${businessId}&timeRange=24h`);
+      const data = await response.json();
+
+      setDetectionData(data);
+      console.log('🤖 TensorFlow detections loaded:', data);
+    } catch (error) {
+      console.error('❌ Detections load error:', error);
     }
   };
 
@@ -232,6 +250,7 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-2 flex gap-2 flex-wrap border border-blue-100">
         {[
           { id: 'analytics', label: '📈 Analizler', icon: BarChart3 },
+          { id: 'detections', label: '🤖 AI Detection', icon: Eye },
           { id: 'cityv', label: '📱 City-V', icon: Smartphone },
           { id: 'favorites', label: '⭐ Favoriler', icon: Heart },
           { id: 'notifications', label: '🔔 Bildirimler', icon: Bell },
@@ -914,6 +933,207 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
               )}
             </div>
           </div>
+        </motion.div>
+      )}
+
+      {/* AI DETECTIONS TAB - TensorFlow/COCO Analytics */}
+      {activeTab === 'detections' && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+          {detectionData && detectionData.success ? (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-xl p-6 text-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <Eye className="w-8 h-8" />
+                    <span className="text-sm font-medium opacity-90">Toplam</span>
+                  </div>
+                  <div className="text-3xl font-black">{detectionData.summary.totalDetections}</div>
+                  <div className="text-sm opacity-90">Detection</div>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <Target className="w-8 h-8" />
+                    <span className="text-sm font-medium opacity-90">Nesne Tipi</span>
+                  </div>
+                  <div className="text-3xl font-black">{detectionData.summary.uniqueObjectTypes}</div>
+                  <div className="text-sm opacity-90">COCO Classes</div>
+                </div>
+
+                <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-xl p-6 text-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <Zap className="w-8 h-8" />
+                    <span className="text-sm font-medium opacity-90">Güven</span>
+                  </div>
+                  <div className="text-3xl font-black">{detectionData.summary.avgConfidence}%</div>
+                  <div className="text-sm opacity-90">Ortalama</div>
+                </div>
+
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-xl p-6 text-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <Activity className="w-8 h-8" />
+                    <span className="text-sm font-medium opacity-90">Kamera</span>
+                  </div>
+                  <div className="text-3xl font-black">{detectionData.summary.activeCameras}</div>
+                  <div className="text-sm opacity-90">Aktif</div>
+                </div>
+              </div>
+
+              {/* Object Type Stats */}
+              <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <Target className="w-6 h-6 text-purple-600" />
+                  TensorFlow Object Detection - COCO Dataset
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {detectionData.objectStats && detectionData.objectStats.length > 0 ? (
+                    detectionData.objectStats.map((obj: any, idx: number) => (
+                      <div key={idx} className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-bold text-gray-900 capitalize">{obj.objectType}</span>
+                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">
+                            {obj.avgConfidence}%
+                          </span>
+                        </div>
+                        <div className="text-2xl font-black text-purple-600">{obj.detectionCount}</div>
+                        <div className="text-xs text-gray-500 font-medium">detections</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-3 text-center py-8">
+                      <p className="text-gray-500">Henüz nesne tespiti yapılmadı</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Camera Stats */}
+              <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <Activity className="w-6 h-6 text-blue-600" />
+                  Kamera Bazlı Analiz
+                </h3>
+                <div className="space-y-3">
+                  {detectionData.cameraStats && detectionData.cameraStats.length > 0 ? (
+                    detectionData.cameraStats.map((cam: any, idx: number) => (
+                      <div key={idx} className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <div className="font-bold text-gray-900">{cam.cameraName}</div>
+                            <div className="text-sm text-gray-600">{cam.location}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-black text-blue-600">{cam.totalDetections}</div>
+                            <div className="text-xs text-gray-500 font-medium">detections</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="bg-white px-3 py-1 rounded-lg border border-blue-200">
+                            <span className="text-gray-600">Avg People:</span> <strong>{cam.avgPeopleCount}</strong>
+                          </div>
+                          <div className="bg-white px-3 py-1 rounded-lg border border-blue-200">
+                            <span className="text-gray-600">Max:</span> <strong>{cam.maxPeopleCount}</strong>
+                          </div>
+                          <div className="bg-white px-3 py-1 rounded-lg border border-blue-200">
+                            <span className="text-gray-600">Confidence:</span> <strong>{cam.avgConfidence}%</strong>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Kamera verisi bulunamadı</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Hourly Distribution */}
+              <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <Clock className="w-6 h-6 text-green-600" />
+                  Saatlik Dağılım
+                </h3>
+                <div className="grid grid-cols-12 gap-2">
+                  {Array.from({ length: 24 }, (_, hour) => {
+                    const hourData = detectionData.hourlyDetections?.find((h: any) => h.hour === hour);
+                    const count = hourData?.detectionCount || 0;
+                    const maxCount = Math.max(...(detectionData.hourlyDetections?.map((h: any) => h.detectionCount) || [1]));
+                    const height = maxCount > 0 ? (count / maxCount) * 100 : 0;
+
+                    return (
+                      <div key={hour} className="flex flex-col items-center">
+                        <div className="text-xs font-bold text-gray-600 mb-1">{hour}</div>
+                        <div className="w-full bg-gray-100 rounded-t-lg h-24 flex items-end">
+                          {height > 0 && (
+                            <motion.div
+                              initial={{ height: 0 }}
+                              animate={{ height: `${height}%` }}
+                              className="w-full bg-gradient-to-t from-green-500 to-green-400 rounded-t-lg"
+                              title={`${count} detections`}
+                            />
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">{count}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Recent Detections */}
+              <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <Zap className="w-6 h-6 text-orange-600" />
+                  Son Deteksiyonlar
+                </h3>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {detectionData.recentDetections && detectionData.recentDetections.length > 0 ? (
+                    detectionData.recentDetections.map((det: any, idx: number) => (
+                      <div key={idx} className="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-3 border border-orange-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-gray-900">{det.cameraName}</span>
+                            <span className="text-xs text-gray-500">{det.location}</span>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {new Date(det.timestamp).toLocaleTimeString('tr-TR')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="bg-white px-2 py-1 rounded border text-xs font-medium">
+                            👥 {det.peopleCount} kişi
+                          </div>
+                          <div className="bg-white px-2 py-1 rounded border text-xs font-medium">
+                            🎯 {det.confidence}% güven
+                          </div>
+                          {det.objects && det.objects.length > 0 && (
+                            det.objects.map((obj: any, oidx: number) => (
+                              <div key={oidx} className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">
+                                {obj.type} ({obj.count})
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Henüz detection verisi yok</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <Eye className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">TensorFlow Veri Yok</h3>
+              <p className="text-gray-500">ESP32 kameralarından TensorFlow/COCO detection verisi alınmadı</p>
+              <p className="text-sm text-gray-400 mt-2">Kameralarınız aktif olduğunda burada nesne tespiti analizi görünecek</p>
+            </div>
+          )}
         </motion.div>
       )}
 
