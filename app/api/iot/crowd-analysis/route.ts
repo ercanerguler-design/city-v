@@ -314,6 +314,18 @@ export async function POST(request: NextRequest) {
       authorized_user: authorizedCamera.business_user_id
     });
 
+    // ✅ FIX: detection_objects JSONB düzgün kaydet
+    const detectionObjectsJson = data.detection_objects && Array.isArray(data.detection_objects) && data.detection_objects.length > 0
+      ? JSON.stringify(data.detection_objects)  // Gerçek TensorFlow/COCO detection array
+      : JSON.stringify([{ type: 'person', count: data.people_count || 0, confidence: data.confidence_score || 0.85 }]); // Fallback
+
+    console.log('🔍 Detection objects kayıt:', {
+      raw: data.detection_objects,
+      type: typeof data.detection_objects,
+      isArray: Array.isArray(data.detection_objects),
+      stringified: detectionObjectsJson
+    });
+
     const result = await sql`
       INSERT INTO iot_crowd_analysis (
         device_id, analysis_type, location_type, people_count, crowd_density,
@@ -327,7 +339,7 @@ export async function POST(request: NextRequest) {
         ${data.people_count || 0}, 
         ${crowd_density},
         ${data.confidence_score || 0.85}, 
-        ${JSON.stringify(data.detection_objects || data.people_count || 0)},
+        ${detectionObjectsJson},
         ${data.image_url || null}, 
         ${data.processing_time_ms || 200},
         ${data.weather_condition || 'clear'}, 
