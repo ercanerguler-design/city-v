@@ -201,6 +201,7 @@ export async function GET(request: NextRequest) {
           activeCameras: activeCameras.length,
           camerasWithData: camerasWithData.length,
           totalPeople,
+          currentPeople: totalPeople, // Frontend compatibility
           avgOccupancy: Math.round(avgOccupancy),
           crowdLevel: maxCrowdLevel,
           lastUpdate,
