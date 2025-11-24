@@ -264,15 +264,19 @@ export async function GET(request: Request) {
 // Kampanya güncelleme
 export async function PATCH(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const campaignId = searchParams.get('campaignId');
     const body = await request.json();
-    const { campaignId, ...updates } = body;
+    const updates = body;
 
     if (!campaignId) {
       return NextResponse.json(
-        { error: 'Campaign ID gerekli' },
+        { error: 'Campaign ID gerekli (URL parameter olarak gönderilmeli)' },
         { status: 400 }
       );
     }
+    
+    console.log('📝 Kampanya güncelleniyor:', { campaignId, updates });
 
     // Güncellenebilir alanlar
     const allowedFields = ['title', 'description', 'discount_percent', 'discount_amount', 'start_date', 'end_date', 'target_audience', 'is_active'];

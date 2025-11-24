@@ -57,15 +57,19 @@ export async function GET(request: NextRequest) {
 
     const campaigns = result.rows.map(row => ({
       id: row.campaign_id,
+      campaign_id: row.campaign_id, // ✅ Her iki field da dahil
       businessId: row.business_id,
       businessName: row.business_name,
       businessType: row.business_type,
       title: row.title,
       description: row.description,
+      discount_percent: row.discount_percent,
+      discount_amount: row.discount_amount,
       value: row.discount_percent || row.discount_amount,
       type: row.discount_percent ? 'percent' : 'amount',
       startDate: row.start_date,
       endDate: row.end_date,
+      valid_until: row.end_date, // ✅ Frontend uyumluluğu için
       createdAt: row.created_at,
       // ✅ Location string olarak döndür (React Error #31 fix)
       location: row.address || (row.latitude && row.longitude ? `${row.latitude}, ${row.longitude}` : null)

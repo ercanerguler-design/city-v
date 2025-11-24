@@ -85,18 +85,23 @@ export default function ProHeader({
           
           // Yeni bir kampanya varsa popup ve Chrome notification göster
           const latestCampaign = data.campaigns[0];
-          if (latestCampaign.id !== lastShownCampaignId) {
+          const campaignId = latestCampaign.id || latestCampaign.campaign_id;
+          
+          console.log('🎯 Latest campaign ID:', campaignId, 'Last shown:', lastShownCampaignId);
+          
+          if (campaignId && campaignId !== lastShownCampaignId) {
+            console.log('🎉 YENİ KAMPANYA TESPİT EDİLDİ! Bildirim gösteriliyor...');
             setShowNotificationPopup(true);
-            setLastShownCampaignId(latestCampaign.id);
+            setLastShownCampaignId(campaignId);
             setTimeout(() => setShowNotificationPopup(false), 5000);
             
             // Sağdan Kayan Panel
             setCurrentNotificationCampaign({
-              id: latestCampaign.id,
+              id: campaignId,
               title: latestCampaign.title,
               description: latestCampaign.description,
               businessName: latestCampaign.businessName,
-              discountPercent: latestCampaign.discount_percent,
+              discountPercent: latestCampaign.discount_percent || latestCampaign.value,
               discountAmount: latestCampaign.discount_amount,
               validUntil: latestCampaign.valid_until,
               location: latestCampaign.location
@@ -118,11 +123,11 @@ export default function ProHeader({
                 body: latestCampaign.description,
                 icon: '/icon-192x192.png',
                 badge: '/icon-72x72.png',
-                tag: 'campaign-' + latestCampaign.id,
+                tag: 'campaign-' + campaignId,
                 requireInteraction: false,
                 silent: false, // Native notification sesi
                 data: {
-                  campaignId: latestCampaign.id,
+                  campaignId: campaignId,
                   businessId: latestCampaign.businessId,
                   businessName: latestCampaign.businessName
                 }
