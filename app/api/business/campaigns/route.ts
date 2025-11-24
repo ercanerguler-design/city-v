@@ -299,15 +299,33 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const query = `
-      UPDATE business_campaigns 
-      SET ${updateFields.join(', ')}, updated_at = NOW()
-      WHERE id = $${paramIndex}
-      RETURNING *
-    `;
-    updateValues.push(campaignId);
-
-    const result = await sql.query(query, updateValues);
+    // ✅ FIX: Vercel Postgres için dinamik SQL oluştur
+    let result;
+    
+    if (updateFields.length === 1) {
+      const field = Object.keys(updates)[0];
+      const value = updates[field];
+      
+      result = await sql`
+        UPDATE business_campaigns 
+        SET ${sql(field)} = ${value}, updated_at = NOW()
+        WHERE id = ${campaignId}
+        RETURNING *
+      `;
+    } else {
+      // Çoklu güncelleme için object kullan
+      const setClause = Object.keys(updates)
+        .filter(key => allowedFields.includes(key))
+        .map(key => `${key} = '${updates[key]}'`)
+        .join(', ');
+      
+      result = await sql`
+        UPDATE business_campaigns 
+        SET ${sql.raw(setClause)}, updated_at = NOW()
+        WHERE id = ${campaignId}
+        RETURNING *
+      `;
+    }
 
     console.log('✅ Kampanya güncellendi:', campaignId);
 

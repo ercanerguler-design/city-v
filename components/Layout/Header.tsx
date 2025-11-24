@@ -187,13 +187,19 @@ export default function Header({ stats, onAnalyticsClick, onAuthClick, onPremium
               </motion.button>
             )}
 
-            {/* Notifications (Premium) */}
-            {isAuthenticated && user?.membershipTier && user.membershipTier !== 'free' && (
+            {/* Notifications (Premium) - City-V Zil */}
+            {isAuthenticated && user?.membershipTier && user.membershipTier !== 'free' && onNotificationsClick && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={onNotificationsClick}
-                className="relative p-3 bg-white/20 hover:bg-white/30 rounded-xl backdrop-blur-sm transition-all"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('🔔 Notification bell clicked!');
+                  onNotificationsClick();
+                }}
+                className="relative p-3 bg-white/20 hover:bg-white/30 rounded-xl backdrop-blur-sm transition-all cursor-pointer"
+                title="Bildirimler"
               >
                 <Bell className="w-5 h-5" />
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center font-bold animate-pulse">
