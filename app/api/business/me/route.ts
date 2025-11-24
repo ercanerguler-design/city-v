@@ -116,6 +116,7 @@ export async function GET(request: NextRequest) {
       },
       profile: profile ? {
         id: profile.id,
+        user_id: userId, // ✅ FIX: user_id eklendi
         location_id: profile.location_id,
         business_name: profile.business_name,
         category: profile.category,

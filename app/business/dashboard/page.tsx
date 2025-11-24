@@ -135,6 +135,13 @@ export default function BusinessDashboard() {
               user_id: data.user.id
             };
             setBusinessProfile(profileWithUserId);
+          } else {
+            // ✅ FIX: Profile yoksa dummy profile oluştur (user_id ile)
+            setBusinessProfile({
+              user_id: data.user.id,
+              business_name: data.user.fullName || 'İşletmem',
+              category: 'Genel'
+            });
           }
           
           // Kredi bilgisini getir
