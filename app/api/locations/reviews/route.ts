@@ -113,9 +113,9 @@ export async function POST(req: NextRequest) {
 
         console.log(`🔔 Notification created for business user ${businessUserId}`);
       }
-    } catch (notifError) {
+    } catch (notifError: any) {
       // Don't fail the review if notification fails
-      console.error('⚠️ Notification creation failed:', notifError.message);
+      console.error('⚠️ Notification creation failed:', notifError?.message || notifError);
     }
 
     return NextResponse.json({
@@ -127,10 +127,10 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Review add error:', {
-      message: error.message,
-      code: error.code,
-      detail: error.detail,
-      stack: error.stack?.split('\n').slice(0, 3).join('\n')
+      message: error?.message,
+      code: error?.code,
+      detail: error?.detail,
+      stack: error?.stack?.split('\n').slice(0, 3).join('\n')
     });
     
     // Handle unique constraint violation (spam prevention)

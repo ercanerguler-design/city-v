@@ -141,7 +141,10 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
       const cameraData = await cameraResponse.json();
       const aiRecData = await aiRecommendationsResponse.json();
 
-      console.log('📊 Analytics data:', { iot: iotData, camera: cameraData, ai: aiRecData });
+      console.log('🔄 [ANALYTICS UPDATE]', new Date().toISOString());
+      console.log('📊 IoT Data:', iotData.todayVisitors, 'visitors');
+      console.log('📹 Camera Data:', cameraData.summary?.totalPeople, 'people');
+      console.log('🤖 AI Recommendations:', aiRecData.success ? 'loaded' : 'failed');
       
       // 🤖 AI Recommendations'ı state'e kaydet
       if (aiRecData.success) {
@@ -344,33 +347,45 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
       });
 
       // Metrikleri güncelle
-      setMetrics(prev => [
-        { 
-          ...prev[0], 
-          value: todayVisitors.toString(), 
-          change: visitorGrowth >= 0 ? `+${visitorGrowth}%` : `${visitorGrowth}%` 
-        },
-        { 
-          ...prev[1], 
-          value: activeCameras.toString(), 
-          change: `${activeCameras}/${totalCameras}` 
-        },
-        { 
-          ...prev[2], 
-          value: `${Math.round(avgOccupancy)}%`, 
-          change: getCrowdColor(crowdLevel) 
-        },
-        { 
-          ...prev[3], 
-          value: `${avgStayMinutes}dk`, 
-          change: `+0dk` 
-        },
-        {
-          ...prev[4],
-          value: totalFavorites.toString(),
-          change: `Bugün: ${todayFavorites}`
-        }
-      ]);
+      setMetrics(prev => {
+        const newMetrics = [
+          { 
+            ...prev[0], 
+            value: todayVisitors.toString(), 
+            change: visitorGrowth >= 0 ? `+${visitorGrowth}%` : `${visitorGrowth}%` 
+          },
+          { 
+            ...prev[1], 
+            value: activeCameras.toString(), 
+            change: `${activeCameras}/${totalCameras}` 
+          },
+          { 
+            ...prev[2], 
+            value: `${Math.round(avgOccupancy)}%`, 
+            change: getCrowdColor(crowdLevel) 
+          },
+          { 
+            ...prev[3], 
+            value: `${avgStayMinutes}dk`, 
+            change: `+0dk` 
+          },
+          {
+            ...prev[4],
+            value: totalFavorites.toString(),
+            change: `Bugün: ${todayFavorites}`
+          }
+        ];
+        
+        console.log('✅ [METRICS UPDATE]', {
+          timestamp: new Date().toISOString(),
+          todayVisitors,
+          activeCameras,
+          avgOccupancy: Math.round(avgOccupancy),
+          metricsChanged: prev[0].value !== todayVisitors.toString()
+        });
+        
+        return newMetrics;
+      });
     } catch (error) {
       console.error('Analytics load error:', error);
     }

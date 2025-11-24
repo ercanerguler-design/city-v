@@ -51,6 +51,9 @@ export default function ESP32CameraStream({
   const peopleHistoryRef = useRef<{ x: number; y: number; timestamp: number }[]>([]);
   const frameCountRef = useRef(0);
   const lastFrameTimeRef = useRef(Date.now());
+  const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const blobUrlsRef = useRef<Set<string>>(new Set());
+  const lastBlobUrlRef = useRef<string | null>(null);
 
   // TensorFlow model yükle
   useEffect(() => {
@@ -108,10 +111,18 @@ export default function ESP32CameraStream({
         if (ctx && img.complete) {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           
-          // Canvas'ı video'ya aktar
+          // Canvas'ı video'ya aktar (memory leak önleme)
           canvas.toBlob((blob) => {
-            if (blob && video.src !== URL.createObjectURL(blob)) {
+            if (blob) {
+              // Eski blob URL'i temizle
+              if (lastBlobUrlRef.current) {
+                URL.revokeObjectURL(lastBlobUrlRef.current);
+                blobUrlsRef.current.delete(lastBlobUrlRef.current);
+              }
+              
               const url = URL.createObjectURL(blob);
+              blobUrlsRef.current.add(url);
+              lastBlobUrlRef.current = url;
               video.src = url;
             }
           });
@@ -161,9 +172,27 @@ export default function ESP32CameraStream({
     img.src = streamUrl;
 
     return () => {
+      console.log('🧹 Cleanup: Stream durduruldu');
       setIsStreaming(false);
       cancelAnimationFrame(animationId);
-      document.body.removeChild(img);
+      
+      // Blob URL'leri temizle (memory leak önleme)
+      blobUrlsRef.current.forEach(url => {
+        URL.revokeObjectURL(url);
+      });
+      blobUrlsRef.current.clear();
+      lastBlobUrlRef.current = null;
+      
+      // Detection interval'ı temizle
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current);
+        detectionIntervalRef.current = null;
+      }
+      
+      // DOM'dan kaldır
+      if (img.parentNode) {
+        document.body.removeChild(img);
+      }
     };
   }, [model, cameraIp]);
 

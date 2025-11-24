@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log('📊 Analytics API - BusinessId:', businessId);
+    console.log('🔄 [ANALYTICS API] Request at', new Date().toISOString(), 'BusinessId:', businessId);
 
     // 1. Bugünkü toplam ziyaretçi sayısı (iot_ai_analysis)
     // ✅ FIX: SUM yerine current_occupancy kullan (tekrar saymaması için)
@@ -69,7 +69,8 @@ export async function GET(req: NextRequest) {
     // Şimdilik sabit değer döndürelim - gelecekte gerçek hesaplama eklenecek
     const avgStayMinutes = avgOccupancyResult.rows[0]?.avg_occupancy > 0 ? 25 : 0;
 
-    console.log('📊 Query Results:', {
+    console.log('📊 [ANALYTICS] Query Results:', {
+      timestamp: new Date().toISOString(),
       todayVisitors: todayVisitorsResult.rows[0],
       totalCameras: totalCamerasResult.rows[0],
       avgOccupancy: avgOccupancyResult.rows[0]
