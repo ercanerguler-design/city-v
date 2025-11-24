@@ -20,10 +20,12 @@ export async function GET(req: NextRequest) {
     console.log('📊 Analytics API - BusinessId:', businessId);
 
     // 1. Bugünkü toplam ziyaretçi sayısı (iot_ai_analysis)
+    // ✅ FIX: SUM yerine current_occupancy kullan (tekrar saymaması için)
     const todayVisitorsResult = await query(
       `SELECT 
-        COALESCE(SUM(ia.person_count), 0) as total_visitors,
-        COUNT(DISTINCT bc.id) as active_cameras
+        COALESCE(MAX(CAST((ia.detection_objects->>'current_occupancy') AS INTEGER)), 0) as total_visitors,
+        COUNT(DISTINCT bc.id) as active_cameras,
+        COALESCE(MAX(ia.person_count), 0) as current_people
        FROM iot_ai_analysis ia
        JOIN business_cameras bc ON ia.camera_id = bc.id
        WHERE bc.business_user_id = $1
@@ -32,8 +34,9 @@ export async function GET(req: NextRequest) {
     );
 
     // 2. Dünkü ziyaretçi sayısı (büyüme hesabı için)
+    // ✅ FIX: SUM yerine MAX current_occupancy kullan
     const yesterdayVisitorsResult = await query(
-      `SELECT COALESCE(SUM(ia.person_count), 0) as total_visitors
+      `SELECT COALESCE(MAX(CAST((ia.detection_objects->>'current_occupancy') AS INTEGER)), 0) as total_visitors
        FROM iot_ai_analysis ia
        JOIN business_cameras bc ON ia.camera_id = bc.id
        WHERE bc.business_user_id = $1
@@ -94,10 +97,11 @@ export async function GET(req: NextRequest) {
       : Math.round(avgOccupancy);
 
     // 6. Saatlik yoğunluk analizi (bugün için)
+    // ✅ FIX: people_count yerine current_occupancy MAX değerini kullan
     const hourlyAnalysisResult = await query(
       `SELECT 
         EXTRACT(HOUR FROM ia.created_at) as hour,
-        AVG(ia.person_count) as avg_occupancy,
+        MAX(CAST((ia.detection_objects->>'current_occupancy') AS INTEGER)) as avg_occupancy,
         COUNT(*) as data_points
        FROM iot_ai_analysis ia
        JOIN business_cameras bc ON ia.camera_id = bc.id
@@ -109,12 +113,13 @@ export async function GET(req: NextRequest) {
     );
 
     // 7. Haftalık trend (son 7 gün)
+    // ✅ FIX: SUM yerine MAX current_occupancy kullan
     const weeklyTrendResult = await query(
       `SELECT 
         TO_CHAR(DATE(ia.created_at), 'Day') as day_name,
         DATE(ia.created_at) as date,
-        SUM(ia.person_count) as total_visitors,
-        AVG(ia.person_count) as avg_occupancy
+        MAX(CAST((ia.detection_objects->>'current_occupancy') AS INTEGER)) as total_visitors,
+        MAX(CAST((ia.detection_objects->>'current_occupancy') AS INTEGER)) as avg_occupancy
        FROM iot_ai_analysis ia
        JOIN business_cameras bc ON ia.camera_id = bc.id
        WHERE bc.business_user_id = $1
@@ -125,10 +130,11 @@ export async function GET(req: NextRequest) {
     );
 
     // 8. En yoğun ve en boş saatler
+    // ✅ FIX: AVG people_count yerine MAX current_occupancy kullan
     const peakHoursResult = await query(
       `SELECT 
         EXTRACT(HOUR FROM ia.created_at) as hour,
-        AVG(ia.person_count) as avg_occupancy
+        MAX(CAST((ia.detection_objects->>'current_occupancy') AS INTEGER)) as avg_occupancy
        FROM iot_ai_analysis ia
        JOIN business_cameras bc ON ia.camera_id = bc.id
        WHERE bc.business_user_id = $1
