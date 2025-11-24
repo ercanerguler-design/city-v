@@ -69,8 +69,11 @@ export default function ProHeader({
   useEffect(() => {
     const loadActiveCampaigns = async () => {
       try {
+        console.log('🔄 Kampanyalar yükleniyor...');
         const response = await fetch('/api/campaigns/active');
         const data = await response.json();
+        
+        console.log('📊 Kampanya yanıtı:', data);
         
         if (data.success && data.campaigns.length > 0) {
           setCampaignNotifications(data.campaigns);
@@ -137,10 +140,21 @@ export default function ProHeader({
     // İlk yükleme
     loadActiveCampaigns();
     
-    // Her 5 dakikada bir güncelle
-    const interval = setInterval(loadActiveCampaigns, 5 * 60 * 1000);
+    // Her 10 saniyede bir güncelle (yeni kampanyalar için)
+    const interval = setInterval(loadActiveCampaigns, 10 * 1000);
     
-    return () => clearInterval(interval);
+    // ✅ Kampanya oluşturulduğunda hemen fetch et
+    const handleCampaignCreated = () => {
+      console.log('🎉 Yeni kampanya oluşturuldu! Fetch ediliyor...');
+      loadActiveCampaigns();
+    };
+    
+    window.addEventListener('campaignCreated', handleCampaignCreated);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('campaignCreated', handleCampaignCreated);
+    };
   }, [lastShownCampaignId]);
 
   // Listen for crowd updates

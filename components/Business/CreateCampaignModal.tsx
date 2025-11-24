@@ -94,6 +94,11 @@ export default function CreateCampaignModal({ isOpen, onClose, businessId, onSuc
           endDate: '',
           targetAudience: 'all'
         });
+        
+        // ✅ Custom event dispatch et - ProHeader hemen bildirim fetch etsin
+        window.dispatchEvent(new CustomEvent('campaignCreated', {
+          detail: { campaignId: data.campaign?.id }
+        }));
       } else {
         setError(data.error || 'Kampanya oluşturulamadı');
       }
