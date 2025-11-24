@@ -275,12 +275,43 @@ export async function POST(request: NextRequest) {
       else if (data.people_count > 15) crowd_density = 'overcrowded';
     }
 
+    // 🔒 GÜVENLİK KONTROLÜ: Device ID'nin business_cameras'da kayıtlı olduğunu doğrula
+    const securityCheck = await sql`
+      SELECT id, business_user_id, camera_name
+      FROM business_cameras
+      WHERE id = ${parseInt(data.device_id)}
+        AND is_active = true
+    `;
+
+    if (securityCheck.rows.length === 0) {
+      console.error('❌ GÜVENLİK: Yetkisiz cihaz!', {
+        device_id: data.device_id,
+        ip: data.ip_address
+      });
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Yetkisiz cihaz - Bu device_id sistemde kayıtlı değil',
+          device_id: data.device_id
+        },
+        { status: 403 }
+      );
+    }
+
+    const authorizedCamera = securityCheck.rows[0];
+    console.log('✅ GÜVENLİK: Cihaz doğrulandı', {
+      device_id: data.device_id,
+      business_user_id: authorizedCamera.business_user_id,
+      camera_name: authorizedCamera.camera_name
+    });
+
     console.log('💾 SAVING TO DATABASE:', {
       device_id: data.device_id,
       device_id_type: typeof data.device_id,
       people_count: data.people_count,
       crowd_density: crowd_density,
-      current_occupancy: data.current_occupancy || data.people_count
+      current_occupancy: data.current_occupancy || data.people_count,
+      authorized_user: authorizedCamera.business_user_id
     });
 
     const result = await sql`

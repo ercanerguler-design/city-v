@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Camera, TrendingUp, Clock, Activity, Eye, Megaphone } from 'lucide-react';
+import { Users, Camera, TrendingUp, Clock, Activity, Eye, Megaphone, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 
 const CampaignCreationModal = dynamic(() => import('./CampaignCreationModal'), { ssr: false });
 const DailySummaryCards = dynamic(() => import('./DailySummaryCards'), { ssr: false });
 const BusinessFavoritesSync = dynamic(() => import('./BusinessFavoritesSync'), { ssr: false });
+const DailyReportModal = dynamic(() => import('./DailyReportModal'), { ssr: false });
 
 interface MetricCard {
   title: string;
@@ -69,6 +70,7 @@ function useCounter(targetValue: number, duration: number = 1000) {
 
 export default function OverviewSection({ businessProfile, businessUser }: { businessProfile: any; businessUser: any }) {
   const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [recentActivities, setRecentActivities] = useState<ActivityLog[]>([]);
   const [aiPredictions, setAiPredictions] = useState<AIPrediction | null>(null);
   const [aiRecommendations, setAiRecommendations] = useState<any>(null); // 🤖 GERÇEK AI ÖNERİLERİ
@@ -403,7 +405,7 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
 
   return (
     <div className="space-y-6">
-      {/* Real-Time Status Banner */}
+      {/* Real-Time Status Banner + Rapor Butonu */}
       <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl p-4 border border-green-400 shadow-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -413,6 +415,15 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
               <p className="text-green-100 text-sm">Tüm metrikler 5 saniyede bir otomatik güncellenir</p>
             </div>
           </div>
+          
+          {/* Günlük Rapor Butonu */}
+          <button
+            onClick={() => setShowReportModal(true)}
+            className="px-4 py-2 bg-white text-green-700 rounded-lg hover:bg-green-50 transition-colors flex items-center gap-2 font-medium shadow-lg"
+          >
+            <FileText className="w-5 h-5" />
+            <span className="hidden sm:inline">Günlük Rapor</span>
+          </button>
         </div>
       </div>
 
@@ -1122,6 +1133,14 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
           </button>
         )}
       </div>
+
+      {/* Günlük Rapor Modal */}
+      {showReportModal && businessUser && (
+        <DailyReportModal
+          businessUserId={businessUser.id}
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
     </div>
   );
 }
