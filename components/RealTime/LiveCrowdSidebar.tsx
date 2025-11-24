@@ -147,19 +147,30 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
 
   // Location stats ve Business IoT data yükle
   useEffect(() => {
-    if (isOpen && locations && locations.length > 0) {
+    console.log('🔥 SIDEBAR USEEFFECT - İŞLETME VERİLERİ:', {
+      isOpen,
+      hasLocations: !!locations,
+      locationsLength: locations?.length
+    });
+    
+    if (isOpen) {
+      console.log('✅ Sidebar açık - Business IoT verileri yüklenecek');
       loadLocationStats();
-      loadBusinessIoTData(); // ✅ Business IoT verilerini yükle
+      loadBusinessIoTData(); // ✅ Business IoT verilerini yükle - SIDEBAR AÇIKKEN HER ZAMAN ÇAĞIR
       
       // Her 2 dakikada bir stats'i güncelle (performance için)
       const statsInterval = setInterval(() => {
+        console.log('🔄 Periyodik güncelleme - Business IoT verileri yenileniyor');
         loadLocationStats();
         loadBusinessIoTData();
       }, 120000);
       
-      return () => clearInterval(statsInterval);
+      return () => {
+        console.log('🧹 Sidebar kapatıldı - interval temizleniyor');
+        clearInterval(statsInterval);
+      };
     }
-  }, [isOpen, locations?.length]); // Only depend on length, not full array
+  }, [isOpen]); // SADECE isOpen'a bağlı - locations dependency kaldırıldı
 
   // Consolidated useEffect to prevent infinite loops - REMOVED DUPLICATE
   const handleToggle = onToggle || (() => setInternalIsOpen(!internalIsOpen));
