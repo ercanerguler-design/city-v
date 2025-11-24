@@ -54,10 +54,17 @@ export default function ESP32CameraStream({
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const blobUrlsRef = useRef<Set<string>>(new Set());
   const lastBlobUrlRef = useRef<string | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isComponentMountedRef = useRef<boolean>(true);
 
   // TensorFlow model yükle
   useEffect(() => {
     loadModel();
+    
+    return () => {
+      isComponentMountedRef.current = false;
+    };
   }, []);
 
   const loadModel = async () => {
@@ -96,9 +103,17 @@ export default function ESP32CameraStream({
     const ctx = canvas.getContext('2d');
 
     img.onload = () => {
+      if (!isComponentMountedRef.current) return;
+      
       console.log('✅ Stream bağlantısı başarılı');
       setIsStreaming(true);
       setError('');
+      
+      // Stream timeout'u temizle
+      if (streamTimeoutRef.current) {
+        clearTimeout(streamTimeoutRef.current);
+        streamTimeoutRef.current = null;
+      }
       
       // Canvas ve video boyutlarını ayarla
       canvas.width = img.naturalWidth || 640;
@@ -108,12 +123,17 @@ export default function ESP32CameraStream({
 
       // Image'i canvas'a sürekli çiz ve video'ya aktar
       const updateFrame = () => {
+        if (!isComponentMountedRef.current) {
+          if (animationId) cancelAnimationFrame(animationId);
+          return;
+        }
+        
         if (ctx && img.complete) {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           
           // Canvas'ı video'ya aktar (memory leak önleme)
           canvas.toBlob((blob) => {
-            if (blob) {
+            if (blob && isComponentMountedRef.current) {
               // Eski blob URL'i temizle
               if (lastBlobUrlRef.current) {
                 URL.revokeObjectURL(lastBlobUrlRef.current);
@@ -128,6 +148,7 @@ export default function ESP32CameraStream({
           });
         }
         animationId = requestAnimationFrame(updateFrame);
+        animationFrameRef.current = animationId;
       };
       
       updateFrame();
@@ -135,13 +156,19 @@ export default function ESP32CameraStream({
     };
 
     img.onerror = (event) => {
+      if (!isComponentMountedRef.current) return;
+      
       console.error(`❌ Stream hatası:`, event);
       
       // Proxy endpoint'ine test çağrısı yap
       fetch(streamUrl)
         .then(response => {
+          if (!isComponentMountedRef.current) return;
+          
           if (!response.ok) {
             return response.json().then(errorData => {
+              if (!isComponentMountedRef.current) return;
+              
               console.error('❌ Proxy hatası:', errorData);
               
               // Specific error messages
@@ -162,6 +189,7 @@ export default function ESP32CameraStream({
           }
         })
         .catch(fetchError => {
+          if (!isComponentMountedRef.current) return;
           console.error('❌ Proxy fetch hatası:', fetchError);
           setError(`Kameraya bağlanılamadı: ${cameraName} (${cameraIp})`);
         });
@@ -169,12 +197,35 @@ export default function ESP32CameraStream({
       setIsStreaming(false);
     };
 
+    // Stream timeout kontrolü - 30 saniye
+    streamTimeoutRef.current = setTimeout(() => {
+      if (isComponentMountedRef.current && !isStreaming) {
+        setError(`Kamera yanıt vermiyor: ${cameraName} (${cameraIp})`);
+        setIsStreaming(false);
+      }
+    }, 30000);
+
     img.src = streamUrl;
 
     return () => {
       console.log('🧹 Cleanup: Stream durduruldu');
+      isComponentMountedRef.current = false;
       setIsStreaming(false);
-      cancelAnimationFrame(animationId);
+      
+      // AnimationFrame'i durdur
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+      
+      // Timeout'ları temizle
+      if (streamTimeoutRef.current) {
+        clearTimeout(streamTimeoutRef.current);
+        streamTimeoutRef.current = null;
+      }
       
       // Blob URL'leri temizle (memory leak önleme)
       blobUrlsRef.current.forEach(url => {
@@ -197,10 +248,10 @@ export default function ESP32CameraStream({
   }, [model, cameraIp]);
 
   const startDetection = () => {
-    if (!model || !videoRef.current || !canvasRef.current) return;
+    if (!model || !videoRef.current || !canvasRef.current || !isComponentMountedRef.current) return;
 
     const detectFrame = async () => {
-      if (!isStreaming || !model || !videoRef.current || !canvasRef.current) return;
+      if (!isComponentMountedRef.current || !isStreaming || !model || !videoRef.current || !canvasRef.current) return;
 
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -287,12 +338,12 @@ export default function ESP32CameraStream({
         setAnalytics(newAnalytics);
         previousPeopleCountRef.current = currentCount;
 
-        if (onAnalyticsUpdate) {
+        if (onAnalyticsUpdate && isComponentMountedRef.current) {
           onAnalyticsUpdate(newAnalytics);
         }
 
         // Veritabanına kaydet (her 5 saniyede bir)
-        if (frameCountRef.current % (fps * 5) === 0) {
+        if (isComponentMountedRef.current && fps > 0 && frameCountRef.current % (fps * 5) === 0) {
           saveAnalytics(newAnalytics);
         }
 
@@ -330,6 +381,8 @@ export default function ESP32CameraStream({
         });
 
       } catch (detectionErr: any) {
+        if (!isComponentMountedRef.current) return;
+        
         console.error('❌ AI Detection hatası:', detectionErr);
         
         // Detection hatası varsa stream'i durdurmayı önle
@@ -337,15 +390,21 @@ export default function ESP32CameraStream({
           console.log('🔄 Video frame henüz hazır değil, bekleniyor...');
         } else if (detectionErr.message?.includes('disposed')) {
           console.log('🔄 Model dispose edilmiş, yeniden yükleniyor...');
-          setError('AI modeli yeniden yükleniyor...');
-          loadModel();
+          if (isComponentMountedRef.current) {
+            setError('AI modeli yeniden yükleniyor...');
+            loadModel();
+          }
         } else {
           // Ciddi hata - error göster ama stream'i sürdür
-          setError(`AI Analiz Hatası: ${detectionErr.message}`);
+          if (isComponentMountedRef.current) {
+            setError(`AI Analiz Hatası: ${detectionErr.message}`);
+          }
         }
       }
 
-      requestAnimationFrame(detectFrame);
+      if (isComponentMountedRef.current) {
+        requestAnimationFrame(detectFrame);
+      }
     };
 
     detectFrame();
