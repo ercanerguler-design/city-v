@@ -21,10 +21,10 @@ export async function GET(req: NextRequest) {
 
     console.log('🤖 TensorFlow detections for business:', businessUserId, 'Range:', timeRange);
 
-    // Time interval
-    let interval = '24 hours';
-    if (timeRange === '7d') interval = '7 days';
-    else if (timeRange === '30d') interval = '30 days';
+    // Time condition based on range
+    let timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'";
+    if (timeRange === '7d') timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '7 days'";
+    else if (timeRange === '30d') timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '30 days'";
 
     // ✅ ESP32 FIRMWARE: iot_crowd_analysis.detection_objects JSONB içinde TensorFlow/COCO verileri
     // 1. Son deteksiyonlar (object_class, confidence, bbox)
@@ -43,7 +43,6 @@ export async function GET(req: NextRequest) {
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
         AND bc.is_active = true
-        AND ca.analysis_timestamp >= NOW() - INTERVAL ${interval}
         AND ca.detection_objects IS NOT NULL
       ORDER BY ca.analysis_timestamp DESC
       LIMIT 100
@@ -59,7 +58,7 @@ export async function GET(req: NextRequest) {
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
         AND bc.is_active = true
-        AND ca.analysis_timestamp >= NOW() - INTERVAL ${interval}
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'
         AND ca.detection_objects IS NOT NULL
       GROUP BY jsonb_object_keys(ca.detection_objects)
       ORDER BY detection_count DESC
@@ -78,7 +77,7 @@ export async function GET(req: NextRequest) {
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
         AND bc.is_active = true
-        AND ca.analysis_timestamp >= NOW() - INTERVAL ${interval}
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'
       GROUP BY bc.camera_name, bc.location_description
       ORDER BY total_detections DESC
     `;
@@ -94,7 +93,7 @@ export async function GET(req: NextRequest) {
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
         AND bc.is_active = true
-        AND ca.analysis_timestamp >= NOW() - INTERVAL ${interval}
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'
       GROUP BY EXTRACT(HOUR FROM ca.analysis_timestamp AT TIME ZONE 'Europe/Istanbul')
       ORDER BY hour
     `;
@@ -109,7 +108,7 @@ export async function GET(req: NextRequest) {
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
         AND bc.is_active = true
-        AND ca.analysis_timestamp >= NOW() - INTERVAL ${interval}
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'
       GROUP BY ca.crowd_density
       ORDER BY count DESC
     `;
