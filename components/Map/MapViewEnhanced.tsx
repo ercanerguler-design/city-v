@@ -7,6 +7,7 @@ import { Location, CrowdLevel } from '@/types';
 import { useEffect, useState, useRef } from 'react';
 import MarkerClusterGroup from 'react-leaflet-markercluster';
 import { useMapStore } from '@/lib/stores/mapStore';
+import { useAuthStore } from '@/store/authStore';
 import { 
   createCustomMarker, 
   createUserLocationIcon,
@@ -161,6 +162,8 @@ export default function MapView({ locations, center, zoom, onLocationClick, user
     setViewMode,
     setHeatmapIntensity
   } = useMapStore();
+  
+  const { user } = useAuthStore(); // ✅ FIX: Auth kontrolü için
   
   const [showHeatmapControls, setShowHeatmapControls] = useState(false);
 
@@ -663,11 +666,19 @@ function LocationPopupContent({ location, distance, onLocationClick }: { locatio
               <button
                 key={mood.sentiment}
                 onClick={async () => {
+                  // ✅ FIX: Kullanıcı giriş kontrolü
+                  if (!user) {
+                    toast.error('Duygu bildirimi yapmak için giriş yapmalısınız');
+                    console.log('❌ User not logged in');
+                    return;
+                  }
+
                   console.log('😊 Duygu bildirimi tıklandı:', {
                     locationId: location.id,
                     locationName: location.name,
                     sentiment: mood.sentiment,
-                    emoji: mood.emoji
+                    emoji: mood.emoji,
+                    user: { id: user.id, email: user.email }
                   });
                   
                   try {

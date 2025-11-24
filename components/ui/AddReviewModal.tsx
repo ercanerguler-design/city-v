@@ -42,10 +42,20 @@ export default function AddReviewModal({ isOpen, onClose, locationId, locationNa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // ✅ FIX: Kullanıcı giriş kontrolü
+    if (!user) {
+      toast.error('Yorum yapmak için giriş yapmalısınız');
+      console.log('❌ User not logged in');
+      return;
+    }
+
     if (!sentiment && !priceRating && !comment && rating === 0) {
       toast.error('Lütfen en az bir değerlendirme yapın');
       return;
     }
+
+    console.log('👤 Current user:', { id: user.id, email: user.email, name: user.name });
+    console.log('📍 Location:', { locationId, locationName });
 
     setLoading(true);
 
