@@ -1211,7 +1211,6 @@ export default function AnalyticsSection({ businessProfile }: { businessProfile:
                         </motion.div>
                       );
                     })
-                  )
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-gray-500">Henüz detection verisi yok</p>
