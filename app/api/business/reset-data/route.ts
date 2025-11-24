@@ -1,6 +1,20 @@
 import { sql } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
 
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+/**
+ * OPTIONS endpoint - Handle CORS preflight
+ */
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 /**
  * DELETE endpoint - Reset business IoT data
  * Only for testing - removes all IoT analysis data for a business
@@ -13,7 +27,7 @@ export async function DELETE(request: Request) {
     if (!businessUserId) {
       return NextResponse.json(
         { error: 'Business User ID gerekli' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -45,13 +59,13 @@ export async function DELETE(request: Request) {
         iotRecords: iotResult.rowCount,
         summaries: summaryResult.rowCount
       }
-    });
+    }, { headers: corsHeaders });
 
   } catch (error: any) {
     console.error('❌ Reset error:', error);
     return NextResponse.json(
       { error: 'Reset failed', details: error.message },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
