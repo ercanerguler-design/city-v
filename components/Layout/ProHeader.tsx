@@ -69,11 +69,16 @@ export default function ProHeader({
   useEffect(() => {
     const loadActiveCampaigns = async () => {
       try {
-        console.log('🔄 Kampanyalar yükleniyor...');
+        console.log('🔄 [CAMPAIGN CHECK]', new Date().toLocaleTimeString());
         const response = await fetch('/api/campaigns/active');
         const data = await response.json();
         
-        console.log('📊 Kampanya yanıtı:', data);
+        console.log('📊 Kampanya yanıtı:', {
+          success: data.success,
+          count: data.campaigns?.length || 0,
+          campaigns: data.campaigns,
+          lastShownId: lastShownCampaignId
+        });
         
         if (data.success && data.campaigns.length > 0) {
           setCampaignNotifications(data.campaigns);

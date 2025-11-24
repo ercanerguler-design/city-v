@@ -149,6 +149,7 @@ export async function POST(request: Request) {
     }
     
     // Business notifications tablosuna kaydet
+    // ✅ FIX: business_id = business_profiles.id (businessId parametresi zaten profile ID)
     await sql`
       INSERT INTO push_notifications (
         business_id, campaign_id, title, message, notification_type, sent_at
@@ -158,6 +159,12 @@ export async function POST(request: Request) {
         ${notificationMessage}, 'campaign', NOW()
       )
     `;
+    
+    console.log('✅ Push notification kaydedildi:', {
+      businessId,
+      campaignId: campaign.id,
+      title: notificationTitle
+    });
 
     // 3. Kampanya istatistiklerini güncelle
     await sql`

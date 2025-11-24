@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     console.log('📢 Active campaigns API çağrıldı');
 
     // push_notifications tablosundan son 24 saatteki kampanyaları çek
+    // ✅ FIX: pn.business_id = business_profiles.id (doğru join)
     const result = await query(
       `SELECT 
         pn.id as notification_id,
@@ -44,6 +45,15 @@ export async function GET(request: NextRequest) {
     );
 
     console.log(`✅ ${result.rows.length} aktif kampanya bulundu`);
+    
+    if (result.rows.length > 0) {
+      console.log('📊 İlk kampanya:', {
+        id: result.rows[0].campaign_id,
+        title: result.rows[0].title,
+        businessName: result.rows[0].business_name,
+        sentAt: result.rows[0].created_at
+      });
+    }
 
     const campaigns = result.rows.map(row => ({
       id: row.campaign_id,
