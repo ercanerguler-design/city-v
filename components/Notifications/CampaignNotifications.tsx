@@ -43,18 +43,68 @@ export default function CampaignNotifications() {
 
   const markAsRead = async (notificationId: number) => {
     try {
-      await fetch('/api/notifications/read', {
+      const response = await fetch('/api/notifications/read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notificationId })
       });
       
-      setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      if (response.ok) {
+        setNotifications(prev =>
+          prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
     } catch (error) {
       console.error('Bildirim işaretlenemedi:', error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch('/api/notifications/read', {
+        method: 'PUT'
+      });
+      
+      if (response.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error('Tüm bildirimler işaretlenemedi:', error);
+    }
+  };
+
+  const clearReadNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications/read', {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        setNotifications(prev => prev.filter(n => !n.read));
+      }
+    } catch (error) {
+      console.error('Bildirimler temizlenemedi:', error);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    if (!confirm('Tüm bildirimleri silmek istediğinize emin misiniz?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/notifications/read?all=true', {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        setNotifications([]);
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error('Tüm bildirimler silinemedi:', error);
     }
   };
 
@@ -87,22 +137,52 @@ export default function CampaignNotifications() {
       {/* Notification Panel */}
       {showPanel && (
         <div className="absolute right-0 top-16 w-96 max-h-[600px] bg-gradient-to-br from-slate-900/95 to-blue-900/95 backdrop-blur-2xl rounded-2xl border border-white/20 shadow-2xl overflow-hidden z-50">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            <h3 className="text-white font-bold text-lg flex items-center gap-2">
-              <Bell className="w-5 h-5 text-purple-400" />
-              Bildirimler
-              {unreadCount > 0 && (
-                <span className="px-2 py-1 rounded-full bg-red-500/20 text-red-300 text-xs">
-                  {unreadCount} yeni
-                </span>
-              )}
-            </h3>
-            <button
-              onClick={() => setShowPanel(false)}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-white" />
-            </button>
+          <div className="p-4 border-b border-white/10">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                <Bell className="w-5 h-5 text-purple-400" />
+                Bildirimler
+                {unreadCount > 0 && (
+                  <span className="px-2 py-1 rounded-full bg-red-500/20 text-red-300 text-xs">
+                    {unreadCount} yeni
+                  </span>
+                )}
+              </h3>
+              <button
+                onClick={() => setShowPanel(false)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+            
+            {/* Aksiyon Butonları */}
+            {notifications.length > 0 && (
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="flex-1 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    ✓ Tümünü Okundu İşaretle
+                  </button>
+                )}
+                {notifications.some(n => n.read) && (
+                  <button
+                    onClick={clearReadNotifications}
+                    className="flex-1 px-3 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 text-yellow-300 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    🗑️ Okunmuşları Temizle
+                  </button>
+                )}
+                <button
+                  onClick={clearAllNotifications}
+                  className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 rounded-lg text-xs font-medium transition-colors"
+                >
+                  ✕ Tümünü Sil
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="overflow-y-auto max-h-[500px]">

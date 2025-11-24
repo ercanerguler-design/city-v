@@ -13,7 +13,7 @@ export async function GET() {
         pn.message,
         pn.notification_type as type,
         pn.sent_at as "createdAt",
-        false as read,
+        COALESCE(pn.is_read, false) as read,
         bp.business_name as "businessName",
         bc.discount_percent,
         bc.discount_amount
