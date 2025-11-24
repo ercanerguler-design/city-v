@@ -28,66 +28,69 @@ export async function GET(req: NextRequest) {
     );
     console.log('  📹 Business cameras:', debugCameras.rows[0]?.total || 0);
 
-    // Debug: iot_ai_analysis sayısı (son 10 dakika)
+    // Debug: iot_crowd_analysis sayısı (son 10 dakika)
+    // ✅ ESP32 firmware kullanıyor: device_id VARCHAR olarak business_cameras.id ile eşleşiyor
     const debugAnalysis = await query(
-      `SELECT COUNT(*) as total, MAX(created_at) as last_ts 
-       FROM iot_ai_analysis 
-       WHERE camera_id IN (SELECT id FROM business_cameras WHERE business_user_id = $1)
-         AND created_at >= NOW() - INTERVAL '10 minutes'`,
+      `SELECT COUNT(*) as total, MAX(ca.analysis_timestamp) as last_ts 
+       FROM business_cameras bc
+       LEFT JOIN iot_crowd_analysis ca ON CAST(bc.id AS VARCHAR) = ca.device_id
+       WHERE bc.business_user_id = $1
+         AND bc.is_active = true
+         AND ca.analysis_timestamp >= NOW() - INTERVAL '10 minutes'`,
       [businessUserId]
     );
     console.log('  📊 Recent analysis:', debugAnalysis.rows[0]?.total || 0, 'Last:', debugAnalysis.rows[0]?.last_ts);
 
-    // ✅ TAMAMEN YENİDEN YAZILMIŞ QUERY - HATA GİDERİLMİŞ
-    // Son 10 dakikadaki real-time analytics (crowd_density string hatası çözüldü)
+    // ✅ iot_crowd_analysis TABLOSU KULLANILIYOR
+    // Son 10 dakikadaki real-time analytics
     const realtimeResult = await query(
       `SELECT 
         bc.id as camera_id,
         bc.camera_name,
         bc.last_seen as camera_last_seen,
         bc.is_active as camera_is_active,
-        COALESCE(ica.person_count, 0) as people_count,
-        COALESCE(bc.current_occupancy, 0) as current_occupancy,
+        COALESCE(ca.people_count, 0) as people_count,
+        COALESCE(ca.current_occupancy, 0) as current_occupancy,
         COALESCE(bc.total_entries, 0) as entries_count,
         COALESCE(bc.total_exits, 0) as exits_count,
-        -- String to numeric conversion for crowd_density
+        -- crowd_density string to numeric
         CASE 
-          WHEN ica.crowd_density::text = 'high' THEN 15.0
-          WHEN ica.crowd_density::text = 'medium' THEN 8.0
-          WHEN ica.crowd_density::text = 'low' THEN 3.0
+          WHEN ca.crowd_density = 'high' THEN 15.0
+          WHEN ca.crowd_density = 'medium' THEN 8.0
+          WHEN ca.crowd_density = 'low' THEN 3.0
           ELSE 0.0
         END as crowd_density_numeric,
-        ica.crowd_density as density_level_text,
-        95 as confidence_score,
-        ica.created_at as timestamp,
+        ca.crowd_density as density_level_text,
+        COALESCE(ca.confidence_score, 95) as confidence_score,
+        ca.analysis_timestamp as timestamp,
         CASE 
           WHEN bc.last_seen >= NOW() - INTERVAL '5 minutes' THEN true
           ELSE false
         END as is_online
        FROM business_cameras bc
-       LEFT JOIN iot_ai_analysis ica ON ica.camera_id = bc.id
+       LEFT JOIN iot_crowd_analysis ca ON CAST(bc.id AS VARCHAR) = ca.device_id
        WHERE bc.business_user_id = $1
          AND bc.is_active = true
-         AND ica.created_at >= NOW() - INTERVAL '10 minutes'
-       ORDER BY ica.created_at DESC`,
+         AND ca.analysis_timestamp >= NOW() - INTERVAL '10 minutes'
+       ORDER BY ca.analysis_timestamp DESC`,
       [businessUserId]
     );
 
-    // Bugünkü toplam istatistikler (hata giderilmiş)
+    // Bugünkü toplam istatistikler
     const dailyResult = await query(
       `SELECT 
-        COUNT(DISTINCT bc.id) FILTER (WHERE ica.created_at >= NOW() - INTERVAL '10 minutes') as active_cameras,
-        SUM(COALESCE(ica.person_count, 0)) as total_people,
+        COUNT(DISTINCT bc.id) FILTER (WHERE ca.analysis_timestamp >= NOW() - INTERVAL '10 minutes') as active_cameras,
+        SUM(COALESCE(ca.people_count, 0)) as total_people,
         SUM(COALESCE(bc.total_entries, 0)) as total_entries,
         SUM(COALESCE(bc.total_exits, 0)) as total_exits,
-        AVG(COALESCE(bc.current_occupancy, 0)) as avg_occupancy,
-        MAX(COALESCE(bc.current_occupancy, 0)) as peak_occupancy,
-        MAX(ica.created_at) as last_update
+        AVG(COALESCE(ca.current_occupancy, 0)) as avg_occupancy,
+        MAX(COALESCE(ca.current_occupancy, 0)) as peak_occupancy,
+        MAX(ca.analysis_timestamp) as last_update
        FROM business_cameras bc
-       LEFT JOIN iot_ai_analysis ica ON ica.camera_id = bc.id
+       LEFT JOIN iot_crowd_analysis ca ON CAST(bc.id AS VARCHAR) = ca.device_id
        WHERE bc.business_user_id = $1
          AND bc.is_active = true
-         AND DATE(ica.created_at) = CURRENT_DATE`,
+         AND DATE(ca.analysis_timestamp) = CURRENT_DATE`,
       [businessUserId]
     );
 

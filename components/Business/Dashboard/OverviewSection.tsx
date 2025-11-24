@@ -447,11 +447,10 @@ export default function OverviewSection({ businessProfile, businessUser }: { bus
         })}
       </div>
 
-      {/* Real-Time Data Manager - Ngrok Support */}
+      {/* Real-Time Data Manager */}
       {businessProfile?.user_id && (
         <RealTimeDataManager 
           businessId={businessProfile.user_id.toString()}
-          ngrokEnabled={true}
           onDataUpdate={(data) => {
             console.log('📊 Real-time data updated:', data);
             // Metrics'i real-time data ile güncelle
