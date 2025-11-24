@@ -152,12 +152,6 @@ export default function BusinessLoginPage() {
             )}
           </motion.button>
         </form>
-
-        <div className="mt-8 text-center">
-          <p className="text-slate-400 text-sm">
-            Test hesabı: atmbankde@gmail.com / test123
-          </p>
-        </div>
       </motion.div>
     </div>
   );

@@ -124,18 +124,38 @@ export function getWorkingHoursText(location: any): string {
       return '7/24 Açık';
     }
 
-    const currentDay = getCurrentDayName();
+    // ✅ FIX: Türkçe gün isimlerini İngilizce key'lere çevir
+    const dayMap: { [key: string]: string } = {
+      'Pazar': 'sunday',
+      'Pazartesi': 'monday',
+      'Salı': 'tuesday',
+      'Çarşamba': 'wednesday',
+      'Perşembe': 'thursday',
+      'Cuma': 'friday',
+      'Cumartesi': 'saturday'
+    };
+    
+    const currentDayTurkish = getCurrentDayName();
+    const currentDayEnglish = dayMap[currentDayTurkish] || 'monday';
     
     // Günlük çalışma saatlerini kontrol et
-    if (hours[currentDay]) {
-      const dayHours = hours[currentDay];
+    if (hours[currentDayEnglish]) {
+      const dayHours = hours[currentDayEnglish];
       
-      // Object formatı { isOpen: true, openTime: "09:00", closeTime: "18:00" }
-      if (typeof dayHours === 'object' && dayHours.isOpen !== undefined) {
-        if (!dayHours.isOpen) {
+      // Object formatı - önce open/close kullan (daha güvenilir)
+      if (typeof dayHours === 'object') {
+        // Kapalı mı?
+        if (dayHours.closed === true || dayHours.isOpen === false) {
           return 'Kapalı';
         }
-        return `${dayHours.openTime} - ${dayHours.closeTime}`;
+        
+        // ✅ FIX: Önce open/close, fallback openTime/closeTime
+        const openTime = dayHours.open || dayHours.openTime;
+        const closeTime = dayHours.close || dayHours.closeTime;
+        
+        if (openTime && closeTime) {
+          return `${openTime} - ${closeTime}`;
+        }
       }
       
       // String formatı "09:00-18:00"
