@@ -20,40 +20,40 @@ export async function GET(req: NextRequest) {
 
     console.log('📊 Camera Analytics Summary for user:', businessUserId);
 
-    // Son 5 dakikadaki real-time analytics (iot_ai_analysis tablosundan)
+    // Son 5 dakikadaki real-time analytics (iot_crowd_analysis tablosundan)
+    // ESP32 device_id (VARCHAR) ile business_cameras.id (INTEGER) eşleştirmesi
     const realtimeResult = await query(
       `SELECT 
         bc.id as camera_id,
         bc.camera_name,
-        ia.person_count as people_count,
-        COALESCE((ia.detection_objects->>'current_occupancy')::INTEGER, 0) as current_occupancy,
-        COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0) as entries_count,
-        COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0) as exits_count,
-        ROUND((ia.crowd_density * 100)::numeric, 1) as density_level,
-        ia.created_at as timestamp,
-        ia.detection_objects as zone_data
+        ica.people_count,
+        ica.current_occupancy,
+        ica.entry_count as entries_count,
+        ica.exit_count as exits_count,
+        ica.crowd_density,
+        ica.analysis_timestamp as timestamp
        FROM business_cameras bc
-       LEFT JOIN iot_ai_analysis ia ON ia.camera_id = bc.id
+       LEFT JOIN iot_crowd_analysis ica ON CAST(ica.device_id AS INTEGER) = bc.id
        WHERE bc.business_user_id = $1
-         AND ia.created_at >= NOW() - INTERVAL '5 minutes'
-       ORDER BY ia.created_at DESC`,
+         AND ica.analysis_timestamp >= NOW() - INTERVAL '5 minutes'
+       ORDER BY ica.analysis_timestamp DESC`,
       [businessUserId]
     );
 
-    // Bugünkü toplam istatistikler (iot_ai_analysis tablosundan)
+    // Bugünkü toplam istatistikler (iot_crowd_analysis tablosundan)
     const dailyResult = await query(
       `SELECT 
         COUNT(DISTINCT bc.id) as active_cameras,
-        SUM(COALESCE(ia.person_count, 0)) as total_people,
-        SUM(COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0)) as total_entries,
-        SUM(COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0)) as total_exits,
-        AVG(COALESCE((ia.detection_objects->>'current_occupancy')::INTEGER, 0)) as avg_occupancy,
-        MAX(COALESCE((ia.detection_objects->>'current_occupancy')::INTEGER, 0)) as peak_occupancy,
-        MAX(ia.created_at) as last_update
+        SUM(COALESCE(ica.people_count, 0)) as total_people,
+        SUM(COALESCE(ica.entry_count, 0)) as total_entries,
+        SUM(COALESCE(ica.exit_count, 0)) as total_exits,
+        AVG(COALESCE(ica.current_occupancy, 0)) as avg_occupancy,
+        MAX(COALESCE(ica.current_occupancy, 0)) as peak_occupancy,
+        MAX(ica.analysis_timestamp) as last_update
        FROM business_cameras bc
-       LEFT JOIN iot_ai_analysis ia ON ia.camera_id = bc.id
+       LEFT JOIN iot_crowd_analysis ica ON CAST(ica.device_id AS INTEGER) = bc.id
        WHERE bc.business_user_id = $1
-         AND DATE(ia.created_at) = CURRENT_DATE`,
+         AND DATE(ica.analysis_timestamp) = CURRENT_DATE`,
       [businessUserId]
     );
 
