@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
         ica.crowd_density,
         ica.analysis_timestamp as timestamp
        FROM business_cameras bc
-       LEFT JOIN iot_crowd_analysis ica ON CAST(ica.device_id AS INTEGER) = bc.id
+       LEFT JOIN iot_crowd_analysis ica ON ica.device_id = CAST(bc.id AS VARCHAR)
        WHERE bc.business_user_id = $1
          AND ica.analysis_timestamp >= NOW() - INTERVAL '5 minutes'
        ORDER BY ica.analysis_timestamp DESC`,
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
         MAX(COALESCE(ica.current_occupancy, 0)) as peak_occupancy,
         MAX(ica.analysis_timestamp) as last_update
        FROM business_cameras bc
-       LEFT JOIN iot_crowd_analysis ica ON CAST(ica.device_id AS INTEGER) = bc.id
+       LEFT JOIN iot_crowd_analysis ica ON ica.device_id = CAST(bc.id AS VARCHAR)
        WHERE bc.business_user_id = $1
          AND DATE(ica.analysis_timestamp) = CURRENT_DATE`,
       [businessUserId]

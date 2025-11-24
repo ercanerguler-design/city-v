@@ -245,14 +245,23 @@ void initAISystem() {
 void performUltraFastAI() {
   // Kamera görüntüsü al
   camera_fb_t * fb = esp_camera_fb_get();
-  if (!fb) return;
+  if (!fb) {
+    Serial.println("❌ Kamera frame alınamadı!");
+    return;
+  }
+  
+  Serial.println("📸 Frame alındı: " + String(fb->width) + "x" + String(fb->height) + " (" + String(fb->len) + " bytes)");
   
   // AI analiz - gerçek görüntü işleme
   Blob detectedObjects[20]; 
   int humanCount = detectAdvancedHumans(fb->buf, fb->width, fb->height, detectedObjects, 20);
   
+  Serial.println("🎯 AI Tespit: " + String(humanCount) + " kişi bulundu");
+  
   // Yoğunluk hesapla
   float crowdDensity = calculateCrowdDensity(detectedObjects, humanCount, fb->width, fb->height);
+  
+  Serial.println("📊 Crowd Density: " + String(crowdDensity, 2));
   
   // Gerçek zaman analizi için sürekli güncelle
   if (humanCount > 0) {
