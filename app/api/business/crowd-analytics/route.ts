@@ -32,13 +32,14 @@ export async function GET(request: NextRequest) {
     else if (timeRange === '30days') timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '30 days'";
 
     // 1. Latest crowd analytics from iot_crowd_analysis
+    // ✅ ESP32 FIRMWARE: iot_crowd_analysis tablosu kullanılıyor
     const latestAnalytics = await sql`
       SELECT 
         bc.location_description as zone_name,
         ca.people_count as current_people_count,
-        COALESCE((ia.detection_objects->>'current_occupancy')::INTEGER, 0) as max_capacity,
-        COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0) as entry_count,
-        COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0) as exit_count,
+        COALESCE(ca.current_occupancy, 0) as max_capacity,
+        COALESCE(bc.total_entries, 0) as entry_count,
+        COALESCE(bc.total_exits, 0) as exit_count,
         0 as queue_length,
         0 as avg_wait_time,
         CASE 
@@ -46,9 +47,9 @@ export async function GET(request: NextRequest) {
           WHEN ca.people_count > 8 THEN 'medium'
           ELSE 'low'
         END as crowd_level,
-        ia.crowd_density,
+        ca.crowd_density,
         ca.analysis_timestamp as timestamp
-      FROM iot_crowd_analysis ia
+      FROM iot_crowd_analysis ca
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
         AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
           ELSE 3
         END as avg_density,
         COUNT(*) as data_points
-      FROM iot_crowd_analysis ia
+      FROM iot_crowd_analysis ca
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
         AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'
@@ -80,11 +81,11 @@ export async function GET(request: NextRequest) {
     // 3. Entry/Exit totals
     const entryExitStats = await sql`
       SELECT 
-        SUM(COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0)) as total_entries,
-        SUM(COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0)) as total_exits,
-        SUM(COALESCE((ia.detection_objects->>'people_in')::INTEGER, 0)) - 
-        SUM(COALESCE((ia.detection_objects->>'people_out')::INTEGER, 0)) as net_occupancy
-      FROM iot_crowd_analysis ia
+        SUM(COALESCE(bc.total_entries, 0)) as total_entries,
+        SUM(COALESCE(bc.total_exits, 0)) as total_exits,
+        SUM(COALESCE(bc.total_entries, 0)) - 
+        SUM(COALESCE(bc.total_exits, 0)) as net_occupancy
+      FROM iot_crowd_analysis ca
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
         AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'
@@ -95,13 +96,17 @@ export async function GET(request: NextRequest) {
       SELECT 
         EXTRACT(HOUR FROM ca.analysis_timestamp) as hour,
         AVG(ca.people_count) as avg_people,
-        AVG(ia.crowd_density) as avg_density,
+        CASE 
+          WHEN ca.crowd_density = 'high' THEN 15
+          WHEN ca.crowd_density = 'medium' THEN 8
+          ELSE 3
+        END as avg_density,
         CASE 
           WHEN AVG(ca.people_count) > 15 THEN 'high'
           WHEN AVG(ca.people_count) > 8 THEN 'medium'
           ELSE 'low'
         END as max_crowd_level
-      FROM iot_crowd_analysis ia
+      FROM iot_crowd_analysis ca
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
         AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'

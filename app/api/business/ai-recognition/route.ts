@@ -44,35 +44,29 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 AI Recognition query:', { businessId, detectionType, minConfidence, limit });
 
-    // Check for actual data first
-    let whereClause = `business_id = $1 AND confidence_score >= $2`;
-    let params = [businessId, minConfidence];
-    
-    if (detectionType !== 'all') {
-      whereClause += ` AND detection_type = $3`;
-      params.push(detectionType);
-    }
-
+    // ✅ ESP32 FIRMWARE: iot_crowd_analysis tablosu kullanılıyor
+    // Business cameras ile JOIN yaparak ESP32 verilerini al
     const query = `
       SELECT 
-        id,
-        detection_type,
-        object_class,
-        confidence_score,
-        bounding_box,
-        person_id,
-        timestamp,
-        device_id,
-        business_id
-      FROM ai_recognition_logs
-      WHERE ${whereClause}
-      ORDER BY timestamp DESC 
-      LIMIT $${params.length + 1}
+        ca.id,
+        'person' as detection_type,
+        'human' as object_class,
+        COALESCE(ca.confidence_score, 95) as confidence_score,
+        NULL as bounding_box,
+        ca.device_id as person_id,
+        ca.analysis_timestamp as timestamp,
+        ca.device_id,
+        bc.business_user_id as business_id
+      FROM iot_crowd_analysis ca
+      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
+      WHERE bc.business_user_id = $1
+        AND ca.confidence_score >= $2
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'
+      ORDER BY ca.analysis_timestamp DESC 
+      LIMIT $3
     `;
-    
-    params.push(limit.toString());
 
-    const recognitionLogs = await sql(query, params);
+    const recognitionLogs = await sql(query, [businessId, minConfidence, limit]);
 
     // If no real data found, return empty result
     if (recognitionLogs.length === 0) {
