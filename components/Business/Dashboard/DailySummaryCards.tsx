@@ -18,6 +18,16 @@ function LiveAnalyticsSummary({ businessUserId }: { businessUserId: number }) {
     try {
       const response = await fetch(`/api/business/analytics?businessId=${businessUserId}`);
       const data = await response.json();
+      
+      console.log('📊 Live Analytics Data:', {
+        success: data.success,
+        todayVisitors: data.todayVisitors,
+        activeCameras: data.activeCameras,
+        averageOccupancy: data.averageOccupancy,
+        peakHours: data.peakHours,
+        dataPoints: data.hourlyData?.length || 0
+      });
+      
       if (data.success) {
         setLiveData(data);
       }
