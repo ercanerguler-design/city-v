@@ -299,54 +299,21 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // ✅ FIX: Vercel Postgres için Manuel UPDATE (her alan için if/else)
-    let result;
-    
-    // Tek tek alanlara göre UPDATE yap (Vercel Postgres limitation)
-    const field = Object.keys(updates).find(key => allowedFields.includes(key));
-    
-    if (!field) {
-      return NextResponse.json(
-        { error: 'Geçerli alan bulunamadı' },
-        { status: 400 }
-      );
-    }
-
-    // Manuel field mapping (Vercel Postgres sql`` template literal için)
-    if (field === 'title') {
-      result = await sql`UPDATE business_campaigns SET title = ${updates.title}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
-    } else if (field === 'description') {
-      result = await sql`UPDATE business_campaigns SET description = ${updates.description}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
-    } else if (field === 'discount_percent') {
-      result = await sql`UPDATE business_campaigns SET discount_percent = ${updates.discount_percent}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
-    } else if (field === 'discount_amount') {
-      result = await sql`UPDATE business_campaigns SET discount_amount = ${updates.discount_amount}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
-    } else if (field === 'start_date') {
-      result = await sql`UPDATE business_campaigns SET start_date = ${updates.start_date}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
-    } else if (field === 'end_date') {
-      result = await sql`UPDATE business_campaigns SET end_date = ${updates.end_date}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
-    } else if (field === 'target_audience') {
-      result = await sql`UPDATE business_campaigns SET target_audience = ${updates.target_audience}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
-    } else if (field === 'is_active') {
-      result = await sql`UPDATE business_campaigns SET is_active = ${updates.is_active}, updated_at = NOW() WHERE id = ${campaignId} RETURNING *`;
-    } else {
-      // Çoklu alan güncellemesi - tüm alanları birlikte güncelle
-      result = await sql`
-        UPDATE business_campaigns 
-        SET 
-          title = COALESCE(${updates.title || null}, title),
-          description = COALESCE(${updates.description || null}, description),
-          discount_percent = COALESCE(${updates.discount_percent || null}, discount_percent),
-          discount_amount = COALESCE(${updates.discount_amount || null}, discount_amount),
-          start_date = COALESCE(${updates.start_date || null}, start_date),
-          end_date = COALESCE(${updates.end_date || null}, end_date),
-          target_audience = COALESCE(${updates.target_audience || null}, target_audience),
-          is_active = COALESCE(${updates.is_active !== undefined ? updates.is_active : null}, is_active),
-          updated_at = NOW()
-        WHERE id = ${campaignId}
-        RETURNING *
-      `;
-    }
+    // ✅ FIX: Vercel Postgres multi-field UPDATE with COALESCE
+    const result = await sql`
+      UPDATE business_campaigns 
+      SET 
+        title = COALESCE(${updates.title !== undefined ? updates.title : null}, title),
+        description = COALESCE(${updates.description !== undefined ? updates.description : null}, description),
+        discount_percent = COALESCE(${updates.discount_percent !== undefined ? updates.discount_percent : null}, discount_percent),
+        discount_amount = COALESCE(${updates.discount_amount !== undefined ? updates.discount_amount : null}, discount_amount),
+        start_date = COALESCE(${updates.start_date !== undefined ? updates.start_date : null}, start_date),
+        end_date = COALESCE(${updates.end_date !== undefined ? updates.end_date : null}, end_date),
+        target_audience = COALESCE(${updates.target_audience !== undefined ? updates.target_audience : null}, target_audience),
+        is_active = COALESCE(${updates.is_active !== undefined ? updates.is_active : null}, is_active)
+      WHERE id = ${campaignId}
+      RETURNING *
+    `;
 
     console.log('✅ Kampanya güncellendi:', campaignId);
 
