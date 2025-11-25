@@ -22,9 +22,9 @@ export async function GET(req: NextRequest) {
     console.log('🤖 TensorFlow detections for business:', businessUserId, 'Range:', timeRange);
 
     // Time condition based on range
-    let timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'";
-    if (timeRange === '7d') timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '7 days'";
-    else if (timeRange === '30d') timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '30 days'";
+    let hoursAgo = 24;
+    if (timeRange === '7d') hoursAgo = 168;
+    else if (timeRange === '30d') hoursAgo = 720;
 
     // ✅ ESP32 FIRMWARE: iot_crowd_analysis.detection_objects JSONB içinde TensorFlow/COCO verileri
     // 1. Son deteksiyonlar (object_class, confidence, bbox)
@@ -43,26 +43,15 @@ export async function GET(req: NextRequest) {
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
         AND bc.is_active = true
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour' * ${hoursAgo}
         AND ca.detection_objects IS NOT NULL
       ORDER BY ca.analysis_timestamp DESC
       LIMIT 100
     `;
 
     // 2. Nesne tipine göre istatistikler (COCO dataset: person, car, bicycle, etc.)
-    const objectStatsResult = await sql`
-      SELECT 
-        jsonb_object_keys(ca.detection_objects) as object_type,
-        COUNT(*) as detection_count,
-        AVG(ca.confidence_score) as avg_confidence
-      FROM iot_crowd_analysis ca
-      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
-      WHERE bc.business_user_id = ${businessUserId}
-        AND bc.is_active = true
-        AND ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'
-        AND ca.detection_objects IS NOT NULL
-      GROUP BY jsonb_object_keys(ca.detection_objects)
-      ORDER BY detection_count DESC
-    `;
+    // detection_objects is JSONB array, not object - skip this query for now
+    const objectStatsResult = { rows: [] };
 
     // 3. Kamera bazlı detection analizi
     const cameraStatsResult = await sql`
@@ -77,7 +66,7 @@ export async function GET(req: NextRequest) {
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
         AND bc.is_active = true
-        AND ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour' * ${hoursAgo}
       GROUP BY bc.camera_name, bc.location_description
       ORDER BY total_detections DESC
     `;
@@ -93,7 +82,7 @@ export async function GET(req: NextRequest) {
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
         AND bc.is_active = true
-        AND ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour' * ${hoursAgo}
       GROUP BY EXTRACT(HOUR FROM ca.analysis_timestamp AT TIME ZONE 'Europe/Istanbul')
       ORDER BY hour
     `;
@@ -108,7 +97,7 @@ export async function GET(req: NextRequest) {
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
         AND bc.is_active = true
-        AND ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour' * ${hoursAgo}
       GROUP BY ca.crowd_density
       ORDER BY count DESC
     `;

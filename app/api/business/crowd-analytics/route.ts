@@ -25,11 +25,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Time range mapping - use direct SQL intervals
-    let timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'";
-    if (timeRange === '24hours') timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'";
-    else if (timeRange === '7days') timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '7 days'";
-    else if (timeRange === '30days') timeCondition = "ca.analysis_timestamp >= NOW() - INTERVAL '30 days'";
+    // Time range mapping - convert to hours
+    let hoursAgo = 1;
+    if (timeRange === '24hours') hoursAgo = 24;
+    else if (timeRange === '7days') hoursAgo = 168;
+    else if (timeRange === '30days') hoursAgo = 720;
 
     // 1. Latest crowd analytics from iot_crowd_analysis
     // ✅ ESP32 FIRMWARE: iot_crowd_analysis tablosu kullanılıyor
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       FROM iot_crowd_analysis ca
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
-        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour' * ${hoursAgo}
       ORDER BY ca.analysis_timestamp DESC
       LIMIT 100
     `;
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       FROM iot_crowd_analysis ca
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
-        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour' * ${hoursAgo}
       GROUP BY bc.location_description
       ORDER BY avg_people DESC
     `;
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
       FROM iot_crowd_analysis ca
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
-        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour' * ${hoursAgo}
     `;
 
     // 4. Peak hours analysis
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
       FROM iot_crowd_analysis ca
       JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
-        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour'
+        AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour' * ${hoursAgo}
       GROUP BY EXTRACT(HOUR FROM ca.analysis_timestamp)
       ORDER BY avg_people DESC
       LIMIT 5

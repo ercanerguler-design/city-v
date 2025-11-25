@@ -55,7 +55,7 @@ export default function AIDetectionFeed({ businessId, maxItems = 20 }: AIDetecti
   const fetchDetections = async () => {
     try {
       const response = await fetch(
-        `/api/business/ai-recognition?businessId=${businessId}&detectionType=${filter}&limit=${maxItems}`
+        `/api/business/ai-recognition?businessUserId=${businessId}&detectionType=${filter}&limit=${maxItems}`
       );
       const data = await response.json();
 

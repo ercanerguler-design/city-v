@@ -7,42 +7,27 @@ const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
 /**
  * AI Recognition API
- * GET /api/business/ai-recognition?businessId=123&detectionType=person&minConfidence=0.5
+ * GET /api/business/ai-recognition?businessUserId=23&detectionType=person&minConfidence=0.5
  * 
  * Returns AI recognition logs for person/object/face detection
+ * NO JWT - uses businessUserId parameter like other analytics APIs
  */
 export async function GET(request: NextRequest) {
   try {
-    // JWT token authentication
-    const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    let user;
-    
-    try {
-      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
-    const businessId = searchParams.get('businessId');
+    const businessUserId = searchParams.get('businessUserId') || searchParams.get('businessId'); // backward compatible
     const detectionType = searchParams.get('detectionType') || 'all';
     const minConfidence = parseFloat(searchParams.get('minConfidence') || '0.5');
     const limit = parseInt(searchParams.get('limit') || '100');
 
-    if (!businessId) {
+    if (!businessUserId) {
       return NextResponse.json(
-        { error: 'Business ID required' },
+        { error: 'Business User ID required' },
         { status: 400 }
       );
     }
 
-    console.log('🔍 AI Recognition query:', { businessId, detectionType, minConfidence, limit });
+    console.log('🔍 AI Recognition query:', { businessUserId, detectionType, minConfidence, limit });
 
     // ✅ ESP32 FIRMWARE: iot_crowd_analysis tablosu kullanılıyor
     // Business cameras ile JOIN yaparak ESP32 verilerini al
@@ -66,7 +51,7 @@ export async function GET(request: NextRequest) {
       LIMIT $3
     `;
 
-    const recognitionLogs = await sql(query, [businessId, minConfidence, limit]);
+    const recognitionLogs = await sql(query, [businessUserId, minConfidence, limit]);
 
     // If no real data found, return empty result
     if (recognitionLogs.length === 0) {
