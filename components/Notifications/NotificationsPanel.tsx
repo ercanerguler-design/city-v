@@ -26,10 +26,13 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
 
   // Gerçek bildirimleri API'den yükle
   React.useEffect(() => {
+    console.log('🔔 NotificationsPanel isOpen:', isOpen);
     const loadNotifications = async () => {
       try {
+        console.log('📡 Fetching notifications from /api/notifications...');
         const response = await fetch('/api/notifications');
         const data = await response.json();
+        console.log('📊 Notifications API response:', data);
         
         if (data.success && data.notifications) {
           // API'den gelen bildirimleri dönüştür
@@ -42,12 +45,14 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
             read: n.read || false,
             icon: TrendingUp, // Default icon
           }));
+          console.log('✅ Formatted notifications:', formattedNotifications.length);
           setNotifications(formattedNotifications);
         } else {
+          console.log('⚠️ No notifications found');
           setNotifications([]);
         }
       } catch (error) {
-        console.error('Bildirimler yüklenemedi:', error);
+        console.error('❌ Bildirimler yüklenemedi:', error);
         setNotifications([]);
       } finally {
         setLoading(false);

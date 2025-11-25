@@ -48,9 +48,23 @@ export default function ProHeader({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [campaignNotifications, setCampaignNotifications] = useState<any[]>([]);
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
+  // ✅ Store shown campaign IDs per business to allow multiple campaigns
+  const [shownCampaignIds, setShownCampaignIds] = useState<Set<string>>(new Set());
   const [lastShownCampaignId, setLastShownCampaignId] = useState<string | null>(null);
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
   const [currentNotificationCampaign, setCurrentNotificationCampaign] = useState<any>(null);
+
+  // ✅ Listen for campaign creation event to reset shown campaigns
+  useEffect(() => {
+    const handleCampaignCreated = (event: any) => {
+      console.log('🎉 Campaign created event - Resetting shown campaigns');
+      setShownCampaignIds(new Set()); // Clear all shown campaigns
+      setLastShownCampaignId(null);
+    };
+    
+    window.addEventListener('campaignCreated', handleCampaignCreated);
+    return () => window.removeEventListener('campaignCreated', handleCampaignCreated);
+  }, []);
 
   // Chrome Push Notification sistemi
   useEffect(() => {
@@ -83,16 +97,17 @@ export default function ProHeader({
         if (data.success && data.campaigns.length > 0) {
           setCampaignNotifications(data.campaigns);
           
-          // Yeni bir kampanya varsa popup ve Chrome notification göster
+          // ✅ Show ALL unshown campaigns (supports multiple campaigns from different businesses)
           const latestCampaign = data.campaigns[0];
           const campaignId = String(latestCampaign.id || latestCampaign.campaign_id);
           
-          console.log('🎯 Latest campaign ID:', campaignId, 'Last shown:', lastShownCampaignId);
+          console.log('🎯 Latest campaign ID:', campaignId, 'Already shown:', shownCampaignIds.has(campaignId));
           
-          if (campaignId && campaignId !== String(lastShownCampaignId)) {
+          if (campaignId && !shownCampaignIds.has(campaignId)) {
             console.log('🎉 YENİ KAMPANYA TESPİT EDİLDİ! Bildirim gösteriliyor...');
             setShowNotificationPopup(true);
-            setLastShownCampaignId(String(campaignId));
+            setLastShownCampaignId(campaignId);
+            setShownCampaignIds(prev => new Set([...prev, campaignId]));
             setTimeout(() => setShowNotificationPopup(false), 5000);
             
             // Sağdan Kayan Panel
@@ -165,7 +180,7 @@ export default function ProHeader({
       clearInterval(interval);
       window.removeEventListener('campaignCreated', handleCampaignCreated);
     };
-  }, [lastShownCampaignId]);
+  }, [shownCampaignIds]);
 
   // Listen for crowd updates
   const [crowdUpdates, setCrowdUpdates] = useState<Map<string, any>>(new Map());
