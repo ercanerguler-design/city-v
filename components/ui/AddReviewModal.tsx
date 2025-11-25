@@ -36,7 +36,7 @@ export default function AddReviewModal({ isOpen, onClose, locationId, locationNa
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [sentiment, setSentiment] = useState<string | null>(null);
-  const [priceRating, setPriceRating] = useState<number | null>(null);
+  const [priceRating, setPriceRating] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
