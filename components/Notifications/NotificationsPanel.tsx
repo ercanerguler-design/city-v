@@ -24,35 +24,39 @@ export default function NotificationsPanel({ isOpen, onClose }: NotificationsPan
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
   const [loading, setLoading] = React.useState(true);
 
-  // Gerçek bildirimleri API'den yükle
+  // Gerçek bildirimleri API'den yükle (KAMPANYA BİLDİRİMLERİ)
   React.useEffect(() => {
     console.log('🔔 NotificationsPanel isOpen:', isOpen);
     const loadNotifications = async () => {
       try {
-        console.log('📡 Fetching notifications from /api/notifications...');
-        const response = await fetch('/api/notifications');
+        console.log('📡 Fetching campaign notifications from /api/campaigns/active...');
+        const response = await fetch('/api/campaigns/active');
         const data = await response.json();
-        console.log('📊 Notifications API response:', data);
+        console.log('📊 Campaign Notifications API response:', data);
+        console.log(`🎯 ${data.campaigns?.length || 0} aktif kampanya bulundu`);
         
-        if (data.success && data.notifications) {
-          // API'den gelen bildirimleri dönüştür
-          const formattedNotifications: Notification[] = data.notifications.map((n: any) => ({
-            id: n.id?.toString() || Math.random().toString(),
-            type: n.notification_type || n.type || 'premium',
-            title: n.title,
-            message: n.message,
-            timestamp: new Date(n.created_at || n.createdAt),
-            read: n.read || false,
-            icon: TrendingUp, // Default icon
-          }));
-          console.log('✅ Formatted notifications:', formattedNotifications.length);
+        if (data.success && data.campaigns) {
+          // Kampanya bildirimlerini dönüştür - TÜM KAMPANYALARI MAP ET
+          const formattedNotifications: Notification[] = data.campaigns.map((campaign: any, index: number) => {
+            console.log(`📢 Kampanya ${index + 1}:`, campaign.title, '|', campaign.businessName);
+            return {
+              id: campaign.id?.toString() || Math.random().toString(),
+              type: 'premium',
+              title: `${campaign.businessName} - ${campaign.discount_percent || campaign.discount_amount}% İndirim`,
+              message: campaign.description || campaign.title,
+              timestamp: new Date(campaign.startDate || campaign.createdAt),
+              read: false,
+              icon: TrendingUp,
+            };
+          });
+          console.log(`✅ Formatted ${formattedNotifications.length} campaign notifications`);
           setNotifications(formattedNotifications);
         } else {
-          console.log('⚠️ No notifications found');
+          console.log('⚠️ No campaign notifications found');
           setNotifications([]);
         }
       } catch (error) {
-        console.error('❌ Bildirimler yüklenemedi:', error);
+        console.error('❌ Kampanya bildirimleri yüklenemedi:', error);
         setNotifications([]);
       } finally {
         setLoading(false);

@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
       todayData = await sql`
         SELECT 
           ca.device_id,
-          ca.people_count as person_count,
+          LEAST(ROUND(ca.people_count / 10.0), 50) as person_count,
           ca.crowd_density as crowd_level,
           0 as avg_age,
           0 as male_count,
@@ -62,6 +62,7 @@ export async function GET(req: NextRequest) {
         FROM iot_crowd_analysis ca
         JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
         WHERE bc.business_user_id = ${businessUserId}
+          AND bc.deleted_at IS NULL
           AND ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'
         ORDER BY ca.analysis_timestamp DESC
       `;
@@ -76,7 +77,7 @@ export async function GET(req: NextRequest) {
       weekData = await sql`
         SELECT 
           ca.device_id,
-          ca.people_count as person_count,
+          LEAST(ROUND(ca.people_count / 10.0), 50) as person_count,
           ca.crowd_density as crowd_level,
           ca.analysis_timestamp as created_at,
           EXTRACT(HOUR FROM ca.analysis_timestamp AT TIME ZONE 'Europe/Istanbul') as hour,
@@ -84,6 +85,7 @@ export async function GET(req: NextRequest) {
         FROM iot_crowd_analysis ca
         JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
         WHERE bc.business_user_id = ${businessUserId}
+          AND bc.deleted_at IS NULL
           AND ca.analysis_timestamp >= NOW() - INTERVAL '7 days'
         ORDER BY ca.analysis_timestamp DESC
       `;

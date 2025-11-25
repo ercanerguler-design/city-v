@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
          AND bc.end_date >= NOW()
          AND pn.sent_at >= NOW() - INTERVAL '48 hours'
        ORDER BY pn.sent_at DESC
-       LIMIT 10`
+       LIMIT 50`
     );
 
     console.log(`✅ ${result.rows.length} aktif kampanya bulundu`);

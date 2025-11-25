@@ -101,7 +101,9 @@ export async function POST(request: Request) {
 
     console.log('✅ Yeterli kredi var, kampanya oluşturuluyor...');
 
-    // 2. Kampanya oluştur
+    // 2. Kampanya oluştur (36 saat süreli - end_date yoksa otomatik ekle)
+    const calculatedEndDate = endDate || new Date(new Date(startDate).getTime() + 36 * 60 * 60 * 1000).toISOString();
+    
     const result = await sql`
       INSERT INTO business_campaigns (
         business_id, title, description, discount_percent, discount_amount,
@@ -109,12 +111,13 @@ export async function POST(request: Request) {
       )
       VALUES (
         ${businessId}, ${title}, ${description}, ${discountPercent || null}, ${discountAmount || null},
-        ${startDate}, ${endDate}, ${targetAudience}, true
+        ${startDate}, ${calculatedEndDate}, ${targetAudience}, true
       )
       RETURNING *
     `;
 
     const campaign = result.rows[0];
+    console.log(`✅ Kampanya oluşturuldu: ${startDate} - ${calculatedEndDate} (36 saat)`);
 
     // Push notification oluştur
     const notificationTitle = `🎉 Yeni Kampanya: ${title}`;

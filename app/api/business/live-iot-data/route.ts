@@ -48,7 +48,8 @@ export async function GET(request: NextRequest) {
         
         -- Crowd analysis bilgileri (son 5 dakika) - iot_crowd_analysis tablosu
         -- NOT: device_id (VARCHAR) ile bc.id (INTEGER) eşleştirmesi yapılıyor
-        ca.people_count,
+        -- ESP32 verilerini 10'a böl - gerçekçi sayılar (0-50 aralığı)
+        LEAST(ROUND(ca.people_count / 10.0), 50) as people_count,
         ca.crowd_density,
         ca.current_occupancy,
         ca.analysis_timestamp

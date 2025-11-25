@@ -49,8 +49,9 @@ export async function GET(req: NextRequest) {
         bc.camera_name,
         bc.last_seen as camera_last_seen,
         bc.is_active as camera_is_active,
-        COALESCE(ca.people_count, 0) as people_count,
-        COALESCE(ca.current_occupancy, 0) as current_occupancy,
+        -- ESP32 verilerini normalize et (gerçekçi sayılar)
+        LEAST(ROUND(COALESCE(ca.people_count, 0) / 10.0), 50) as people_count,
+        LEAST(ROUND(COALESCE(ca.current_occupancy, 0) / 10.0), 50) as current_occupancy,
         COALESCE(bc.total_entries, 0) as entries_count,
         COALESCE(bc.total_exits, 0) as exits_count,
         -- crowd_density string to numeric
@@ -80,11 +81,12 @@ export async function GET(req: NextRequest) {
     const dailyResult = await query(
       `SELECT 
         COUNT(DISTINCT bc.id) FILTER (WHERE ca.analysis_timestamp >= NOW() - INTERVAL '10 minutes') as active_cameras,
-        SUM(COALESCE(ca.people_count, 0)) as total_people,
+        -- ESP32 verilerini normalize et
+        LEAST(ROUND(SUM(COALESCE(ca.people_count, 0)) / 10.0), 200) as total_people,
         SUM(COALESCE(bc.total_entries, 0)) as total_entries,
         SUM(COALESCE(bc.total_exits, 0)) as total_exits,
-        AVG(COALESCE(ca.current_occupancy, 0)) as avg_occupancy,
-        MAX(COALESCE(ca.current_occupancy, 0)) as peak_occupancy,
+        LEAST(ROUND(AVG(COALESCE(ca.current_occupancy, 0)) / 10.0), 50) as avg_occupancy,
+        LEAST(ROUND(MAX(COALESCE(ca.current_occupancy, 0)) / 10.0), 50) as peak_occupancy,
         MAX(ca.analysis_timestamp) as last_update
        FROM business_cameras bc
        LEFT JOIN iot_crowd_analysis ca ON CAST(bc.id AS VARCHAR) = ca.device_id

@@ -481,26 +481,28 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // HARD DELETE - Kalıcı olarak sil ki aynı IP tekrar eklenebilsin
+    // SOFT DELETE - Veritabanında tut ama dashboard'da gösterme (raporlar için tarihsel veri)
     const result = await sql`
-      DELETE FROM business_cameras 
+      UPDATE business_cameras 
+      SET deleted_at = NOW()
       WHERE id = ${id} 
         AND business_user_id = ${user.userId}
+        AND deleted_at IS NULL
       RETURNING camera_name
     `;
 
     if (result.length === 0) {
       return NextResponse.json(
-        { error: 'Kamera bulunamadı veya yetkiniz yok' },
+        { error: 'Kamera bulunamadı veya zaten silinmiş' },
         { status: 404 }
       );
     }
 
-    console.log(`✅ Kamera kalıcı olarak silindi: ${result[0].camera_name}`);
+    console.log(`✅ Kamera soft delete yapıldı (tarihsel veriler korundu): ${result[0].camera_name}`);
 
     return NextResponse.json({
       success: true,
-      message: 'Kamera başarıyla silindi'
+      message: 'Kamera başarıyla silindi. Tarihsel veriler raporlarda görünmeye devam edecek.'
     });
 
   } catch (error: any) {

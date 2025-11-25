@@ -22,12 +22,13 @@ export async function GET(request: NextRequest) {
 
     // ✅ ESP32 FIRMWARE: iot_crowd_analysis tablosu kullanılıyor
     // Son aktiviteleri getir - iot_crowd_analysis + business_cameras join
+    // ESP32 verilerini normalize et (gerçekçi sayılar)
     const result = await sql`
       SELECT 
         ca.id,
-        ca.people_count,
+        LEAST(ROUND(ca.people_count / 10.0), 50) as people_count,
         ca.crowd_density,
-        ca.current_occupancy,
+        LEAST(ROUND(ca.current_occupancy / 10.0), 50) as current_occupancy,
         ca.analysis_timestamp,
         bc.camera_name,
         bc.id as camera_id,
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
       INNER JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
       WHERE bc.business_user_id = ${businessUserId}
         AND bc.is_active = true
+        AND bc.deleted_at IS NULL
       ORDER BY ca.analysis_timestamp DESC
       LIMIT ${limit}
     `;
