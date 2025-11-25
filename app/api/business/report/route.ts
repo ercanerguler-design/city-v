@@ -38,15 +38,15 @@ export async function GET(req: NextRequest) {
         ica.device_id,
         ica.people_count as person_count,
         ica.crowd_density,
-        ica.timestamp as created_at,
+        ica.analysis_timestamp as created_at,
         bc.camera_name,
         bc.location_description as camera_location
        FROM iot_crowd_analysis ica
-       JOIN business_cameras bc ON bc.device_id = ica.device_id
+       JOIN business_cameras bc ON CAST(bc.id AS TEXT) = ica.device_id
        WHERE bc.business_user_id = ${parseInt(businessUserId)}
-         AND ica.timestamp >= ${start.toISOString()}
-         AND ica.timestamp <= ${end.toISOString()}
-       ORDER BY ica.timestamp DESC
+         AND ica.analysis_timestamp >= ${start.toISOString()}::timestamp
+         AND ica.analysis_timestamp <= ${end.toISOString()}::timestamp
+       ORDER BY ica.analysis_timestamp DESC
     `;
     
     console.log('📊 Found analytics records:', analytics.length);

@@ -112,6 +112,12 @@ export async function POST(request: NextRequest) {
     console.log(`📹 ${cameraIds.length} aktif kamera bulundu`);
 
     // 3. Belirtilen tarih için IoT verilerini topla
+    const startOfDay = `${targetDate}T00:00:00Z`;
+    const endOfDay = `${targetDate}T23:59:59Z`;
+    
+    // Kamera ID'lerini string olarak birleştir
+    const cameraIdsList = cameraIds.map(id => `'${id}'`).join(',');
+    
     const iotDataResult = await sql`
       SELECT 
         ca.device_id,
@@ -119,10 +125,11 @@ export async function POST(request: NextRequest) {
         ca.crowd_density,
         ca.confidence_score,
         ca.analysis_timestamp,
-        EXTRACT(HOUR FROM (ca.analysis_timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul')) as hour
+        EXTRACT(HOUR FROM ca.analysis_timestamp) as hour
       FROM iot_crowd_analysis ca
-      WHERE CAST(ca.device_id AS INTEGER) = ANY(${cameraIds})
-        AND DATE(ca.analysis_timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul') = ${targetDate}
+      WHERE ca.device_id IN (${sql(cameraIds)})
+        AND ca.analysis_timestamp >= ${startOfDay}::timestamp
+        AND ca.analysis_timestamp <= ${endOfDay}::timestamp
       ORDER BY ca.analysis_timestamp
     `;
 
