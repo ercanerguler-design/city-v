@@ -47,6 +47,8 @@ export default function ProHeader({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [campaignNotifications, setCampaignNotifications] = useState<any[]>([]);
+  const [userNotifications, setUserNotifications] = useState<any[]>([]); // ✅ User notifications
+  const [totalNotificationCount, setTotalNotificationCount] = useState(0); // ✅ Total count
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
   // ✅ Store shown campaign IDs per business to allow multiple campaigns
   const [shownCampaignIds, setShownCampaignIds] = useState<Set<string>>(new Set());
@@ -181,6 +183,53 @@ export default function ProHeader({
       window.removeEventListener('campaignCreated', handleCampaignCreated);
     };
   }, [shownCampaignIds]);
+
+  // ✅ Fetch user notifications (for authenticated users)
+  useEffect(() => {
+    const loadUserNotifications = async () => {
+      if (!isAuthenticated || !user) {
+        setUserNotifications([]);
+        setTotalNotificationCount(campaignNotifications.length);
+        return;
+      }
+
+      try {
+        console.log('🔔 [USER NOTIFICATIONS] Fetching for user:', user.email);
+        const response = await fetch('/api/notifications');
+        const data = await response.json();
+        
+        if (data.success && data.notifications) {
+          const unreadNotifications = data.notifications.filter((n: any) => !n.read);
+          setUserNotifications(unreadNotifications);
+          
+          // ✅ Total count = campaigns + user notifications
+          const total = campaignNotifications.length + unreadNotifications.length;
+          setTotalNotificationCount(total);
+          
+          console.log('✅ [USER NOTIFICATIONS] Loaded:', {
+            total: data.notifications.length,
+            unread: unreadNotifications.length,
+            campaigns: campaignNotifications.length,
+            totalBadge: total
+          });
+        } else {
+          setUserNotifications([]);
+          setTotalNotificationCount(campaignNotifications.length);
+        }
+      } catch (error) {
+        console.error('❌ [USER NOTIFICATIONS] Error:', error);
+        setUserNotifications([]);
+        setTotalNotificationCount(campaignNotifications.length);
+      }
+    };
+
+    loadUserNotifications();
+    
+    // Refresh every 30 seconds
+    const interval = setInterval(loadUserNotifications, 30 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user, campaignNotifications.length]);
 
   // Listen for crowd updates
   const [crowdUpdates, setCrowdUpdates] = useState<Map<string, any>>(new Map());
@@ -384,7 +433,7 @@ export default function ProHeader({
                 </motion.button>
               )}
 
-              {/* Notifications */}
+              {/* Notifications - Shows campaigns + user notifications */}
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -392,13 +441,13 @@ export default function ProHeader({
                 className="relative p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl border border-white/20 transition-all"
               >
                 <Bell className="w-5 h-5" />
-                {campaignNotifications.length > 0 && (
+                {totalNotificationCount > 0 && (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center"
+                    className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg"
                   >
-                    {campaignNotifications.length}
+                    {totalNotificationCount}
                   </motion.span>
                 )}
               </motion.button>
