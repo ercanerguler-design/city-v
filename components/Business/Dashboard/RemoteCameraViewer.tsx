@@ -199,15 +199,25 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     
     const isLocal = localPatterns.some(pattern => pattern.test(cameraIp));
     
+    // Localhost'ta çalışıyorsa ALWAYS local mode kullan (proxy'ye gerek yok)
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
     if (isLocal) {
-      setConnectionMode('local');
-      console.log('🏠 Local kamera - Production\'da erişim sorunu bekleniyor');
-      
-      // Production HTTPS'de local kameraya erişim imkansız
-      if (window.location.protocol === 'https:') {
+      if (isLocalhost) {
+        // Localhost development - direkt bağlan
+        setConnectionMode('local');
+        console.log('🏠 Local kamera + Localhost - Direkt bağlantı kullanılıyor');
+        console.log(`✅ Kamera IP: ${cameraIp} (aynı network'te olmalı)`);
+      } else if (window.location.protocol === 'https:') {
+        // Production HTTPS - hata göster
+        setConnectionMode('remote');
         setError(`🔒 HTTPS Production sitesi local kameraya (${cameraIp}) bağlanamaz.\n\nÇözümler:\n1️⃣ Local erişim: http://localhost:3000/business\n2️⃣ Kameraya public IP verin\n3️⃣ Kamera sunucusuna HTTPS sertifikası ekleyin`);
         setIsLoading(false);
         return;
+      } else {
+        // HTTP production - proxy dene
+        setConnectionMode('remote');
+        console.log('🔄 Local kamera + HTTP Production - Proxy deneniyor');
       }
     } else {
       // Public IP ise proxy kullan
@@ -268,21 +278,42 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     
     const finalUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
     
-    // HTTPS Mixed Content sorunu için proxy kullan
-    const proxyUrl = `/api/camera-proxy?url=${encodeURIComponent(finalUrl)}`;
+    // Connection mode'a göre URL belirle
+    const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
     
-    console.log('🚀 DIRECT City-V Stream:', finalUrl.replace(/(username|password)=[^&]*/g, '$1=***'));
-    console.log('🔒 HTTPS Proxy Stream:', proxyUrl);
-    console.log('📹 Camera Details:', {
-      id: camera.id || camera.device_id,
-      name: camera.camera_name,
-      ip: camera.ip_address,
-      port: camera.port,
-      hasAuth: !!(camera.username && camera.password),
-      mode: 'HTTPS_PROXY_FOR_MIXED_CONTENT'
-    });
+    // Localhost'ta local kamera ise direkt bağlan (proxy'ye gerek yok)
+    const useDirectConnection = isLocalhost && baseUrl.includes('192.168');
     
-    return proxyUrl;
+    // Proxy gerekli mi?
+    const needsProxy = !useDirectConnection && (isHttps || !baseUrl.startsWith('http://'));
+    
+    if (useDirectConnection) {
+      console.log('✅ DIREKT BAĞLANTI (Localhost + Local Network):', finalUrl);
+      console.log('📹 Camera Details:', {
+        id: camera.id || camera.device_id,
+        name: camera.camera_name,
+        ip: camera.ip_address,
+        port: camera.port,
+        mode: 'DIRECT_LOCAL'
+      });
+      return finalUrl;
+    } else if (needsProxy) {
+      const proxyUrl = `/api/camera-proxy?url=${encodeURIComponent(finalUrl)}`;
+      console.log('🔒 PROXY BAĞLANTI (HTTPS veya Remote):', proxyUrl);
+      console.log('📹 Camera Details:', {
+        id: camera.id || camera.device_id,
+        name: camera.camera_name,
+        ip: camera.ip_address,
+        port: camera.port,
+        hasAuth: !!(camera.username && camera.password),
+        mode: 'PROXY'
+      });
+      return proxyUrl;
+    } else {
+      console.log('✅ DIREKT BAĞLANTI (HTTP):', finalUrl);
+      return finalUrl;
+    }
   }, [camera.id, camera.device_id, camera.ip_address, camera.port, camera.stream_url, camera.username, camera.password, camera.public_ip, camera.public_port, camera.stream_path, refreshKey]); // camera ID değişince yeniden oluştur
 
   // 📡 ENHANCED STREAM LOAD HANDLER WITH HEALTH MONITORING

@@ -43,29 +43,21 @@ export async function POST(req: NextRequest) {
       }, { status: 404 });
     }
 
-    // 2. iot_crowd_analysis tablosuna kaydet (mevcut tablo kullanılıyor)
+    // 2. iot_crowd_analysis tablosuna kaydet (device_id VARCHAR kullanılıyor - ESP32 uyumlu)
     const result = await query(
       `INSERT INTO iot_crowd_analysis (
-        camera_id,
-        person_count,
+        device_id,
+        people_count,
         crowd_density,
-        detection_objects,
-        created_at
+        current_occupancy,
+        analysis_timestamp
       ) VALUES ($1, $2, $3, $4, NOW())
-      RETURNING id, created_at`,
+      RETURNING id, analysis_timestamp`,
       [
-        cameraId,
+        cameraId.toString(), // device_id VARCHAR - camera ID'yi string olarak kaydet
         peopleCount || 0,
-        densityLevel ? (parseFloat(densityLevel) / 100.0) : 0,
-        JSON.stringify({
-          people_in: entriesCount || 0,
-          people_out: exitsCount || 0,
-          current_occupancy: currentOccupancy || 0,
-          total_objects: objectsDetected || 0,
-          tables_occupied: tablesOccupied || 0,
-          tables_total: tablesTotal || 0,
-          source: 'web_viewer'
-        })
+        densityLevel || 'low',
+        currentOccupancy || peopleCount || 0
       ]
     );
 
