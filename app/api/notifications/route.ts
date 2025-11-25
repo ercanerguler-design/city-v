@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // Database'den son 50 bildirimi al (push_notifications tablosundan)
+    // Database'den son 50 kampanya bildirimini al
     const result = await sql`
       SELECT 
         pn.id,
@@ -13,7 +13,6 @@ export async function GET() {
         pn.message,
         pn.notification_type as type,
         pn.sent_at as "createdAt",
-        COALESCE(pn.is_read, false) as read,
         bp.business_name as "businessName",
         bc.discount_percent,
         bc.discount_amount
@@ -21,6 +20,7 @@ export async function GET() {
       LEFT JOIN business_profiles bp ON pn.business_id = bp.id
       LEFT JOIN business_campaigns bc ON pn.campaign_id = bc.id
       WHERE pn.notification_type = 'campaign'
+        AND pn.sent_at >= NOW() - INTERVAL '7 days'
       ORDER BY pn.sent_at DESC
       LIMIT 50
     `;
@@ -33,12 +33,12 @@ export async function GET() {
       message: row.message,
       type: row.type,
       createdAt: row.createdAt,
-      read: row.read,
+      read: false, // Default to unread for homepage notifications
       businessName: row.businessName,
       value: row.discount_percent || row.discount_amount
     }));
 
-    console.log(`✅ Fetched ${notifications.length} notifications from database`);
+    console.log(`✅ Fetched ${notifications.length} campaign notifications from push_notifications table`);
 
     return NextResponse.json({
       success: true,
