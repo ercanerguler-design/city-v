@@ -25,6 +25,7 @@ import ReviewsAndSentiments from '@/components/Business/Dashboard/ReviewsAndSent
 import CampaignsSection from '@/components/Business/Dashboard/CampaignsSection';
 import SettingsSection from '@/components/Business/Dashboard/SettingsSection';
 import MallManagementSection from '@/components/Business/Dashboard/MallManagementSection';
+import OrderManagementSection from '@/components/Business/Dashboard/OrderManagementSection';
 
 interface NavItem {
   id: string;
@@ -38,7 +39,8 @@ const navItems: NavItem[] = [
   { id: 'ai-analytics', label: 'AI Analytics', icon: Activity },
   { id: 'reviews', label: 'Duygular', icon: Users },
   { id: 'campaigns', label: 'Kampanyalar', icon: Megaphone },
-  { id: 'mall', label: 'AVM Yönetimi', icon: Settings }, // Yeni AVM Modülü!
+  { id: 'orders', label: 'Sipariş Takibi', icon: MenuIcon }, // YENİ!
+  { id: 'mall', label: 'AVM Yönetimi', icon: Settings },
   { id: 'location', label: 'Konum Yönetimi', icon: MapPin },
   { id: 'menu', label: 'Menü & Fiyatlar', icon: MenuIcon },
   { id: 'personel', label: 'Personel Yönetimi', icon: UserCheck },
@@ -432,6 +434,7 @@ export default function BusinessDashboard() {
           {activeSection === 'ai-analytics' && <AIAnalyticsSection businessId={businessUser?.id?.toString() || '6'} />}
           {activeSection === 'reviews' && <ReviewsAndSentiments businessUserId={businessUser?.id} />}
           {activeSection === 'campaigns' && <CampaignsSection businessProfile={businessProfile} />}
+          {activeSection === 'orders' && <OrderManagementSection />}
           {activeSection === 'mall' && <MallManagementSection />}
           {activeSection === 'location' && <LocationSection businessProfile={businessProfile} />}
           {activeSection === 'menu' && <MenuSection businessProfile={businessProfile} />}

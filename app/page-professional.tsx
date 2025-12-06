@@ -53,6 +53,9 @@ import BusinessBoxBanner from '@/components/business-box/BusinessBoxBanner';
 import BusinessBoxFloatingButton from '@/components/business-box/BusinessBoxFloatingButton';
 import BusinessBoxModal from '@/components/business-box/BusinessBoxModal';
 
+// Cart Component
+import CartIcon from '@/components/Cart/CartIcon';
+
 // Hooks
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
 import { useThemeStore } from '@/lib/stores/themeStore';
@@ -1408,6 +1411,9 @@ export default function ProfessionalHome() {
 
       {/* 🚀 Business Box Promotion - Modal (First Visit) */}
       <BusinessBoxModal />
+
+      {/* 🛒 Shopping Cart Icon */}
+      <CartIcon />
 
       {/* 📍 Location Detail - Temporarily Disabled */}
       {/* TODO: Fix UltraSimpleModal callback issues */}
