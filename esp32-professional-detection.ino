@@ -527,9 +527,7 @@ DetectionMetrics detectWithConsensus(uint8_t* imageData, int width, int height) 
   consensus.confidence = (method1.confidence * w1 + method2.confidence * w2 + method3.confidence * w3);
   consensus.processingTime = method1.processingTime + method2.processingTime + method3.processingTime;
   
-  // Outlier Detection (aykırı değer tespiti)
-  int maxCount = max(method1.rawCount, max(method2.rawCount, method3.rawCount));
-  int minCount = min(method1.rawCount, min(method2.rawCount, method3.rawCount));
+  // Variance hesapla (zaten yukarıda tanımlı minCount ve maxCount kullan)
   int variance = maxCount - minCount;
   
   if (variance > 10) {
@@ -952,11 +950,12 @@ void setupWebServer() {
     
     html += "<div class='card'><h2>🎯 Camera Configuration</h2>";
     html += "<form action='/update-camera' method='POST' style='margin:10px 0'>";
-    html += "<div style='margin:10px 0'><label style='display:block;color:#666;margin-bottom:5px'>Camera ID (Business Dashboard'dan):</label>";
-    html += "<input type='text' name='camera_id' value='" + CAMERA_ID + "' style='width:100%;padding:8px;border:1px solid #ddd;border-radius:4px' placeholder='CAM-PROF-60'></div>";
-    html += "<div style='margin:10px 0'><label style='display:block;color:#666;margin-bottom:5px'>Device ID:</label>";
-    html += "<input type='text' name='device_id' value='" + DEVICE_ID + "' style='width:100%;padding:8px;border:1px solid #ddd;border-radius:4px' placeholder='ESP32-CAM-PRO-001'></div>";
-    html += "<button type='submit' style='width:100%;padding:10px;background:#4CAF50;color:white;border:none;border-radius:4px;cursor:pointer;font-size:16px'>💾 Save Camera ID</button>";
+    html += "<div style='margin:10px 0'><label style='display:block;color:#666;margin-bottom:5px;font-weight:bold'>Camera ID (Business Dashboard'dan kopyalayın):</label>";
+    html += "<input type='text' name='camera_id' value='" + CAMERA_ID + "' style='width:100%;padding:12px;border:2px solid #4CAF50;border-radius:4px;font-size:16px' placeholder='60'></div>";
+    html += "<div style='padding:10px;background:#e3f2fd;border-left:4px solid #2196F3;margin:10px 0'>";
+    html += "<small style='color:#1976d2'><strong>ℹ️ Not:</strong> Business Dashboard'da kamerayı ekleyin, ID numarasını buraya yazın. Device ID otomatik ayarlanır.</small>";
+    html += "</div>";
+    html += "<button type='submit' style='width:100%;padding:12px;background:#4CAF50;color:white;border:none;border-radius:4px;cursor:pointer;font-size:18px;font-weight:bold'>💾 Kamerayı Eşleştir</button>";
     html += "</form></div>";
     
     html += "<div class='card'><h2>🛠️ Actions</h2>";
@@ -973,34 +972,36 @@ void setupWebServer() {
     webServer.send(200, "text/html", html);
   });
   
-  // Update Camera ID endpoint
+  // Update Camera ID endpoint - SADECE Camera ID yeterli, Device ID otomatik
   webServer.on("/update-camera", HTTP_POST, []() {
-    if (webServer.hasArg("camera_id") && webServer.hasArg("device_id")) {
+    if (webServer.hasArg("camera_id")) {
       String newCameraId = webServer.arg("camera_id");
-      String newDeviceId = webServer.arg("device_id");
       
       if (newCameraId.length() > 0) {
+        // Camera ID ve Device ID aynı olsun (Business Dashboard ID'si)
         CAMERA_ID = newCameraId;
+        DEVICE_ID = newCameraId; // AYNI DEĞER
+        
         preferences.putString("camera_id", CAMERA_ID);
-        Serial.println("📹 Camera ID updated: " + CAMERA_ID);
-      }
-      
-      if (newDeviceId.length() > 0) {
-        DEVICE_ID = newDeviceId;
         preferences.putString("device_id", DEVICE_ID);
-        Serial.println("🔖 Device ID updated: " + DEVICE_ID);
+        
+        Serial.println("📹 Camera ID = Device ID = " + CAMERA_ID);
+        
+        String html = "<html><head><meta charset='UTF-8'><meta http-equiv='refresh' content='2;url=/'></head><body style='font-family:Arial;text-align:center;padding:50px'>";
+        html += "<h1 style='color:#4CAF50'>✅ Kamera Eşleştirildi!</h1>";
+        html += "<div style='background:#e8f5e9;padding:20px;border-radius:8px;margin:20px auto;max-width:400px'>";
+        html += "<p style='font-size:24px;margin:10px'><strong>Camera ID: " + CAMERA_ID + "</strong></p>";
+        html += "<p style='color:#666'>Device ID otomatik ayarlandı</p>";
+        html += "</div>";
+        html += "<p style='color:#666'>Kamera artık Business Dashboard'a bağlı!</p>";
+        html += "<p style='color:#999;font-size:14px'>2 saniye içinde ana sayfaya yönlendirileceksiniz...</p>";
+        html += "</body></html>";
+        webServer.send(200, "text/html", html);
+      } else {
+        webServer.send(400, "text/html", "<html><body><h1>❌ Hata</h1><p>Camera ID boş olamaz!</p><a href='/'>Geri</a></body></html>");
       }
-      
-      String html = "<html><head><meta charset='UTF-8'></head><body>";
-      html += "<h1>✅ Camera Configuration Saved!</h1>";
-      html += "<p><strong>Camera ID:</strong> " + CAMERA_ID + "</p>";
-      html += "<p><strong>Device ID:</strong> " + DEVICE_ID + "</p>";
-      html += "<p>Kamera artık Business Dashboard ile eşleşti!</p>";
-      html += "<a href='/' style='display:inline-block;margin-top:20px;padding:10px 20px;background:#4CAF50;color:white;text-decoration:none;border-radius:4px'>⬅️ Ana Sayfa</a>";
-      html += "</body></html>";
-      webServer.send(200, "text/html", html);
     } else {
-      webServer.send(400, "text/html", "<html><body><h1>❌ Error</h1><p>Camera ID ve Device ID gerekli!</p><a href='/'>Back</a></body></html>");
+      webServer.send(400, "text/html", "<html><body><h1>❌ Hata</h1><p>Camera ID gerekli!</p><a href='/'>Geri</a></body></html>");
     }
   });
   

@@ -110,6 +110,7 @@ export async function GET(request: NextRequest) {
         last_checked
       FROM business_cameras 
       WHERE business_user_id = ${user.userId}
+        AND (deleted_at IS NULL OR deleted_at > NOW())
       ORDER BY created_at DESC
     `;
     
@@ -388,14 +389,17 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Önce kameranın bu user'a ait olup olmadığını kontrol et
+    // Önce kameranın bu user'a ait olup olmadığını kontrol et (ve silinmemiş olduğunu)
     const ownerCheck = await sql`
-      SELECT business_user_id FROM business_cameras WHERE id = ${id}
+      SELECT business_user_id 
+      FROM business_cameras 
+      WHERE id = ${id}
+        AND (deleted_at IS NULL OR deleted_at > NOW())
     `;
     
     if (ownerCheck.length === 0) {
-      console.log(`❌ Camera ${id} not found`);
-      return NextResponse.json({ error: 'Kamera bulunamadı' }, { status: 404 });
+      console.log(`❌ Camera ${id} not found or deleted`);
+      return NextResponse.json({ error: 'Kamera bulunamadı veya silinmiş' }, { status: 404 });
     }
     
     if (ownerCheck[0].business_user_id !== user.userId) {
@@ -426,12 +430,13 @@ export async function PUT(request: NextRequest) {
         updated_at = NOW()
       WHERE id = ${id} 
         AND business_user_id = ${user.userId}
+        AND (deleted_at IS NULL OR deleted_at > NOW())
       RETURNING *
     `;
 
     if (result.length === 0) {
       return NextResponse.json(
-        { error: 'Kamera bulunamadı veya yetkiniz yok' },
+        { error: 'Kamera bulunamadı, silinmiş veya yetkiniz yok' },
         { status: 404 }
       );
     }
@@ -481,28 +486,32 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    console.log('🗑️ DELETE request:', { cameraId: id, userId: user.userId });
+    
     // SOFT DELETE - Veritabanında tut ama dashboard'da gösterme (raporlar için tarihsel veri)
     const result = await sql`
       UPDATE business_cameras 
       SET deleted_at = NOW()
-      WHERE id = ${id} 
+      WHERE id = ${parseInt(id)}
         AND business_user_id = ${user.userId}
-        AND deleted_at IS NULL
-      RETURNING camera_name
+        AND (deleted_at IS NULL OR deleted_at > NOW())
+      RETURNING id, camera_name
     `;
 
     if (result.length === 0) {
+      console.log('❌ Camera not found or already deleted:', { id, userId: user.userId });
       return NextResponse.json(
         { error: 'Kamera bulunamadı veya zaten silinmiş' },
         { status: 404 }
       );
     }
 
-    console.log(`✅ Kamera soft delete yapıldı (tarihsel veriler korundu): ${result[0].camera_name}`);
+    console.log(`✅ Kamera soft delete başarılı: ID=${result[0].id}, Name=${result[0].camera_name}`);
 
     return NextResponse.json({
       success: true,
-      message: 'Kamera başarıyla silindi. Tarihsel veriler raporlarda görünmeye devam edecek.'
+      message: 'Kamera başarıyla silindi',
+      deletedCamera: result[0]
     });
 
   } catch (error: any) {
