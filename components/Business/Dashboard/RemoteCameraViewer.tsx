@@ -316,6 +316,25 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     }
   }, [camera.id, camera.device_id, camera.ip_address, camera.port, camera.stream_url, camera.username, camera.password, camera.public_ip, camera.public_port, camera.stream_path, refreshKey]); // camera ID değişince yeniden oluştur
 
+  // 📡 Update camera status to ONLINE when stream starts
+  const updateCameraStatus = async (status: 'active' | 'offline') => {
+    try {
+      const response = await fetch(`/api/business/cameras/${camera.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+
+      if (response.ok) {
+        console.log(`✅ Camera status updated: ${status}`);
+      } else {
+        console.warn('⚠️ Failed to update camera status:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ Camera status update error:', error);
+    }
+  };
+
   // 📡 ENHANCED STREAM LOAD HANDLER WITH HEALTH MONITORING
   const handleImageLoad = () => {
     setIsLoading(false);
@@ -326,6 +345,9 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     
     console.log('✅ Stream loaded successfully - Direct 24/7 connection active!');
     console.log('ℹ️ Health monitoring DISABLED - Direct connection is stable');
+    
+    // 🟢 Camera ONLINE - Update status in database
+    updateCameraStatus('active');
     
     // HEALTH CHECK DEVRE DIŞI - Direct connection gereksiz yenileme yapmaz
     // Sadece onError handler çalışır
@@ -363,8 +385,12 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
       return;
     }
 
+    let isRunning = true;
+    let frameSkipCounter = 0;
+    const FRAME_SKIP = 2; // Her 2 frame'de 1'ini işle (memory optimize)
+
     const detectFrame = async () => {
-      if (!model || !aiEnabled || !imageRef.current || !canvasRef.current) return;
+      if (!isRunning || !model || !aiEnabled || !imageRef.current || !canvasRef.current) return;
 
       const img = imageRef.current;
       const canvas = canvasRef.current;
@@ -400,6 +426,14 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
           frameCountRef.current = 0;
           lastFrameTimeRef.current = now;
         }
+
+        // 🚀 MEMORY OPTIMIZATION: Frame skip - her frame'i işleme, bazılarını atla
+        frameSkipCounter++;
+        if (frameSkipCounter < FRAME_SKIP) {
+          animationIdRef.current = requestAnimationFrame(detectFrame);
+          return;
+        }
+        frameSkipCounter = 0;
 
         // Canvas'ı temizle
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -569,7 +603,9 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
       // 60 FPS detection loop (optimize edilmiş - 30 FPS yeterli)
       // 30 FPS = 33ms delay (60 FPS = 16ms ama gereksiz yüksek)
       setTimeout(() => {
-        animationIdRef.current = requestAnimationFrame(detectFrame);
+        if (isRunning) { // Sadece hala çalışıyorsa devam et
+          animationIdRef.current = requestAnimationFrame(detectFrame);
+        }
       }, 33); // 30 FPS için delay
     };
 
@@ -581,10 +617,21 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     }, 2000);
 
     return () => {
+      // 🧹 CRITICAL CLEANUP: Memory leak prevention
+      isRunning = false; // Stop detection loop
       clearTimeout(startDelay);
       if (animationIdRef.current) {
         cancelAnimationFrame(animationIdRef.current);
+        animationIdRef.current = 0;
       }
+      // TensorFlow memory cleanup
+      if (canvasRef.current) {
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        }
+      }
+      console.log('🧹 AI Detection cleanup completed');
     };
   }, [model, aiEnabled, error]); // Model ve AI enabled değişince yeniden başlat
 
@@ -711,7 +758,7 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     console.log('✅ Stream refresh completed - Fresh connection starting');
   };
 
-  // 🏥 STREAM HEALTH MONITORING SYSTEM
+  // 🏥 STREAM HEALTH MONITORING SYSTEM - AUTO RECOVERY
   const startStreamHealthCheck = () => {
     // Clear existing interval
     if (healthCheckIntervalRef.current) {
@@ -730,12 +777,13 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
         
         // Trigger reconnection by refreshing stream
         console.log('🔄 Health check triggering stream refresh...');
-        setRefreshKey(prev => prev + 1);
+        handleRefresh(); // Use full refresh to reset everything
       } else {
         // Stream is healthy
         if (!isStreamHealthy) {
           console.log('✅ Stream health restored');
           setIsStreamHealthy(true);
+          setReconnectAttempts(0); // Reset reconnect counter
         }
       }
     }, 15000); // Check every 15 seconds (daha sık kontrol)
@@ -748,7 +796,21 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
     }
   };
 
-  // 🔄 CLEANUP ON UNMOUNT
+  // 🔄 Start health monitoring when stream loads
+  useEffect(() => {
+    if (!isLoading && !error) {
+      console.log('🏥 Starting stream health monitoring...');
+      startStreamHealthCheck();
+    } else {
+      stopStreamHealthCheck();
+    }
+
+    return () => {
+      stopStreamHealthCheck();
+    };
+  }, [isLoading, error, lastFrameTime]);
+
+  // 🔄 CLEANUP ON UNMOUNT - Mark camera offline
   useEffect(() => {
     return () => {
       // Sadece reconnect timeout ve animation cleanup
@@ -758,8 +820,12 @@ const RemoteCameraViewer = memo(function RemoteCameraViewer({ camera, onClose }:
       if (animationIdRef.current) {
         cancelAnimationFrame(animationIdRef.current);
       }
+      
+      // 🔴 Camera viewer kapatıldı - offline yap
+      updateCameraStatus('offline');
+      console.log('🔴 Camera viewer closed - Status set to OFFLINE');
     };
-  }, []);
+  }, [camera.id]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement && containerRef.current) {

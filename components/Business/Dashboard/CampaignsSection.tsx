@@ -28,6 +28,8 @@ export default function CampaignsSection({ businessProfile }: CampaignsSectionPr
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
+  const [credits, setCredits] = useState({ current: 0, total: 0 });
+  const [creditsLoading, setCreditsLoading] = useState(true);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -37,6 +39,32 @@ export default function CampaignsSection({ businessProfile }: CampaignsSectionPr
     end_date: '',
     target_audience: 'all'
   });
+
+  // 💳 Kredi bilgisini yükle
+  useEffect(() => {
+    if (businessProfile?.user_id) {
+      loadCredits();
+    }
+  }, [businessProfile]);
+
+  const loadCredits = async () => {
+    try {
+      setCreditsLoading(true);
+      const response = await fetch(`/api/business/credits?userId=${businessProfile.user_id}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setCredits({
+          current: data.credits.current || 0,
+          total: data.credits.totalCampaigns || 0
+        });
+      }
+    } catch (error) {
+      console.error('Kredi yükleme hatası:', error);
+    } finally {
+      setCreditsLoading(false);
+    }
+  };
 
   // Kampanyaları yükle
   useEffect(() => {
@@ -169,7 +197,7 @@ export default function CampaignsSection({ businessProfile }: CampaignsSectionPr
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg">
             <Megaphone className="w-6 h-6 text-white" />
@@ -177,6 +205,23 @@ export default function CampaignsSection({ businessProfile }: CampaignsSectionPr
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Kampanyalar</h2>
             <p className="text-gray-600">Oluşturduğunuz kampanyaları yönetin</p>
+          </div>
+        </div>
+        
+        {/* 💳 Kredi Bilgisi */}
+        <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+          <div>
+            <p className="text-sm text-gray-600">Kampanya Kredisi</p>
+            <p className="text-2xl font-bold text-blue-600">
+              {creditsLoading ? (
+                <div className="w-12 h-8 bg-gray-200 animate-pulse rounded"></div>
+              ) : (
+                `${credits.current} / ∞`
+              )}
+            </p>
+          </div>
+          <div className="text-xs text-gray-500">
+            <p>Toplam Kampanya: {credits.total}</p>
           </div>
         </div>
       </div>

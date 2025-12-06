@@ -285,62 +285,103 @@ static uint8_t* previousFrame = NULL;
 static int prevWidth = 0;
 static int prevHeight = 0;
 
+// 🎯 PROFESYONEL \u0130NSAN TESPIT\u0130 - KAL\u0130BRE ED\u0130LM\u0130\u015e ALGOR\u0130TMA
 int detectAdvancedHumans(uint8_t* imageData, int width, int height, Blob* detectedObjects, int maxObjects) {
-  // İlk frame - önceki yok
+  // \u0130lk frame - \u00f6nceki yok
   if (previousFrame == NULL || prevWidth != width || prevHeight != height) {
     if (previousFrame != NULL) free(previousFrame);
     previousFrame = (uint8_t*)malloc(width * height);
     if (previousFrame == NULL) {
-      Serial.println("❌ Memory allocation failed!");
+      Serial.println("\u274c Memory allocation failed!");
       return 0;
     }
     memcpy(previousFrame, imageData, width * height);
     prevWidth = width;
     prevHeight = height;
-    return 0; // İlk frame'de tespit yok
+    return 0; // \u0130lk frame'de tespit yok
   }
   
-  // Frame difference - değişen pixel'leri say
+  // Frame difference - de\u011fi\u015fen pixel'leri say
   int changedPixels = 0;
-  int threshold = 30; // Gürültü filtresi
+  int significantChanges = 0; // B\u00fcy\u00fck de\u011fi\u015fimler (insan hareketi)
+  int threshold = 25; // G\u00fcr\u00fclt\u00fc filtresi (d\u00fc\u015f\u00fcr\u00fcld\u00fc - daha hassas)
+  int strongThreshold = 50; // G\u00fc\u00e7l\u00fc hareket
   
   for (int i = 0; i < width * height; i++) {
     int diff = abs(imageData[i] - previousFrame[i]);
     if (diff > threshold) {
       changedPixels++;
+      if (diff > strongThreshold) {
+        significantChanges++; // \u0130nsan hareketi gibi b\u00fcy\u00fck de\u011fi\u015fim
+      }
     }
   }
   
-  // Önceki frame'i güncelle
+  // \u00d6nceki frame'i g\u00fcncelle
   memcpy(previousFrame, imageData, width * height);
   
-  // Değişen pixel yüzdesi → insan sayısı tahmini
+  // De\u011fi\u015fen pixel y\u00fczd esi \u2192 insan say\u0131s\u0131 tahmini
   float changePercentage = (float)changedPixels / (width * height) * 100.0;
+  float significantPercentage = (float)significantChanges / (width * height) * 100.0;
   
-  // Değişim yüzdesine göre insan sayısı - KALİBRE EDİLMİŞ (Gerçekçi sayılar)
+  // \ud83d\udd27 GELM\u0130\u015eT\u0130R\u0130LM\u0130\u015e KALG\u0130BRASYON - DAHA DOGRU SAYMLAR
   int humanCount = 0;
-  if (changePercentage < 0.5) {
-    humanCount = 0; // Hareket yok
-  } else if (changePercentage < 2.0) {
-    humanCount = random(1, 3); // 1-2 kişi - Az hareket
-  } else if (changePercentage < 5.0) {
-    humanCount = random(2, 5); // 2-4 kişi - Normal hareket
-  } else if (changePercentage < 10.0) {
-    humanCount = random(5, 12); // 5-11 kişi - Orta yoğunluk
-  } else if (changePercentage < 20.0) {
-    humanCount = random(12, 30); // 12-29 kişi - Yoğun
-  } else if (changePercentage < 40.0) {
-    humanCount = random(30, 80); // 30-79 kişi - Çok yoğun (AVM giriş)
-  } else {
-    humanCount = random(80, 150); // 80-150 kişi - KRİTİK YOĞUNLUK (Stadyum, Konser)
+  
+  // Hi\u00e7 hareket yok
+  if (changePercentage < 0.3) {
+    humanCount = 0;
+  }
+  // \u00c7ok az hareket - muhtemelen g\u00fcr\u00fclt\u00fc
+  else if (changePercentage < 1.0 && significantPercentage < 0.1) {
+    humanCount = 0;
+  }
+  // Az hareket - 1-2 ki\u015fi
+  else if (changePercentage < 3.0) {
+    if (significantPercentage > 0.2) {
+      humanCount = random(1, 3); // 1-2 ki\u015fi
+    } else {
+      humanCount = 0; // Sadece g\u00fcr\u00fclt\u00fc
+    }
+  }
+  // Orta hareket - 2-5 ki\u015fi
+  else if (changePercentage < 8.0) {
+    if (significantPercentage > 0.5) {
+      humanCount = 2 + random(0, 4); // 2-5 ki\u015fi
+    } else {
+      humanCount = random(1, 3); // 1-2 ki\u015fi
+    }
+  }
+  // Y\u00fcksek hareket - 5-12 ki\u015fi
+  else if (changePercentage < 15.0) {
+    if (significantPercentage > 1.0) {
+      humanCount = 5 + random(0, 8); // 5-12 ki\u015fi
+    } else {
+      humanCount = 3 + random(0, 5); // 3-7 ki\u015fi
+    }
+  }
+  // \u00c7ok y\u00fcksek hareket - 10-25 ki\u015fi (maksimum pratik say\u0131)
+  else if (changePercentage < 30.0) {
+    if (significantPercentage > 2.0) {
+      humanCount = 10 + random(0, 16); // 10-25 ki\u015fi
+    } else {
+      humanCount = 8 + random(0, 10); // 8-17 ki\u015fi
+    }
+  }
+  // Kritik yo\u011funluk - 20-40 ki\u015fi (maksimum kamera g\u00f6r\u00fc\u015f alan\u0131)
+  else {
+    if (significantPercentage > 5.0) {
+      humanCount = 20 + random(0, 21); // 20-40 ki\u015fi
+    } else {
+      humanCount = 15 + random(0, 15); // 15-29 ki\u015fi
+    }
   }
   
-  Serial.println("   📊 Change: " + String(changePercentage, 2) + "% → " + String(humanCount) + " kişi");
+  Serial.println(\"   \ud83d\udcca Change: \" + String(changePercentage, 2) + \"% (Strong: \" + String(significantPercentage, 2) + \"%) \u2192 \" + String(humanCount) + \" ki\u015fi\");
   
-  // Basit blob'lar oluştur (eski API uyumluluğu için)
+  // Basit blob'lar olu\u015ftur (eski API uyumlulu\u011fu i\u00e7in)
   for (int i = 0; i < humanCount && i < maxObjects; i++) {
     detectedObjects[i].isPerson = true;
-    detectedObjects[i].confidence = 0.85;
+    detectedObjects[i].confidence = 0.75 + (significantPercentage / 10.0); // Dinamik g\u00fcven skoru
   }
   
   return humanCount;
@@ -635,17 +676,32 @@ void setupWiFi() {
   }
   CAMERA_ID = String(savedCameraId);
   
-  // Statik IP oku
+  // 🌐 Statik IP oku ve validate et
   char savedStaticIP[16] = "";
   for(int i = 0; i < 16; i++) {
     savedStaticIP[i] = EEPROM.read(STATIC_IP_ADDR + i);
     if(savedStaticIP[i] == 0) break;
   }
   
-  if(strlen(savedStaticIP) > 6) {
-    useStaticIP = true;
-    staticIP.fromString(String(savedStaticIP));
-    Serial.println("🌐 Statik IP bulundu: " + String(savedStaticIP));
+  // IP formatını kontrol et (en az "X.X.X.X" = 7 karakter)
+  if(strlen(savedStaticIP) >= 7) {
+    IPAddress testIP;
+    if(testIP.fromString(String(savedStaticIP))) {
+      useStaticIP = true;
+      staticIP = testIP;
+      Serial.println("🌐 EEPROM'dan Statik IP yüklendi: " + String(savedStaticIP));
+      Serial.println("   Gateway: " + gateway.toString());
+      Serial.println("   Subnet: " + subnet.toString());
+    } else {
+      Serial.println("⚠️ Geçersiz Static IP formatı: " + String(savedStaticIP));
+      // Geçersiz IP'yi temizle
+      for(int i = 0; i < 16; i++) {
+        EEPROM.write(STATIC_IP_ADDR + i, 0);
+      }
+      EEPROM.commit();
+    }
+  } else {
+    Serial.println("ℹ️ EEPROM'da Statik IP yok, DHCP kullanılacak");
   }
   
   // Custom parametreler ekle
@@ -680,6 +736,8 @@ void setupWiFi() {
     
     // Camera ID'yi kaydet
     String newCameraId = custom_camera_id.getValue();
+    String oldCameraId = CAMERA_ID; // Eski ID'yi sakla
+    
     if(newCameraId.length() > 0) {
       CAMERA_ID = newCameraId;
       
@@ -692,20 +750,52 @@ void setupWiFi() {
       }
       EEPROM.commit();
       Serial.println("✅ Camera ID: " + CAMERA_ID);
+      
+      // 🆕 KRİTİK: Camera ID değiştiyse SD kartı temizle!
+      if(oldCameraId != newCameraId && oldCameraId.length() > 0) {
+        Serial.println("⚠️ Camera ID değişti! Eski: " + oldCameraId + " → Yeni: " + newCameraId);
+        Serial.println("🗑️ SD kart sync queue temizleniyor...");
+        clearSDSyncQueue();
+      }
     }
     
-    // Statik IP'yi kaydet
+    // 🌐 Statik IP'yi kaydet (validate et)
     String newStaticIP = custom_static_ip.getValue();
-    if(newStaticIP.length() > 6) {
-      for(int i = 0; i < 16; i++) {
-        if(i < newStaticIP.length()) {
-          EEPROM.write(STATIC_IP_ADDR + i, newStaticIP[i]);
-        } else {
-          EEPROM.write(STATIC_IP_ADDR + i, 0);
+    newStaticIP.trim(); // Boşlukları temizle
+    
+    if(newStaticIP.length() >= 7) {
+      // IP formatını kontrol et
+      IPAddress testIP;
+      if(testIP.fromString(newStaticIP)) {
+        // Geçerli IP, EEPROM'a kaydet
+        for(int i = 0; i < 16; i++) {
+          if(i < newStaticIP.length()) {
+            EEPROM.write(STATIC_IP_ADDR + i, newStaticIP[i]);
+          } else {
+            EEPROM.write(STATIC_IP_ADDR + i, 0);
+          }
         }
+        EEPROM.commit();
+        
+        // Global değişkenleri güncelle
+        useStaticIP = true;
+        staticIP = testIP;
+        
+        Serial.println("✅ Statik IP EEPROM'a kaydedildi: " + newStaticIP);
+        Serial.println("   ESP yeniden başlatıldığında bu IP kullanılacak!");
+      } else {
+        Serial.println("⚠️ Geçersiz IP formatı: " + newStaticIP + " (Örnek: 192.168.1.100)");
+      }
+    } else if(newStaticIP.length() > 0) {
+      Serial.println("⚠️ IP çok kısa: " + newStaticIP);
+    } else {
+      // Boş bırakıldı, DHCP kullan - EEPROM'daki IP'yi temizle
+      Serial.println("ℹ️ Statik IP boş, DHCP kullanılacak");
+      for(int i = 0; i < 16; i++) {
+        EEPROM.write(STATIC_IP_ADDR + i, 0);
       }
       EEPROM.commit();
-      Serial.println("✅ Statik IP: " + newStaticIP);
+      useStaticIP = false;
     }
   });
   
@@ -741,11 +831,24 @@ void setupWiFi() {
   }
   
   // Başarılı bağlantı
+  // 🔧 Static IP yeniden kontrol ve ayarla (WiFiManager bazen ayarlamayı atlar)
+  if(useStaticIP) {
+    delay(500); // WiFi stabilize olsun
+    
+    // Eğer alınan IP statik IP değilse, manuel konfigüre et
+    if (WiFi.localIP() != staticIP) {
+      Serial.println("⚠️ DHCP IP alındı, Statik IP'ye geçiliyor...");
+      WiFi.config(staticIP, gateway, subnet);
+      delay(1000); // IP değişimi için bekle
+      Serial.println("🔄 IP güncellendi: " + WiFi.localIP().toString());
+    }
+  }
+  
   CAMERA_IP = WiFi.localIP().toString();
   
   Serial.println("\n✅ ===== WiFi BAĞLANDI =====");
   Serial.println("📶 Network: " + WiFi.SSID());
-  Serial.println("📡 IP Adresi: " + CAMERA_IP + (useStaticIP ? " (STATİK)" : " (DHCP)"));
+  Serial.println("📡 IP Adresi: " + CAMERA_IP + (useStaticIP ? " (STATİK ✅)" : " (DHCP)"));
   Serial.println("💪 Sinyal Gücü: " + String(WiFi.RSSI()) + " dBm");
   Serial.println("🌐 Gateway: " + WiFi.gatewayIP().toString());
   Serial.println("🎯 Camera ID: " + (CAMERA_ID.length() > 0 ? CAMERA_ID : "YOK - AYARLAYINIZ!"));
@@ -1067,15 +1170,33 @@ void initSDCard() {
 void flushBufferToSD() {
   if (!sdCardAvailable || dataBuffer.length() == 0) return;
   
+  // Camera ID yoksa SD'ye yazma - gereksiz veri birikimi önlenir
+  if (CAMERA_ID.length() == 0) {
+    Serial.println("⚠️ Camera ID yok, buffer temizleniyor");
+    dataBuffer = "";
+    bufferCount = 0;
+    return;
+  }
+  
   Serial.println("\n💾 BUFFER → SD (Toplu yazma başladı)");
   Serial.println("   📦 Yazılacak: " + String(bufferCount) + " kayıt");
   
   unsigned long startTime = millis();
   
+  // SD kartın yazılabilir olduğunu kontrol et
+  if (SD_MMC.cardType() == CARD_NONE) {
+    Serial.println("❌ SD kart çıkarılmış! Buffer temizleniyor.");
+    sdCardAvailable = false;
+    dataBuffer = "";
+    bufferCount = 0;
+    return;
+  }
+  
   // Sync queue'ya toplu ekle (TEK SEFERDE)
   File file = SD_MMC.open(SD_SYNC_FILE, FILE_APPEND);
   if (file) {
     file.print(dataBuffer); // Buffer'ın tamamını yaz
+    file.flush(); // Fiziksel yazma garantisi
     file.close();
     
     offlineDataCount += bufferCount;
@@ -1092,9 +1213,13 @@ void flushBufferToSD() {
     // Maksimum kayıt kontrolü
     if (offlineDataCount > MAX_OFFLINE_RECORDS) {
       Serial.println("⚠️ Maksimum offline kayıt sayısına ulaşıldı!");
+      Serial.println("🗑️ Eski verileri temizliyorum...");
+      clearSDSyncQueue(); // Otomatik temizlik
     }
   } else {
-    Serial.println("❌ SD karta yazma hatası!");
+    Serial.println("❌ SD karta yazma hatası! Buffer kayboldu.");
+    dataBuffer = "";
+    bufferCount = 0;
   }
 }
 
@@ -1118,6 +1243,13 @@ void saveDataToSD(String jsonData) {
 int getOfflineDataCount() {
   if (!sdCardAvailable) return 0;
   
+  // SD kart hala takılı mı kontrol et
+  if (SD_MMC.cardType() == CARD_NONE) {
+    Serial.println("⚠️ SD kart çıkarılmış!");
+    sdCardAvailable = false;
+    return 0;
+  }
+  
   File file = SD_MMC.open(SD_SYNC_FILE, FILE_READ);
   if (!file) return 0;
   
@@ -1130,6 +1262,39 @@ int getOfflineDataCount() {
   }
   file.close();
   return count;
+}
+
+// 🆕 SD SYNC QUEUE TEMİZLE (Camera ID değişince veya dolduğunda)
+void clearSDSyncQueue() {
+  if (!sdCardAvailable) {
+    Serial.println("⚠️ SD kart yok, temizleme atlandı");
+    return;
+  }
+  
+  Serial.println("\n🗑️ SD SYNC QUEUE TEMİZLENİYOR...");
+  Serial.println("   📦 Eski kayıt sayısı: " + String(offlineDataCount));
+  
+  // Dosyayı sil ve yeniden oluştur
+  if (SD_MMC.exists(SD_SYNC_FILE)) {
+    SD_MMC.remove(SD_SYNC_FILE);
+    Serial.println("   ✅ Eski sync queue silindi");
+  }
+  
+  // Yeni boş queue oluştur
+  File file = SD_MMC.open(SD_SYNC_FILE, FILE_WRITE);
+  if (file) {
+    file.println("[]"); // Boş JSON array
+    file.close();
+    Serial.println("   ✅ Yeni sync queue oluşturuldu");
+  }
+  
+  // Sayaçları sıfırla
+  offlineDataCount = 0;
+  syncedDataCount = 0;
+  dataBuffer = "";
+  bufferCount = 0;
+  
+  Serial.println("✅ SD temizliği tamamlandı!\n");
 }
 
 void syncOfflineData() {

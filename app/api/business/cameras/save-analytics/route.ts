@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
       densityLevel
     });
 
-    // 1. Kamera var mı kontrol et
+    // 1. Kamera var mı VE ONLİNE mi kontrol et
     const cameraCheck = await query(
-      `SELECT id FROM business_cameras WHERE id = $1`,
+      `SELECT id, status, camera_name FROM business_cameras WHERE id = $1`,
       [cameraId]
     );
 
@@ -43,7 +43,27 @@ export async function POST(req: NextRequest) {
       }, { status: 404 });
     }
 
-    // 2. iot_crowd_analysis tablosuna kaydet (device_id VARCHAR kullanılıyor - ESP32 uyumlu)
+    // 2. ⚡ KRİTİK: Kamera OFFLINE ise analytics kaydetme!
+    const camera = cameraCheck.rows[0];
+    const isOnline = camera.status === 'active' || camera.status === 'online';
+    
+    if (!isOnline) {
+      console.warn('🔴 Camera OFFLINE - Analytics NOT saved:', {
+        cameraId,
+        cameraName: camera.camera_name,
+        status: camera.status
+      });
+      return NextResponse.json({
+        success: false,
+        error: 'Kamera çevrimdışı - Analytics kaydedilmedi',
+        cameraStatus: camera.status,
+        message: 'Kamera online olduğunda tekrar deneyin'
+      }, { status: 400 });
+    }
+
+    console.log('✅ Camera ONLINE - Proceeding with analytics save:', camera.camera_name);
+
+    // 3. iot_crowd_analysis tablosuna kaydet (device_id VARCHAR kullanılıyor - ESP32 uyumlu)
     const result = await query(
       `INSERT INTO iot_crowd_analysis (
         device_id,
@@ -61,7 +81,7 @@ export async function POST(req: NextRequest) {
       ]
     );
 
-    // 3. business_cameras tablosunu güncelle (last_checked sadece)
+    // 4. business_cameras tablosunu güncelle (last_checked sadece)
     await query(
       `UPDATE business_cameras
        SET last_checked = NOW(),
@@ -79,7 +99,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       analyticsId: result.rows[0].id,
-      timestamp: result.rows[0].timestamp,
+      timestamp: result.rows[0].analysis_timestamp,
       message: 'Analytics kaydedildi'
     });
 

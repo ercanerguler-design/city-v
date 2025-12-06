@@ -122,6 +122,19 @@ export async function GET(req: NextRequest) {
 // Menü sil
 export async function DELETE(req: NextRequest) {
   try {
+    // Auth kontrolü
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    try {
+      jwt.verify(token, JWT_SECRET);
+    } catch {
+      return NextResponse.json({ success: false, error: 'Invalid token' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const menuId = searchParams.get('menuId');
 
@@ -129,17 +142,29 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Menu ID gerekli' }, { status: 400 });
     }
 
-    await query(`DELETE FROM business_menus WHERE id = $1`, [menuId]);
+    console.log('🗑️ Deleting menu:', menuId);
+
+    // Menü sil (CASCADE ile items de silinir)
+    const result = await query(
+      `DELETE FROM business_menus WHERE id = $1 RETURNING menu_name`,
+      [menuId]
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Menü bulunamadı' }, { status: 404 });
+    }
+
+    console.log('✅ Menu deleted:', result.rows[0].menu_name);
 
     return NextResponse.json({
       success: true,
-      message: 'Menü silindi'
+      message: `${result.rows[0].menu_name} menüsü silindi`
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Menü silme hatası:', error);
     return NextResponse.json(
-      { success: false, error: 'Server error' },
+      { success: false, error: error.message || 'Server error' },
       { status: 500 }
     );
   }

@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Store, MapPin, Phone, Tag, Sparkles, Clock, Info } from 'lucide-react';
+import { X, Store, MapPin, Phone, Tag, Sparkles, Clock, Info, ShoppingCart, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useCartStore } from '@/lib/stores/cartStore';
+import { useAuthStore } from '@/store/authStore';
 
 interface BusinessMenuModalProps {
   isOpen: boolean;
@@ -20,10 +22,13 @@ export default function BusinessMenuModal({
 }: BusinessMenuModalProps) {
   const [menuData, setMenuData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuthStore();
+  const { addToCart, setBusinessInfo } = useCartStore();
 
   useEffect(() => {
     if (isOpen && businessId) {
       loadMenu();
+      setBusinessInfo(businessId, businessName);
     }
   }, [isOpen, businessId]);
 
@@ -43,6 +48,35 @@ export default function BusinessMenuModal({
       toast.error('Bir hata oluştu');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddToCart = async (item: any) => {
+    if (!user) {
+      toast.error('Sipariş vermek için giriş yapmalısınız');
+      return;
+    }
+
+    if (!item.is_available) {
+      toast.error('Bu ürün şu anda mevcut değil');
+      return;
+    }
+
+    try {
+      await addToCart(
+        user.id,
+        businessId,
+        item.id,
+        1,
+        parseFloat(item.price)
+      );
+      toast.success(`${item.name} sepete eklendi!`, {
+        icon: '🛒',
+        duration: 2000
+      });
+    } catch (error) {
+      console.error('Add to cart error:', error);
+      toast.error('Sepete eklenemedi');
     }
   };
 
@@ -204,22 +238,42 @@ export default function BusinessMenuModal({
                                 )}
                               </div>
                               
-                              <div className="ml-4 text-right flex-shrink-0">
-                                <div className="flex items-center gap-2">
+                              <div className="ml-4 flex items-center gap-3 flex-shrink-0">
+                                <div className="text-right">
+                                  <div className="flex items-center gap-2">
+                                    {item.original_price && parseFloat(item.original_price) > parseFloat(item.price) && (
+                                      <span className="text-sm text-gray-400 line-through">
+                                        {parseFloat(item.original_price).toFixed(2)} ₺
+                                      </span>
+                                    )}
+                                    <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                      {parseFloat(item.price).toFixed(2)} ₺
+                                    </span>
+                                  </div>
                                   {item.original_price && parseFloat(item.original_price) > parseFloat(item.price) && (
-                                    <span className="text-sm text-gray-400 line-through">
-                                      {parseFloat(item.original_price).toFixed(2)} ₺
+                                    <span className="inline-block mt-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
+                                      %{Math.round(((parseFloat(item.original_price) - parseFloat(item.price)) / parseFloat(item.original_price)) * 100)} İndirim
                                     </span>
                                   )}
-                                  <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                    {parseFloat(item.price).toFixed(2)} ₺
-                                  </span>
                                 </div>
-                                {item.original_price && parseFloat(item.original_price) > parseFloat(item.price) && (
-                                  <span className="inline-block mt-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
-                                    %{Math.round(((parseFloat(item.original_price) - parseFloat(item.price)) / parseFloat(item.original_price)) * 100)} İndirim
-                                  </span>
-                                )}
+                                
+                                {/* Sepete Ekle Butonu */}
+                                <button
+                                  onClick={() => handleAddToCart(item)}
+                                  disabled={!item.is_available}
+                                  className={`
+                                    px-3 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2
+                                    ${item.is_available
+                                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl'
+                                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    }
+                                  `}
+                                  title={item.is_available ? 'Sepete Ekle' : 'Ürün mevcut değil'}
+                                >
+                                  <ShoppingCart className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Sepete Ekle</span>
+                                  <Plus className="w-4 h-4 sm:hidden" />
+                                </button>
                               </div>
                             </div>
                           ))}

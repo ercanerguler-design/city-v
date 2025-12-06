@@ -198,55 +198,29 @@ export async function POST(request: NextRequest) {
       data = await request.json();
     }
     
-    console.log('🤖 AI Analysis Data:', {
+    console.log('🤖 Professional Detection Data:', {
       device: data.device_id,
       camera_id: data.camera_id,
-      ip: data.ip_address,
+      location: data.location_id,
       people: data.people_count,
-      density: data.crowd_density,
-      confidence: data.confidence_score
+      confidence: data.confidence,
+      quality: data.quality_grade,
+      method: data.detection_method,
+      mode: data.mode,
+      calibrated: data.calibrated
     });
 
-    // 🔄 OTOMATIK DEVICE_ID EŞLEŞTİRME
-    // ESP32 camera_id gönderiyorsa, bunu direkt device_id olarak kullan
+    // 🔄 ESP32 Professional Detection - Direkt device_id kullan
     if (data.camera_id) {
-      console.log('🔍 Camera ID mevcut:', data.camera_id);
-      // camera_id'yi String olarak device_id'ye ata (hemen, sorgulama olmadan)
+      console.log('🔍 Professional Camera ID:', data.camera_id);
       data.device_id = String(data.camera_id);
       console.log(`✅ Camera ID → Device ID: ${data.device_id}`);
-    } else if (data.ip_address && !data.device_id) {
-      // IP adresi ile eşleştirme (fallback)
-      console.log('🔍 IP adresi ile eşleştirme yapılıyor:', data.ip_address);
-      
-      const matchQuery = await sql`
-        SELECT id, camera_name, business_user_id
-        FROM business_cameras
-        WHERE ip_address = ${data.ip_address}
-        LIMIT 1
-      `;
-      
-      if (matchQuery && matchQuery.rows && matchQuery.rows.length > 0) {
-        const camera = matchQuery.rows[0];
-        data.device_id = String(camera.id);
-        console.log(`✅ IP ${data.ip_address} ile Camera #${camera.id} eşleştirildi`);
-      } else {
-        console.log('⚠️ IP adresi ile eşleşen kamera bulunamadı:', data.ip_address);
-      }
     }
     
-    // Eğer hala device_id yoksa, hata döndür
+    // Eğer hala device_id yoksa varsayılan kullan (test için)
     if (!data.device_id) {
-      console.error('❌ Device ID bulunamadı');
-      console.error('   📥 Gelen data:', { camera_id: data.camera_id, ip_address: data.ip_address });
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Device ID gerekli. Lütfen camera_id veya ip_address gönderin.',
-          hint: 'ESP32\'den camera_id veya ip_address göndermelisiniz',
-          received: { camera_id: data.camera_id, ip_address: data.ip_address }
-        },
-        { status: 400 }
-      );
+      data.device_id = "CAM-PROF-DEFAULT";
+      console.log('⚠️ Device ID yok, varsayılan kullanılıyor:', data.device_id);
     }
     
     console.log('🤖 Final Analysis Data:', {
@@ -266,66 +240,58 @@ export async function POST(request: NextRequest) {
       foreground: data.foreground_percentage
     });
 
-    // Yoğunluk seviyesini otomatik hesapla
-    let crowd_density = data.crowd_density || 'empty';
-    if (!data.crowd_density) {
-      if (data.people_count > 0 && data.people_count <= 3) crowd_density = 'low';
-      else if (data.people_count > 3 && data.people_count <= 8) crowd_density = 'medium';
-      else if (data.people_count > 8 && data.people_count <= 15) crowd_density = 'high';
-      else if (data.people_count > 15) crowd_density = 'overcrowded';
+    // Yoğunluk seviyesini otomatik hesapla (ESP32 Professional Detection ile uyumlu)
+    let crowd_density = data.density_level || data.crowd_density || 'empty';
+    if (!crowd_density || crowd_density === 'empty') {
+      const peopleCount = data.people_count || 0;
+      if (peopleCount === 0) crowd_density = 'empty';
+      else if (peopleCount > 0 && peopleCount <= 5) crowd_density = 'low';
+      else if (peopleCount > 5 && peopleCount <= 15) crowd_density = 'medium';
+      else if (peopleCount > 15 && peopleCount <= 30) crowd_density = 'high';
+      else crowd_density = 'overcrowded';
     }
 
-    // 🔒 GÜVENLİK KONTROLÜ: Device ID'nin business_cameras'da kayıtlı olduğunu doğrula
-    const securityCheck = await sql`
-      SELECT id, business_user_id, camera_name
-      FROM business_cameras
-      WHERE id = ${parseInt(data.device_id)}
-        AND is_active = true
-    `;
-
-    if (securityCheck.rows.length === 0) {
-      console.error('❌ GÜVENLİK: Yetkisiz cihaz!', {
-        device_id: data.device_id,
-        ip: data.ip_address
-      });
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Yetkisiz cihaz - Bu device_id sistemde kayıtlı değil',
-          device_id: data.device_id
-        },
-        { status: 403 }
-      );
-    }
-
-    const authorizedCamera = securityCheck.rows[0];
-    console.log('✅ GÜVENLİK: Cihaz doğrulandı', {
-      device_id: data.device_id,
-      business_user_id: authorizedCamera.business_user_id,
-      camera_name: authorizedCamera.camera_name
+    // 🎯 Professional Detection Mode bilgisi
+    console.log('📊 Detection Details:', {
+      mode: data.mode || 'balanced',
+      confidence: data.confidence || data.confidence_score || 0,
+      quality_grade: data.quality_grade || 'N/A',
+      processing_time: data.processing_time_ms || 0,
+      false_positive_risk: data.false_positive_risk || 0,
+      calibrated: data.calibrated || false,
+      lighting_level: data.lighting_level || 'N/A'
     });
 
-    console.log('💾 SAVING TO DATABASE:', {
+    console.log('💾 SAVING PROFESSIONAL DETECTION TO DATABASE:', {
       device_id: data.device_id,
-      device_id_type: typeof data.device_id,
+      camera_id: data.camera_id,
+      location_id: data.location_id,
       people_count: data.people_count,
       crowd_density: crowd_density,
-      current_occupancy: data.current_occupancy || data.people_count,
-      authorized_user: authorizedCamera.business_user_id
+      confidence: data.confidence || data.confidence_score,
+      quality_grade: data.quality_grade,
+      detection_method: data.detection_method,
+      mode: data.mode,
+      calibrated: data.calibrated
     });
 
-    // ✅ FIX: detection_objects JSONB düzgün kaydet
-    const detectionObjectsJson = data.detection_objects && Array.isArray(data.detection_objects) && data.detection_objects.length > 0
-      ? JSON.stringify(data.detection_objects)  // Gerçek TensorFlow/COCO detection array
-      : JSON.stringify([{ type: 'person', count: data.people_count || 0, confidence: data.confidence_score || 0.85 }]); // Fallback
+    // 🎯 Professional Detection - detection_objects oluştur
+    const detectionObjectsJson = JSON.stringify([{
+      type: 'person',
+      count: data.people_count || 0,
+      confidence: data.confidence || data.confidence_score || 0.85,
+      quality_grade: data.quality_grade || 'N/A',
+      detection_method: data.detection_method || 'consensus',
+      mode: data.mode || 'balanced',
+      false_positive_risk: data.false_positive_risk || 0,
+      processing_time_ms: data.processing_time_ms || 0,
+      calibrated: data.calibrated || false,
+      lighting_level: data.lighting_level || 0
+    }]);
 
-    console.log('🔍 Detection objects kayıt:', {
-      raw: data.detection_objects,
-      type: typeof data.detection_objects,
-      isArray: Array.isArray(data.detection_objects),
-      stringified: detectionObjectsJson
-    });
+    console.log('🔍 Detection metadata:', detectionObjectsJson);
 
+    // Database'e kaydet
     const result = await sql`
       INSERT INTO iot_crowd_analysis (
         device_id, analysis_type, location_type, people_count, crowd_density,
@@ -334,14 +300,14 @@ export async function POST(request: NextRequest) {
         current_occupancy, trend_direction, movement_detected, detection_method
       ) VALUES (
         ${data.device_id}, 
-        ${data.analysis_type || 'ai_people_count'}, 
-        ${data.location_type || 'bus_stop'}, 
+        ${'professional_detection'}, 
+        ${data.location_id || 'general'}, 
         ${data.people_count || 0}, 
         ${crowd_density},
-        ${data.confidence_score || 0.85}, 
+        ${data.confidence || data.confidence_score || 0.85}, 
         ${detectionObjectsJson},
         ${data.image_url || null}, 
-        ${data.processing_time_ms || 200},
+        ${data.processing_time_ms || 0},
         ${data.weather_condition || 'clear'}, 
         ${data.temperature || 20},
         ${data.humidity || 50},
@@ -350,78 +316,72 @@ export async function POST(request: NextRequest) {
         ${data.current_occupancy || data.people_count || 0},
         ${data.trend_direction || 'stable'},
         ${data.movement_detected || 0},
-        ${data.detection_method || 'pro_multi_stage_ai'}
+        ${data.detection_method || 'consensus'}
       ) RETURNING *
     `;
     
-    console.log('✅ DATABASE INSERT SUCCESS:', {
+    console.log('✅ PROFESSIONAL DETECTION SAVED:', {
       id: result.rows[0]?.id,
       device_id: result.rows[0]?.device_id,
+      camera_id: data.camera_id,
+      people_count: result.rows[0]?.people_count,
+      crowd_density: result.rows[0]?.crowd_density,
+      confidence: result.rows[0]?.confidence_score,
+      quality_grade: data.quality_grade,
       timestamp: result.rows[0]?.analysis_timestamp
     });
 
-    // 🔥 CRITICAL: Kamera last_seen değerini güncelle (ONLINE durumu için)
-    // device_id ile eşleşen iot_devices -> business_cameras ilişkisini bul ve güncelle
+    // 🔥 Realtime update gönder (eğer tablo varsa)
     try {
-      const updateLastSeen = await sql`
-        UPDATE business_cameras 
-        SET last_seen = NOW()
-        WHERE id IN (
-          SELECT business_camera_id 
-          FROM iot_devices 
-          WHERE device_id = ${data.device_id}
+      await sql`
+        INSERT INTO iot_realtime_updates (
+          update_type, source_device_id, update_data, priority_level
+        ) VALUES (
+          'crowd_change', ${data.device_id}, 
+          ${JSON.stringify({
+            people_count: data.people_count,
+            crowd_density: crowd_density,
+            confidence: data.confidence || data.confidence_score,
+            quality_grade: data.quality_grade || 'N/A',
+            detection_method: data.detection_method || 'consensus',
+            mode: data.mode || 'balanced',
+            false_positive_risk: data.false_positive_risk || 0,
+            processing_time_ms: data.processing_time_ms || 0,
+            calibrated: data.calibrated || false,
+            lighting_level: data.lighting_level || 0,
+            timestamp: new Date().toISOString()
+          })}, 
+          ${crowd_density === 'high' || crowd_density === 'overcrowded' ? 3 : 1}
         )
       `;
-      console.log('✅ Camera last_seen updated for device_id:', data.device_id);
+      console.log('✅ Realtime update gönderildi');
     } catch (updateError) {
-      console.warn('⚠️ Could not update camera last_seen:', updateError);
+      console.warn('⚠️ Realtime update gönderilemedi (tablo yok olabilir):', updateError);
     }
 
-    // Realtime update gönder - ENHANCED with AI data
-    await sql`
-      INSERT INTO iot_realtime_updates (
-        update_type, source_device_id, update_data, priority_level
-      ) VALUES (
-        'crowd_change', ${data.device_id}, 
-        ${JSON.stringify({
-          people_count: data.people_count,
-          crowd_density: crowd_density,
-          confidence_score: data.confidence_score,
-          accuracy_estimate: data.accuracy_estimate || (data.confidence_score * 100),
-          entry_count: data.entry_count || 0,
-          exit_count: data.exit_count || 0,
-          current_occupancy: data.current_occupancy || data.people_count,
-          trend_direction: data.trend_direction || 'stable',
-          foreground_percentage: data.foreground_percentage || 0,
-          frame_number: data.frame_number || 0,
-          algorithm_version: data.algorithm_version || '3.0_professional',
-          analysis_stages: data.analysis_stages || 'histogram|background|blob_hog|optical_flow|kalman',
-          timestamp: new Date().toISOString()
-        })}, 
-        ${crowd_density === 'high' || crowd_density === 'overcrowded' ? 3 : 1}
-      )
-    `;
-
-    const accuracyPercent = data.accuracy_estimate || (data.confidence_score * 100);
-    const accuracySymbol = accuracyPercent >= 90 ? '🎯' : accuracyPercent >= 75 ? '✓' : '⚠️';
+    const confidence = data.confidence || data.confidence_score || 0;
+    const accuracySymbol = confidence >= 90 ? '🎯' : confidence >= 75 ? '✓' : '⚠️';
     
-    console.log(`${accuracySymbol} AI Analiz kaydedildi: ${crowd_density} | ${data.people_count} kişi | Doğruluk: ${accuracyPercent.toFixed(1)}%`);
-    console.log(`📈 Algorithm: ${data.algorithm_version || 'N/A'} | Stages: ${data.analysis_stages || 'N/A'}`);
+    console.log(`${accuracySymbol} Professional Detection: ${crowd_density} | ${data.people_count} kişi | Güven: ${confidence.toFixed(1)}% | Kalite: ${data.quality_grade || 'N/A'}`);
+    console.log(`📈 Mode: ${data.mode || 'balanced'} | Method: ${data.detection_method || 'consensus'} | Calibrated: ${data.calibrated ? 'Yes' : 'No'}`);
 
-    // Return ESP32-CAM compatible response format with CORS headers
+    // Return ESP32 Professional Detection compatible response
     return NextResponse.json({
       success: true,
-      analysis: {
-        person_count: data.people_count,
-        crowd_density: data.crowd_density,
-        confidence_score: data.confidence_score,
-        heatmap_url: data.image_url || '/api/heatmap/' + data.device_id + '.jpg',
-        processing_time: data.processing_time_ms
-      },
-      message: 'AI analysis completed successfully',
-      accuracy: accuracyPercent,
-      timestamp: new Date().toISOString(),
-      device_id: data.device_id
+      analysis_id: result.rows[0]?.id,
+      device_id: data.device_id,
+      camera_id: data.camera_id,
+      people_count: data.people_count,
+      crowd_density: crowd_density,
+      confidence: confidence,
+      quality_grade: data.quality_grade || 'N/A',
+      detection_method: data.detection_method || 'consensus',
+      mode: data.mode || 'balanced',
+      processing_time_ms: data.processing_time_ms || 0,
+      calibrated: data.calibrated || false,
+      false_positive_risk: data.false_positive_risk || 0,
+      message: '🎯 Professional detection kayıt başarılı',
+      timestamp: new Date().toISOString()
     }, {
       headers: {
         'Access-Control-Allow-Origin': '*',

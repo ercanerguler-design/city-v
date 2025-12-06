@@ -24,6 +24,7 @@ import AIAnalyticsSection from '@/components/Business/Dashboard/AIAnalyticsSecti
 import ReviewsAndSentiments from '@/components/Business/Dashboard/ReviewsAndSentiments';
 import CampaignsSection from '@/components/Business/Dashboard/CampaignsSection';
 import SettingsSection from '@/components/Business/Dashboard/SettingsSection';
+import MallManagementSection from '@/components/Business/Dashboard/MallManagementSection';
 
 interface NavItem {
   id: string;
@@ -36,7 +37,8 @@ const navItems: NavItem[] = [
   { id: 'cameras', label: 'Kameralar', icon: Camera },
   { id: 'ai-analytics', label: 'AI Analytics', icon: Activity },
   { id: 'reviews', label: 'Duygular', icon: Users },
-  { id: 'campaigns', label: 'Kampanyalar', icon: Megaphone }, // Yeni!
+  { id: 'campaigns', label: 'Kampanyalar', icon: Megaphone },
+  { id: 'mall', label: 'AVM Yönetimi', icon: Settings }, // Yeni AVM Modülü!
   { id: 'location', label: 'Konum Yönetimi', icon: MapPin },
   { id: 'menu', label: 'Menü & Fiyatlar', icon: MenuIcon },
   { id: 'personel', label: 'Personel Yönetimi', icon: UserCheck },
@@ -146,24 +148,9 @@ export default function BusinessDashboard() {
             });
           }
           
-          // Kredi bilgisini getir
-          console.log('💳 Kredi bilgisi yükleniyor...');
-          const creditsResponse = await fetch(`/api/business/credits?userId=${data.user.id}`);
-          const creditsData = await creditsResponse.json();
-          
-          if (creditsData.success) {
-            // ❌ YANLIŞ: Zustand callback desteklemiyor!
-            // setBusinessUser((prev: any) => ({ ...prev, ... }));
-            
-            // ✅ DOĞRU: Önce mevcut user'ı al, sonra güncelle
-            const currentUser = data.user; // veya get() ile store'dan al
-            setBusinessUser({
-              ...currentUser,
-              campaign_credits: creditsData.credits.current,
-              total_campaigns_created: creditsData.credits.totalCampaigns
-            });
-            console.log('✅ Kredi bilgisi yüklendi:', creditsData.credits.current);
-          }
+          // 🚀 PERFORMANCE: Kredi bilgisini lazy load - sadece kampanyalar sekmesinde gerekli
+          // Dashboard mount'ta kredi yüklemeye gerek yok
+          console.log('💳 Kredi bilgisi lazy loading için hazır');
           
           setLoading(false);
         } else {
@@ -225,12 +212,26 @@ export default function BusinessDashboard() {
     window.location.href = '/business/login';
   };
 
+  // 🎨 ENHANCED LOADING STATE - Professional skeleton loader
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Yükleniyor...</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center space-y-6 p-8">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Camera className="w-8 h-8 text-blue-600 animate-pulse" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold text-gray-900">CityV Business Dashboard</h3>
+            <p className="text-gray-600">Verileriniz yükl eniyor...</p>
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -431,6 +432,7 @@ export default function BusinessDashboard() {
           {activeSection === 'ai-analytics' && <AIAnalyticsSection businessId={businessUser?.id?.toString() || '6'} />}
           {activeSection === 'reviews' && <ReviewsAndSentiments businessUserId={businessUser?.id} />}
           {activeSection === 'campaigns' && <CampaignsSection businessProfile={businessProfile} />}
+          {activeSection === 'mall' && <MallManagementSection />}
           {activeSection === 'location' && <LocationSection businessProfile={businessProfile} />}
           {activeSection === 'menu' && <MenuSection businessProfile={businessProfile} />}
           {activeSection === 'personel' && <PersonelSection businessProfile={businessProfile} />}

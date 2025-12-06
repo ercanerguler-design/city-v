@@ -707,44 +707,54 @@ export default function CamerasSection({ businessProfile }: { businessProfile: a
                 </div>
 
                 {/* Actions */}
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  {/* Canlı İzleme - Full Width */}
                   <button
                     onClick={() => openLiveView(camera)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all text-sm font-semibold shadow-md"
                     title={isNgrokCamera(camera) ? 'CityV Remote - Uzak erişim ile canlı izleme' : 'Yerel ağ canlı izleme'}
                   >
-                    <Eye className="w-4 h-4" />
-                    {isNgrokCamera(camera) ? (
-                      <span className="flex items-center gap-1">
-                        🌐 Uzaktan İzle
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1">
-                        🏠 Canlı İzle
-                      </span>
-                    )}
+                    <Eye className="w-5 h-5" />
+                    {isNgrokCamera(camera) ? '🌐 Uzaktan Canlı İzle' : '🏠 Canlı İzle'}
                   </button>
-                  <button
-                    onClick={() => handleEditCamera(camera)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Düzenle
-                  </button>
-                  <button
-                    onClick={() => openCalibration(camera)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors text-sm font-medium"
-                  >
-                    <Settings className="w-4 h-4" />
-                    Kalibrasyon
-                  </button>
-                  <button
-                    onClick={() => handleDeleteCamera(camera.id)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Sil
-                  </button>
+                  
+                  {/* Kalibrasyon & Bölge Çizimi */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => openCalibration(camera)}
+                      className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors text-sm font-medium"
+                      title="Giriş/Çıkış çizgisini ayarla"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Kalibrasyon
+                    </button>
+                    <button
+                      onClick={() => openZoneDrawing(camera)}
+                      className="flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium"
+                      title="Bölgeleri çiz (masa, kasa, giriş vb.)"
+                    >
+                      <Activity className="w-4 h-4" />
+                      Bölgeler
+                    </button>
+                  </div>
+                  
+                  {/* Düzenle & Sil */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleEditCamera(camera)}
+                      className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Düzenle
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCamera(camera.id)}
+                      className="flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Sil
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>

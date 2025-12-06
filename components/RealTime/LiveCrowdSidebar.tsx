@@ -85,6 +85,33 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
     }
   };
 
+  // 🔥 REAL-TIME IOT DATA - CANLI ANALİZLER
+  const [realTimeIoTData, setRealTimeIoTData] = useState<any[]>([]);
+  
+  const loadRealTimeIoTData = async () => {
+    try {
+      console.log('📡 Real-time IoT crowd analysis data yükleniyor...');
+      
+      // Son 1 saatin IoT verilerini al (ESP32'lerden gelen canlı data)
+      const response = await fetch('/api/iot/crowd-analysis?hours=1&limit=50');
+      
+      if (!response.ok) {
+        console.error('❌ IoT crowd analysis API error:', response.status);
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && data.analyses) {
+        setRealTimeIoTData(data.analyses);
+        console.log('✅ Real-time IoT data loaded:', data.analyses.length, 'records');
+        console.log('📊 Summary:', data.summary);
+      }
+    } catch (error) {
+      console.error('❌ Real-time IoT data load error:', error);
+    }
+  };
+
   const loadBusinessIoTData = async () => {
     try {
       setIotLoading(true);
@@ -97,6 +124,7 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
         userDetails: user ? { id: user.id, email: user.email, tier: user.membershipTier } : null
       });
       
+      // 1️⃣ Business profiles (kamera sahibi işletmeler)
       const response = await fetch('/api/business/live-iot-data');
       
       console.log('📡 Business IoT API Response Status:', response.status);
@@ -138,6 +166,10 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
         console.error('❌ Business IoT API başarısız:', data.error);
         console.error('📋 Detaylar:', data.details);
       }
+      
+      // 2️⃣ Real-time IoT crowd analysis (ESP32'lerden canlı veri)
+      await loadRealTimeIoTData();
+      
     } catch (error) {
       console.error('❌ Business IoT veri yükleme hatası:', error);
     } finally {
@@ -664,6 +696,82 @@ export default function LiveCrowdSidebar({ isOpen: externalIsOpen, onToggle, loc
                 <p className="mt-2 text-blue-600">Console'u açıp API yanıtını kontrol edin</p>
               </div>
             </div>
+          )}
+          
+          {/* 🔥 REAL-TIME IOT CROWD ANALYSIS - ESP32 Canlı Veriler */}
+          {realTimeIoTData.length > 0 && (
+            <>
+              <div className="mb-3 px-2 mt-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <h4 className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide">
+                    Canlı ESP32 Analizleri ({realTimeIoTData.length})
+                  </h4>
+                </div>
+              </div>
+              
+              <div className={`${isMobile ? 'space-y-3' : 'space-y-2'} mb-4`}>
+                {realTimeIoTData.slice(0, 10).map((analysis: any, index: number) => {
+                  const timeDiff = Date.now() - new Date(analysis.analysis_timestamp).getTime();
+                  const isRecent = timeDiff < 60000; // Son 1 dakika
+                  
+                  return (
+                    <div
+                      key={analysis.id}
+                      className={`p-3 bg-gradient-to-br ${
+                        isRecent 
+                          ? 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800' 
+                          : 'from-gray-50 to-slate-50 dark:from-gray-800/20 dark:to-slate-800/20 border-gray-200 dark:border-gray-700'
+                      } rounded-lg border hover:shadow-md transition-all`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-sm text-gray-900 dark:text-white flex items-center gap-2">
+                            {analysis.device_name || `Device ${analysis.device_id}`}
+                            {isRecent && <span className="text-xs text-green-500 animate-pulse">● CANLI</span>}
+                          </h4>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {analysis.location_type || analysis.stop_name || 'Lokasyon bilinmiyor'}
+                          </p>
+                        </div>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          analysis.crowd_density === 'high' || analysis.crowd_density === 'overcrowded'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+                            : analysis.crowd_density === 'medium'
+                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        }`}>
+                          {analysis.crowd_density === 'overcrowded' ? '🔴 Çok Yoğun' :
+                           analysis.crowd_density === 'high' ? '🔴 Yoğun' :
+                           analysis.crowd_density === 'medium' ? '🟡 Orta' : '🟢 Sakin'}
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="text-center">
+                          <div className="text-base font-bold text-gray-900 dark:text-white">
+                            {analysis.people_count || 0}
+                          </div>
+                          <div className="text-xs text-gray-500">Kişi</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-base font-bold text-blue-600 dark:text-blue-400">
+                            {Math.round((analysis.confidence_score || 0) * 100)}%
+                          </div>
+                          <div className="text-xs text-gray-500">Güven</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-base font-bold text-purple-600 dark:text-purple-400">
+                            {formatLastUpdated(new Date(analysis.analysis_timestamp).getTime())}
+                          </div>
+                          <div className="text-xs text-gray-500">Önce</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
           
           {/* Normal Crowd Analysis Verileri */}
