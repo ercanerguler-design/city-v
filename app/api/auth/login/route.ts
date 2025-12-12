@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
+
+const sql = neon(process.env.DATABASE_URL || process.env.POSTGRES_URL!);
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,14 +27,14 @@ export async function POST(request: NextRequest) {
       WHERE email = ${email}
     `;
     
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return NextResponse.json(
         { error: 'Bu email adresi ile kayıtlı kullanıcı bulunamadı. Lütfen kayıt olun.' },
         { status: 404 }
       );
     }
     
-    const user = result.rows[0];
+    const user = result[0];
     
     // Google ile kayıt olmuş kullanıcı email/password ile giriş yapmaya çalışıyor
     if (user.google_id && !user.password_hash) {

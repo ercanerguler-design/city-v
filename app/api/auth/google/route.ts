@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.DATABASE_URL || process.env.POSTGRES_URL!);
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,9 +21,9 @@ export async function POST(request: NextRequest) {
       SELECT * FROM users WHERE email = ${email}
     `;
     
-    if (existingUser.rows.length > 0) {
+    if (existingUser.length > 0) {
       // Kullanıcı mevcut - last_login güncelle
-      const user = existingUser.rows[0];
+      const user = existingUser[0];
       
       await sql`
         UPDATE users 
@@ -82,7 +84,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      user: newUser.rows[0],
+      user: newUser[0],
       isNewUser: true
     });
     
