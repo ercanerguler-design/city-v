@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 
 // 🤖 MOCK AI ANALYSIS FUNCTION - Simulates real AI processing
 function performMockAIAnalysis(imageBuffer: Buffer) {
@@ -78,6 +78,7 @@ function performMockAIAnalysis(imageBuffer: Buffer) {
 // GET - Yoğunluk analizi verileri
 export async function GET(request: NextRequest) {
   try {
+    const sql = neon(process.env.DATABASE_URL || process.env.POSTGRES_URL!);
     console.log('👥 Yoğunluk analizi verileri getiriliyor...');
 
     const { searchParams } = new URL(request.url);
@@ -119,7 +120,7 @@ export async function GET(request: NextRequest) {
 
     query += ` ORDER BY ica.analysis_timestamp DESC LIMIT ${limit}`;
 
-    const result = await sql.query(query, params);
+    const result = await sql(query, params);
 
     // En son analiz verileri için özet istatistik
     const summaryQuery = `
@@ -134,15 +135,15 @@ export async function GET(request: NextRequest) {
       ${device_id ? `AND device_id = '${device_id}'` : ''}
     `;
 
-    const summary = await sql.query(summaryQuery);
+    const summary = await sql(summaryQuery);
 
-    console.log(`✅ ${result.rows.length} analiz verisi bulundu`);
+    console.log(`✅ ${result.length} analiz verisi bulundu`);
 
     return NextResponse.json({
       success: true,
-      analyses: result.rows,
-      summary: summary.rows[0],
-      count: result.rows.length
+      analyses: result,
+      summary: summary[0],
+      count: result.length
     });
 
   } catch (error) {
@@ -157,6 +158,7 @@ export async function GET(request: NextRequest) {
 // POST - Yeni yoğunluk analizi ekle (ESP32-CAM'dan gelen)
 export async function POST(request: NextRequest) {
   try {
+    const sql = neon(process.env.DATABASE_URL || process.env.POSTGRES_URL!);
     console.log('📸 ESP32-CAM AI Analysis Request Received');
     
     // Check content type
@@ -292,53 +294,56 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Detection metadata:', detectionObjectsJson);
 
     // Database'e kaydet
-    const result = await sql`
-      INSERT INTO iot_crowd_analysis (
+    const result = await sql(
+      `INSERT INTO iot_crowd_analysis (
         device_id, analysis_type, location_type, people_count, crowd_density,
         confidence_score, detection_objects, image_url, processing_time_ms,
         weather_condition, temperature, humidity, entry_count, exit_count,
         current_occupancy, trend_direction, movement_detected, detection_method
-      ) VALUES (
-        ${data.device_id}, 
-        ${'professional_detection'}, 
-        ${data.location_id || 'general'}, 
-        ${data.people_count || 0}, 
-        ${crowd_density},
-        ${data.confidence || data.confidence_score || 0.85}, 
-        ${detectionObjectsJson},
-        ${data.image_url || null}, 
-        ${data.processing_time_ms || 0},
-        ${data.weather_condition || 'clear'}, 
-        ${data.temperature || 20},
-        ${data.humidity || 50},
-        ${data.entry_count || 0},
-        ${data.exit_count || 0},
-        ${data.current_occupancy || data.people_count || 0},
-        ${data.trend_direction || 'stable'},
-        ${data.movement_detected || 0},
-        ${data.detection_method || 'consensus'}
-      ) RETURNING *
-    `;
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *`,
+      [
+        data.device_id,
+        'professional_detection',
+        data.location_id || 'general',
+        data.people_count || 0,
+        crowd_density,
+        data.confidence || data.confidence_score || 0.85,
+        detectionObjectsJson,
+        data.image_url || null,
+        data.processing_time_ms || 0,
+        data.weather_condition || 'clear',
+        data.temperature || 20,
+        data.humidity || 50,
+        data.entry_count || 0,
+        data.exit_count || 0,
+        data.current_occupancy || data.people_count || 0,
+        data.trend_direction || 'stable',
+        data.movement_detected || 0,
+        data.detection_method || 'consensus'
+      ]
+    );
     
     console.log('✅ PROFESSIONAL DETECTION SAVED:', {
-      id: result.rows[0]?.id,
-      device_id: result.rows[0]?.device_id,
+      id: result[0]?.id,
+      device_id: result[0]?.device_id,
       camera_id: data.camera_id,
-      people_count: result.rows[0]?.people_count,
-      crowd_density: result.rows[0]?.crowd_density,
-      confidence: result.rows[0]?.confidence_score,
+      people_count: result[0]?.people_count,
+      crowd_density: result[0]?.crowd_density,
+      confidence: result[0]?.confidence_score,
       quality_grade: data.quality_grade,
-      timestamp: result.rows[0]?.analysis_timestamp
+      timestamp: result[0]?.analysis_timestamp
     });
 
     // 🔥 Realtime update gönder (eğer tablo varsa)
     try {
-      await sql`
-        INSERT INTO iot_realtime_updates (
+      await sql(
+        `INSERT INTO iot_realtime_updates (
           update_type, source_device_id, update_data, priority_level
-        ) VALUES (
-          'crowd_change', ${data.device_id}, 
-          ${JSON.stringify({
+        ) VALUES ($1, $2, $3, $4)`,
+        [
+          'crowd_change',
+          data.device_id,
+          JSON.stringify({
             people_count: data.people_count,
             crowd_density: crowd_density,
             confidence: data.confidence || data.confidence_score,
@@ -350,10 +355,10 @@ export async function POST(request: NextRequest) {
             calibrated: data.calibrated || false,
             lighting_level: data.lighting_level || 0,
             timestamp: new Date().toISOString()
-          })}, 
-          ${crowd_density === 'high' || crowd_density === 'overcrowded' ? 3 : 1}
-        )
-      `;
+          }),
+          crowd_density === 'high' || crowd_density === 'overcrowded' ? 3 : 1
+        ]
+      );
       console.log('✅ Realtime update gönderildi');
     } catch (updateError) {
       console.warn('⚠️ Realtime update gönderilemedi (tablo yok olabilir):', updateError);
@@ -368,7 +373,7 @@ export async function POST(request: NextRequest) {
     // Return ESP32 Professional Detection compatible response
     return NextResponse.json({
       success: true,
-      analysis_id: result.rows[0]?.id,
+      analysis_id: result[0]?.id,
       device_id: data.device_id,
       camera_id: data.camera_id,
       people_count: data.people_count,

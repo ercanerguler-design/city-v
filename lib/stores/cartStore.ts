@@ -31,6 +31,10 @@ interface CartStore {
   setError: (error: string | null) => void;
   clearCart: () => void;
   
+  // Computed values
+  getTotalItems: () => number;
+  getTotalPrice: () => number;
+  
   // API Calls
   loadCart: (userId: number, businessId: number) => Promise<void>;
   addToCart: (userId: number, businessId: number, menuItemId: number, quantity: number, unitPrice: number, notes?: string) => Promise<void>;
@@ -79,6 +83,17 @@ export const useCartStore = create<CartStore>()(
         finalTotal: 0,
         selectedAddress: null
       }),
+      
+      // Computed values
+      getTotalItems: () => {
+        const { items } = get();
+        return items.reduce((total, item) => total + item.quantity, 0);
+      },
+      
+      getTotalPrice: () => {
+        const { finalTotal, subtotal } = get();
+        return finalTotal || subtotal || 0;
+      },
 
       // API Calls
       loadCart: async (userId: number, businessId: number) => {

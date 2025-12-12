@@ -274,7 +274,379 @@ export default function MallManagementSection() {
         </div>
       )}
 
-      {/* Modals would go here */}
+      {/* Create Mall Modal */}
+      {showCreateMall && (
+        <CreateMallModal
+          onClose={() => setShowCreateMall(false)}
+          onSubmit={handleCreateMall}
+        />
+      )}
+
+      {/* Create Floor Modal */}
+      {showCreateFloor && currentMall && (
+        <CreateFloorModal
+          onClose={() => setShowCreateFloor(false)}
+          onSubmit={handleCreateFloor}
+        />
+      )}
+
+      {/* Create Shop Modal */}
+      {showCreateShop && currentMall && (
+        <CreateShopModal
+          floors={floors}
+          onClose={() => setShowCreateShop(false)}
+          onSubmit={handleCreateShop}
+        />
+      )}
+    </div>
+  );
+}
+
+// Create Mall Modal
+function CreateMallModal({ onClose, onSubmit }: any) {
+  const [formData, setFormData] = useState({
+    mall_name: '',
+    address: '',
+    city: '',
+    district: '',
+    latitude: null,
+    longitude: null,
+    total_floors: 1,
+    total_area_sqm: null,
+    parking_capacity: null
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Yeni AVM Oluştur</h3>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              AVM Adı *
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.mall_name}
+              onChange={(e) => setFormData({ ...formData, mall_name: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Şehir *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.city}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                İlçe *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.district}
+                onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Adres *
+            </label>
+            <textarea
+              required
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              rows={2}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Kat Sayısı *
+              </label>
+              <input
+                type="number"
+                required
+                min="1"
+                value={formData.total_floors}
+                onChange={(e) => setFormData({ ...formData, total_floors: parseInt(e.target.value) })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Toplam Alan (m²)
+              </label>
+              <input
+                type="number"
+                value={formData.total_area_sqm || ''}
+                onChange={(e) => setFormData({ ...formData, total_area_sqm: e.target.value ? parseInt(e.target.value) : null })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Otopark Kapasitesi
+              </label>
+              <input
+                type="number"
+                value={formData.parking_capacity || ''}
+                onChange={(e) => setFormData({ ...formData, parking_capacity: e.target.value ? parseInt(e.target.value) : null })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              İptal
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              Oluştur
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Create Floor Modal
+function CreateFloorModal({ onClose, onSubmit }: any) {
+  const [formData, setFormData] = useState({
+    floor_name: '',
+    floor_number: 0,
+    total_area_sqm: null,
+    shop_count: 0
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-md w-full p-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Yeni Kat Ekle</h3>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Kat Adı *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="örn: Zemin Kat, 1. Kat"
+              value={formData.floor_name}
+              onChange={(e) => setFormData({ ...formData, floor_name: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Kat Numarası *
+            </label>
+            <input
+              type="number"
+              required
+              value={formData.floor_number}
+              onChange={(e) => setFormData({ ...formData, floor_number: parseInt(e.target.value) })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Kat Alanı (m²)
+            </label>
+            <input
+              type="number"
+              value={formData.total_area_sqm || ''}
+              onChange={(e) => setFormData({ ...formData, total_area_sqm: e.target.value ? parseInt(e.target.value) : null })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              İptal
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              Ekle
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Create Shop Modal
+function CreateShopModal({ floors, onClose, onSubmit }: any) {
+  const [formData, setFormData] = useState({
+    shop_name: '',
+    shop_number: '',
+    floor_id: '',
+    area_sqm: null,
+    category: '',
+    monthly_rent: null
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-md w-full p-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Yeni Mağaza Ekle</h3>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Mağaza Adı *
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.shop_name}
+              onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Mağaza No *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.shop_number}
+                onChange={(e) => setFormData({ ...formData, shop_number: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Kat *
+              </label>
+              <select
+                required
+                value={formData.floor_id}
+                onChange={(e) => setFormData({ ...formData, floor_id: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Seçiniz</option>
+                {floors.map((floor: any) => (
+                  <option key={floor.id} value={floor.id}>
+                    {floor.floor_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Kategori
+            </label>
+            <input
+              type="text"
+              placeholder="örn: Giyim, Teknoloji, Yiyecek"
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Alan (m²)
+              </label>
+              <input
+                type="number"
+                value={formData.area_sqm || ''}
+                onChange={(e) => setFormData({ ...formData, area_sqm: e.target.value ? parseInt(e.target.value) : null })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Aylık Kira (₺)
+              </label>
+              <input
+                type="number"
+                value={formData.monthly_rent || ''}
+                onChange={(e) => setFormData({ ...formData, monthly_rent: e.target.value ? parseInt(e.target.value) : null })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              İptal
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              Ekle
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
