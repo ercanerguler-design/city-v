@@ -6,6 +6,7 @@ import { X, Store, MapPin, Phone, Tag, Sparkles, Clock, Info, ShoppingCart, Plus
 import toast from 'react-hot-toast';
 import { useCartStore } from '@/lib/stores/cartStore';
 import { useAuthStore } from '@/store/authStore';
+import CartModal from '@/components/Cart/CartModal';
 
 interface BusinessMenuModalProps {
   isOpen: boolean;
@@ -22,8 +23,9 @@ export default function BusinessMenuModal({
 }: BusinessMenuModalProps) {
   const [menuData, setMenuData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showCart, setShowCart] = useState(false);
   const { user } = useAuthStore();
-  const { addToCart, setBusinessInfo } = useCartStore();
+  const { addToCart, setBusinessInfo, getTotalItems } = useCartStore();
 
   useEffect(() => {
     if (isOpen && businessId) {
@@ -108,6 +110,17 @@ export default function BusinessMenuModal({
                 <div className="flex items-center gap-3 mb-2">
                   <Store className="w-6 h-6" />
                   <h2 className="text-2xl font-bold">{businessName}</h2>
+                  
+                  {/* Sepet Butonu */}
+                  {getTotalItems() > 0 && (
+                    <button
+                      onClick={() => setShowCart(true)}
+                      className="ml-auto relative bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all flex items-center gap-2"
+                    >
+                      <ShoppingCart className="w-5 h-5" />
+                      <span className="font-semibold">Sepetim ({getTotalItems()})</span>
+                    </button>
+                  )}
                 </div>
                 {menuData?.business && (
                   <div className="space-y-1 text-sm text-blue-100">
@@ -297,6 +310,9 @@ export default function BusinessMenuModal({
             )}
           </div>
         </motion.div>
+        
+        {/* Sepet Modal */}
+        {showCart && <CartModal onClose={() => setShowCart(false)} />}
       </div>
     </AnimatePresence>
   );

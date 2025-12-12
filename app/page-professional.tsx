@@ -47,14 +47,12 @@ import LiveCrowdSidebar from '@/components/RealTime/LiveCrowdSidebar';
 import QRScanner from '@/components/Camera/QRScanner';
 import PhotoGallery from '@/components/Camera/PhotoGallery';
 import AddReviewModal from '@/components/ui/AddReviewModal';
+import CartIcon from '@/components/Cart/CartIcon';
 
 // Business Box Promotion Components
 import BusinessBoxBanner from '@/components/business-box/BusinessBoxBanner';
 import BusinessBoxFloatingButton from '@/components/business-box/BusinessBoxFloatingButton';
 import BusinessBoxModal from '@/components/business-box/BusinessBoxModal';
-
-// Cart Component
-import CartIcon from '@/components/Cart/CartIcon';
 
 // Hooks
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
@@ -1437,6 +1435,9 @@ export default function ProfessionalHome() {
             </p>
           </div>
         </footer>
+        
+        {/* Sepet Icon - Floating */}
+        <CartIcon />
       </div>
     </ErrorBoundary>
   );
