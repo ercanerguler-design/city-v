@@ -10,6 +10,7 @@ export default function LocationSection({ businessProfile }: { businessProfile: 
   const [location, setLocation] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [autoDetecting, setAutoDetecting] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
 
   // Konum verilerini yükle ve güncelle - dependency array düzeltildi
   useEffect(() => {
@@ -116,6 +117,55 @@ export default function LocationSection({ businessProfile }: { businessProfile: 
     );
   };
 
+  const handleGeocodeAddress = async () => {
+    if (!location?.address && !location?.city) {
+      toast.error('Lütfen en az adres veya şehir bilgisi girin');
+      return;
+    }
+
+    setGeocoding(true);
+    
+    try {
+      // Tam adres oluştur
+      const fullAddress = [
+        location?.address,
+        location?.district,
+        location?.city,
+        'Türkiye'
+      ].filter(Boolean).join(', ');
+
+      console.log('🔍 Geocoding adresi:', fullAddress);
+      toast('🔍 Adres koordinatlara dönüştürülüyor...', { icon: '⏳' });
+
+      const response = await fetch(`/api/geocode?address=${encodeURIComponent(fullAddress)}`);
+      const data = await response.json();
+
+      if (data.success && data.coordinates) {
+        setLocation({
+          ...location,
+          latitude: data.coordinates.lat,
+          longitude: data.coordinates.lng
+        });
+        
+        toast.success(
+          `✅ Koordinatlar bulundu!\n` +
+          `📍 ${data.coordinates.lat.toFixed(6)}, ${data.coordinates.lng.toFixed(6)}\n` +
+          `💾 Kaydetmeyi unutmayın!`,
+          { duration: 4000 }
+        );
+        
+        console.log('✅ Geocoding başarılı:', data.coordinates);
+      } else {
+        toast.error('❌ Adres bulunamadı. Lütfen daha detaylı adres girin veya koordinatları manuel girin.');
+      }
+    } catch (error) {
+      console.error('❌ Geocoding hatası:', error);
+      toast.error('Adres dönüştürülürken hata oluştu. Manuel koordinat girin.');
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!location?.latitude || !location?.longitude) {
       toast.error('Lütfen konum belirleyin');
@@ -209,12 +259,21 @@ export default function LocationSection({ businessProfile }: { businessProfile: 
             <MapPin className="w-5 h-5 text-blue-600" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900 mb-1">Konum Nasıl Belirlenir?</h3>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>✅ <strong>Otomatik Algıla:</strong> Tarayıcınızın konum iznini verin (önerilen)</li>
-              <li>✅ <strong>Manuel Giriş:</strong> Enlem/Boylam veya adresi kendiniz yazın</li>
-              <li>💡 <strong>İpucu:</strong> Google Maps'ten koordinatları kopyalayabilirsiniz</li>
-            </ul>
+            <h3 className="font-semibold text-gray-900 mb-2">🎯 3 Kolay Yöntem</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div className="bg-white p-3 rounded-lg border border-blue-100">
+                <div className="font-semibold text-green-700 mb-1">🌐 GPS ile Otomatik</div>
+                <p className="text-gray-600">Tarayıcı konum iznini verin, konumunuz otomatik algılansın (En kolay)</p>
+              </div>
+              <div className="bg-white p-3 rounded-lg border border-blue-100">
+                <div className="font-semibold text-purple-700 mb-1">🔍 Adresten Bul</div>
+                <p className="text-gray-600">Adres/şehir yazın, koordinatlar otomatik bulunur (GPS yoksa)</p>
+              </div>
+              <div className="bg-white p-3 rounded-lg border border-blue-100">
+                <div className="font-semibold text-blue-700 mb-1">✍️ Manuel Giriş</div>
+                <p className="text-gray-600">Google Maps'ten koordinatları kopyalayıp yapıştırın</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -276,24 +335,54 @@ export default function LocationSection({ businessProfile }: { businessProfile: 
           </div>
         </div>
 
-        <div className="flex gap-3 mt-6">
+        <div className="flex flex-wrap gap-3 mt-6">
           <button
             onClick={handleAutoDetect}
             disabled={autoDetecting}
-            className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300"
+            className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 transition"
           >
             <Navigation className="w-4 h-4" />
-            {autoDetecting ? 'Algılanıyor...' : 'Otomatik Algıla'}
+            {autoDetecting ? 'Algılanıyor...' : 'GPS ile Algıla'}
+          </button>
+
+          <button
+            onClick={handleGeocodeAddress}
+            disabled={geocoding || (!location?.address && !location?.city)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 transition"
+            title="Adres bilgisinden koordinat bul"
+          >
+            <Search className="w-4 h-4" />
+            {geocoding ? 'Aranıyor...' : 'Adresten Bul'}
           </button>
 
           <button
             onClick={handleSave}
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300"
+            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 ml-auto transition"
           >
             <Save className="w-4 h-4" />
             {loading ? 'Kaydediliyor...' : 'Kaydet'}
           </button>
+        </div>
+
+        {/* Yardımcı Link */}
+        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-gray-700">
+            💡 <strong>İpucu:</strong> Koordinatları bilmiyorsanız:
+            <br />
+            1️⃣ Yukarıdaki alanlara adres/şehir yazın → <strong>"Adresten Bul"</strong> butonuna tıklayın
+            <br />
+            2️⃣ Veya{' '}
+            <a
+              href="https://www.google.com/maps"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline font-medium"
+            >
+              Google Maps'i açın
+            </a>
+            , işletmenizi bulun, sağ tık yapın, koordinatları kopyalayın
+          </p>
         </div>
       </div>
 
