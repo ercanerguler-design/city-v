@@ -29,30 +29,91 @@ export default function LocationSection({ businessProfile }: { businessProfile: 
   const handleAutoDetect = () => {
     setAutoDetecting(true);
     
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newLocation = {
-            ...location,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          };
-          setLocation(newLocation);
-          console.log('📍 Konum algılandı:', newLocation);
-          toast.success('✅ Konum otomatik algılandı! Kaydetmeyi unutmayın.');
-          setAutoDetecting(false);
-        },
-        (error) => {
-          console.error('❌ Konum algılama hatası:', error);
-          toast.error('⚠️ Konum izni gerekli. Tarayıcı ayarlarından konum iznini kontrol edin.');
-          setAutoDetecting(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else {
-      toast.error('Tarayıcınız konum desteği sunmuyor');
+    if (!('geolocation' in navigator)) {
+      toast.error('❌ Tarayıcınız konum desteği sunmuyor. Lütfen konumu manuel olarak girin.');
       setAutoDetecting(false);
+      return;
     }
+
+    // Konum izni durumunu kontrol et
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+        if (result.state === 'denied') {
+          toast.error('🚫 Konum izni reddedildi!\n\n' +
+            'Tarayıcı ayarlarından konum iznini açın:\n' +
+            '1. Adres çubuğundaki kilit ikonuna tıklayın\n' +
+            '2. "Konum" veya "Location" seçeneğini bulun\n' +
+            '3. İzin verin ve sayfayı yenileyin', 
+            { duration: 8000 }
+          );
+          setAutoDetecting(false);
+          return;
+        }
+      });
+    }
+
+    // Kullanıcıya bilgilendirme
+    toast('📍 Konum izni isteniyor...', { icon: '⏳', duration: 2000 });
+    
+    // Cihaz türüne göre timeout ayarla
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const timeout = isMobile ? 60000 : 30000; // Mobile: 60s, PC: 30s
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const newLocation = {
+          ...location,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        };
+        setLocation(newLocation);
+        console.log('📍 Konum algılandı:', {
+          lat: newLocation.latitude,
+          lng: newLocation.longitude,
+          accuracy: position.coords.accuracy + 'm'
+        });
+        toast.success(`✅ Konum başarıyla algılandı!\n` +
+          `📍 Doğruluk: ${Math.round(position.coords.accuracy)}m\n` +
+          `💾 Kaydetmeyi unutmayın!`, 
+          { duration: 4000 }
+        );
+        setAutoDetecting(false);
+      },
+      (error) => {
+        console.error('❌ Konum algılama hatası:', error);
+        
+        let errorMessage = '';
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = '🚫 Konum izni reddedildi!\n\n' +
+              '📱 Ayarlar:\n' +
+              '• Tarayıcı: Adres çubuğundaki kilit ikonuna tıklayın\n' +
+              '• Chrome: Ayarlar > Gizlilik > Site ayarları > Konum\n' +
+              '• Firefox: Ayarlar > Gizlilik > İzinler > Konum\n' +
+              '• Safari: Ayarlar > Safari > Konum Hizmetleri\n\n' +
+              'Veya konumu manuel olarak girin 👇';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = '❌ Konum bilgisi alınamadı.\n' +
+              'GPS/Wi-Fi bağlantınızı kontrol edin veya manuel girin.';
+            break;
+          case error.TIMEOUT:
+            errorMessage = '⏱️ Konum algılama zaman aşımına uğradı.\n' +
+              'GPS sinyaliniz zayıf olabilir. Manuel girin veya tekrar deneyin.';
+            break;
+          default:
+            errorMessage = '❌ Bilinmeyen hata. Konumu manuel olarak girin.';
+        }
+        
+        toast.error(errorMessage, { duration: 8000 });
+        setAutoDetecting(false);
+      },
+      { 
+        enableHighAccuracy: isMobile ? true : false, // Mobile'da high accuracy
+        timeout: timeout,
+        maximumAge: 0 
+      }
+    );
   };
 
   const handleSave = async () => {
@@ -141,6 +202,23 @@ export default function LocationSection({ businessProfile }: { businessProfile: 
 
   return (
     <div className="space-y-6">
+      {/* Bilgilendirme Banner */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+            <MapPin className="w-5 h-5 text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-gray-900 mb-1">Konum Nasıl Belirlenir?</h3>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>✅ <strong>Otomatik Algıla:</strong> Tarayıcınızın konum iznini verin (önerilen)</li>
+              <li>✅ <strong>Manuel Giriş:</strong> Enlem/Boylam veya adresi kendiniz yazın</li>
+              <li>💡 <strong>İpucu:</strong> Google Maps'ten koordinatları kopyalayabilirsiniz</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <h2 className="text-xl font-bold text-gray-900 mb-6">Konum Yönetimi</h2>
 
