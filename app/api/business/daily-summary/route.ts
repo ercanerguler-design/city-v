@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 const sql = neon(process.env.DATABASE_URL!);
 const JWT_SECRET = process.env.JWT_SECRET || 'cityv-business-secret-key-2024';
 
+// Daily business summary API endpoint - Returns analytics for specific date
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
