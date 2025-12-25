@@ -18,21 +18,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // JWT token authentication
-    const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    let user;
-    
-    try {
-      user = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    // No JWT check - uses businessUserId parameter like other analytics APIs
 
     console.log(`📊 Günlük özet verisi sorgulanıyor: User ${businessUserId}, Tarih ${date}`);
 

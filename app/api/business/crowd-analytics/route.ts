@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         ca.crowd_density,
         ca.analysis_timestamp as timestamp
       FROM iot_crowd_analysis ca
-      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
+      JOIN business_cameras bc ON bc.id::VARCHAR = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
         AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour' * ${hoursAgo}
       ORDER BY ca.analysis_timestamp DESC
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         bc.location_description as zone_name,
         AVG(ca.people_count) as avg_people,
         MAX(ca.people_count) as max_people,
-        AVG(0) as avg_queue,
+        0 as avg_queue,
         CASE 
           WHEN AVG(ca.people_count) > 15 THEN 15
           WHEN AVG(ca.people_count) > 8 THEN 8
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
         END as avg_density,
         COUNT(*) as data_points
       FROM iot_crowd_analysis ca
-      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
+      JOIN business_cameras bc ON bc.id::VARCHAR = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
         AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour' * ${hoursAgo}
       GROUP BY bc.location_description
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
         SUM(COALESCE(bc.total_entries, 0)) - 
         SUM(COALESCE(bc.total_exits, 0)) as net_occupancy
       FROM iot_crowd_analysis ca
-      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
+      JOIN business_cameras bc ON bc.id::VARCHAR = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
         AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour' * ${hoursAgo}
     `;
@@ -96,18 +96,18 @@ export async function GET(request: NextRequest) {
       SELECT 
         EXTRACT(HOUR FROM ca.analysis_timestamp) as hour,
         AVG(ca.people_count) as avg_people,
-        CASE 
+        AVG(CASE 
           WHEN ca.crowd_density = 'high' THEN 15
           WHEN ca.crowd_density = 'medium' THEN 8
           ELSE 3
-        END as avg_density,
+        END) as avg_density,
         CASE 
           WHEN AVG(ca.people_count) > 15 THEN 'high'
           WHEN AVG(ca.people_count) > 8 THEN 'medium'
           ELSE 'low'
         END as max_crowd_level
       FROM iot_crowd_analysis ca
-      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
+      JOIN business_cameras bc ON bc.id::VARCHAR = ca.device_id
       WHERE bc.business_user_id = ${parseInt(businessId)}
         AND ca.analysis_timestamp >= NOW() - INTERVAL '1 hour' * ${hoursAgo}
       GROUP BY EXTRACT(HOUR FROM ca.analysis_timestamp)

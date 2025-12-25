@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     // ✅ ESP32 FIRMWARE: iot_crowd_analysis tablosu kullanılıyor
     // Business cameras ile JOIN yaparak ESP32 verilerini al
-    const query = `
+    const recognitionLogs = await sql`
       SELECT 
         ca.id,
         'person' as detection_type,
@@ -43,15 +43,13 @@ export async function GET(request: NextRequest) {
         ca.device_id,
         bc.business_user_id as business_id
       FROM iot_crowd_analysis ca
-      JOIN business_cameras bc ON CAST(bc.id AS VARCHAR) = ca.device_id
-      WHERE bc.business_user_id = $1
-        AND ca.confidence_score >= $2
+      JOIN business_cameras bc ON bc.id::VARCHAR = ca.device_id
+      WHERE bc.business_user_id = ${parseInt(businessUserId)}
+        AND ca.confidence_score >= ${minConfidence}
         AND ca.analysis_timestamp >= NOW() - INTERVAL '24 hours'
       ORDER BY ca.analysis_timestamp DESC 
-      LIMIT $3
+      LIMIT ${limit}
     `;
-
-    const recognitionLogs = await sql(query, [businessUserId, minConfidence, limit]);
 
     // If no real data found, return empty result
     if (recognitionLogs.length === 0) {
